@@ -1,24 +1,8 @@
-//
-//  ContentView.swift
-//  music-demo
-//
-//  Created by zlyybfy on 2026/3/13.
-//
-
 import SwiftUI
 
+// Xcode 默认生成，实际入口由 App/music_demoApp.swift 提供，此文件仅保留以满足默认模板结构
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
+        EmptyView()
     }
-}
-
-#Preview {
-    ContentView()
 }

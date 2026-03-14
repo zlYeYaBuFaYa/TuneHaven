@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22758" systemVersion="24A335" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="NO" userDefinedModelVersionIdentifier="">
+    <entity name="SongEntity" representedClassName="SongEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="album" attributeType="String" defaultValueString="未知专辑"/>
+        <attribute name="artist" attributeType="String" defaultValueString="未知艺术家"/>
+        <attribute name="bitRate" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="channels" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="coverImagePath" optional="YES" attributeType="String"/>
+        <attribute name="deletedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="duration" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="encoder" optional="YES" attributeType="String"/>
+        <attribute name="favoriteDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="fileHash" attributeType="String" defaultValueString=""/>
+        <attribute name="fileRelativePath" attributeType="String" defaultValueString=""/>
+        <attribute name="fileSize" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="format" attributeType="String" defaultValueString=""/>
+        <attribute name="genre" optional="YES" attributeType="String"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="importDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isFavorite" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="softDeleted" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lastPlayedDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="lyricsPath" optional="YES" attributeType="String"/>
+        <attribute name="lyricsSource" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="playCount" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="sampleRate" optional="YES" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="title" attributeType="String" defaultValueString=""/>
+        <attribute name="trackNumber" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="year" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <fetchIndex name="byArtist">
+            <fetchIndexElement property="artist" type="Binary" order="ascending"/>
+            <fetchIndexElement property="album" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byAlbum">
+            <fetchIndexElement property="album" type="Binary" order="ascending"/>
+            <fetchIndexElement property="trackNumber" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byImportDate">
+            <fetchIndexElement property="importDate" type="Binary" order="descending"/>
+        </fetchIndex>
+        <fetchIndex name="byFileHash">
+            <fetchIndexElement property="fileHash" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="bySoftDeleted">
+            <fetchIndexElement property="softDeleted" type="Binary" order="ascending"/>
+        </fetchIndex>
+    </entity>
+    <entity name="PlaylistEntity" representedClassName="PlaylistEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="autoCoverHash" optional="YES" attributeType="String"/>
+        <attribute name="autoCoverPath" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="customCoverPath" optional="YES" attributeType="String"/>
+        <attribute name="desc_" optional="YES" attributeType="String"/>
+        <attribute name="groupId" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isSystem" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="name" attributeType="String" defaultValueString=""/>
+        <attribute name="sortOrder" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="systemType" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="songs" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="PlaylistSongEntity" inverseName="playlist" inverseEntity="PlaylistSongEntity"/>
+    </entity>
+    <entity name="PlaylistSongEntity" representedClassName="PlaylistSongEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="addedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="playlistId" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="songId" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="sortOrder" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="playlist" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="PlaylistEntity" inverseName="songs" inverseEntity="PlaylistEntity"/>
+    </entity>
+    <entity name="PlaylistGroupEntity" representedClassName="PlaylistGroupEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" attributeType="String" defaultValueString=""/>
+        <attribute name="sortOrder" attributeType="Integer 32" defaultValueString="0" usesScalarValueType="YES"/>
+    </entity>
+    <entity name="PlayRecordEntity" representedClassName="PlayRecordEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="playedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="songId" attributeType="UUID" usesScalarValueType="NO"/>
+        <fetchIndex name="bySongId">
+            <fetchIndexElement property="songId" type="Binary" order="ascending"/>
+        </fetchIndex>
+        <fetchIndex name="byPlayedAt">
+            <fetchIndexElement property="playedAt" type="Binary" order="descending"/>
+        </fetchIndex>
+    </entity>
+    <entity name="SearchHistoryEntity" representedClassName="SearchHistoryEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="keyword" attributeType="String" defaultValueString=""/>
+        <attribute name="searchedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="tabContext" attributeType="String" defaultValueString="all"/>
+    </entity>
+</model>

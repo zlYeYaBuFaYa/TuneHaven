@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>本地音乐播放器 · 原型1完整版 - 现代简约莫兰迪</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Inter', -apple-system, sans-serif; }
+  .phone-frame {
+    width: 280px;
+    height: 560px;
+    border-radius: 32px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .phone-notch {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 20px;
+    background: #000;
+    border-radius: 0 0 14px 14px;
+    z-index: 50;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+</head>
+<body class="bg-stone-200 min-h-screen p-6">
+
+<div class="max-w-[1800px] mx-auto">
+  <!-- Header -->
+  <div class="text-center mb-8">
+    <h1 class="text-2xl font-bold text-stone-800 mb-1">本地音乐播放器 · 原型1（完整版）</h1>
+    <p class="text-stone-500 text-sm">现代简约莫兰迪风格 · 共20个页面</p>
+  </div>
+
+  <!-- Section 1: 音乐库 -->
+  <div class="mb-10">
+    <h2 class="text-lg font-semibold text-stone-700 mb-4">一、音乐库</h2>
+    <div class="flex flex-wrap gap-6">
+
+      <!-- 1-1 全部音乐 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600">
+            <span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div>
+          </div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center">
+            <span class="text-sm font-semibold text-stone-800">音乐库</span>
+            <svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+          </div>
+          <div class="bg-white flex border-b border-stone-100">
+            <button class="flex-1 py-1.5 text-xs font-medium text-emerald-600 border-b-2 border-emerald-500">全部</button>
+            <button class="flex-1 py-1.5 text-xs text-stone-400">艺术家</button>
+            <button class="flex-1 py-1.5 text-xs text-stone-400">专辑</button>
+            <button class="flex-1 py-1.5 text-xs text-stone-400">歌单</button>
+          </div>
+          <div class="bg-white px-3 py-1.5"><div class="bg-stone-100 rounded-lg px-2 py-1.5 flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span class="text-xs text-stone-400">搜索...</span></div></div>
+          <div class="bg-white px-3 py-1 flex justify-between text-xs text-stone-500"><span class="text-emerald-600">排序 ▾</span><span class="text-emerald-600">筛选 ▾</span></div>
+          <div class="bg-white flex-1 overflow-y-auto scrollbar-hide">
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50">
+              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
+              <div class="flex-1 min-w-0"><div class="text-xs font-medium text-emerald-600 truncate">夜曲</div><div class="text-[10px] text-stone-400 truncate">周杰伦 · 3:45</div></div>
+            </div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50">
+              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center"><svg class="w-4 h-4 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
+              <div class="flex-1 min-w-0"><div class="text-xs font-medium text-stone-700 truncate">晴天</div><div class="text-[10px] text-stone-400 truncate">周杰伦 · 4:29</div></div>
+            </div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50">
+              <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center"><svg class="w-4 h-4 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
+              <div class="flex-1 min-w-0"><div class="text-xs font-medium text-stone-700 truncate">七里香</div><div class="text-[10px] text-stone-400 truncate">周杰伦 · 4:59</div></div>
+            </div>
+          </div>
+          <div class="bg-white/95 backdrop-blur border-t border-stone-100 px-3 py-1.5 flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
+            <div class="flex-1 min-w-0"><div class="text-[10px] font-semibold text-stone-700 truncate">夜曲</div><div class="text-[10px] text-stone-400 truncate">周杰伦</div></div>
+            <button class="w-7 h-7 flex items-center justify-center"><svg class="w-4 h-4 text-stone-600" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg></button>
+          </div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">1-1 全部音乐</span>
+      </div>
+
+      <!-- 1-2 艺术家视图 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><span class="text-sm font-semibold text-stone-800">音乐库</span><svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg></div>
+          <div class="bg-white flex border-b border-stone-100"><button class="flex-1 py-1.5 text-xs text-stone-400">全部</button><button class="flex-1 py-1.5 text-xs font-medium text-emerald-600 border-b-2 border-emerald-500">艺术家</button><button class="flex-1 py-1.5 text-xs text-stone-400">专辑</button><button class="flex-1 py-1.5 text-xs text-stone-400">歌单</button></div>
+          <div class="bg-white px-3 py-1.5"><div class="bg-stone-100 rounded-lg px-2 py-1.5 flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span class="text-xs text-stone-400">搜索艺术家</span></div></div>
+          <div class="bg-white flex-1 overflow-y-auto scrollbar-hide">
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center"><svg class="w-5 h-5 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+              <div class="flex-1 min-w-0"><div class="text-xs font-medium text-stone-800">周杰伦</div><div class="text-[10px] text-stone-400">48首歌曲 · 12张专辑</div></div>
+            </div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center"><svg class="w-5 h-5 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+              <div class="flex-1 min-w-0"><div class="text-xs font-medium text-stone-800">陈奕迅</div><div class="text-[10px] text-stone-400">32首歌曲 · 8张专辑</div></div>
+            </div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center"><svg class="w-5 h-5 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+              <div class="flex-1 min-w-0"><div class="text-xs font-medium text-stone-800">孙燕姿</div><div class="text-[10px] text-stone-400">24首歌曲 · 6张专辑</div></div>
+            </div>
+          </div>
+          <div class="bg-white/95 backdrop-blur border-t border-stone-100 px-3 py-1.5 flex items-center gap-2"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1 min-w-0"><div class="text-[10px] font-semibold text-stone-700 truncate">夜曲</div><div class="text-[10px] text-stone-400 truncate">周杰伦</div></div><button class="w-7 h-7 flex items-center justify-center"><svg class="w-4 h-4 text-stone-600" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg></button></div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">1-2 艺术家</span>
+      </div>
+
+      <!-- 1-3 专辑详情 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><button class="text-xs text-emerald-600">‹ 专辑</button><span class="text-sm font-semibold text-stone-800"></span><button class="text-xs text-stone-400">···</button></div>
+          <div class="bg-gradient-to-br from-stone-700 to-stone-800 px-4 py-3 text-white">
+            <div class="w-20 h-20 rounded-xl bg-gradient-to-br from-emerald-300 to-teal-400 mx-auto mb-2 flex items-center justify-center shadow-lg"><svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
+            <div class="text-center"><div class="text-sm font-bold">七里香</div><div class="text-[10px] text-stone-300">周杰伦 · 2004 · 10首歌曲</div></div>
+          </div>
+          <div class="bg-white px-3 py-2 flex gap-2 border-b border-stone-100"><button class="flex-1 bg-emerald-500 text-white text-[10px] font-medium rounded-lg py-1.5">▶ 播放全部</button><button class="flex-1 border border-stone-200 text-stone-600 text-[10px] rounded-lg py-1.5">🔀 随机</button></div>
+          <div class="bg-white flex-1 overflow-y-auto scrollbar-hide">
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-6 text-[10px] text-stone-400">1</div><div class="flex-1"><div class="text-xs font-medium text-stone-700">我的地盘</div><div class="text-[10px] text-stone-400">4:02</div></div></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-6 text-[10px] text-emerald-600 font-bold">2</div><div class="flex-1"><div class="text-xs font-medium text-emerald-600">七里香</div><div class="text-[10px] text-stone-400">4:59</div></div></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-6 text-[10px] text-stone-400">3</div><div class="flex-1"><div class="text-xs font-medium text-stone-700">借口</div><div class="text-[10px] text-stone-400">3:31</div></div></div>
+          </div>
+          <div class="bg-white/95 backdrop-blur border-t border-stone-100 px-3 py-1.5 flex items-center gap-2"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1 min-w-0"><div class="text-[10px] font-semibold text-stone-700 truncate">七里香</div><div class="text-[10px] text-stone-400 truncate">周杰伦</div></div><button class="w-7 h-7 flex items-center justify-center"><svg class="w-4 h-4 text-stone-600" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg></button></div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">1-3 专辑详情</span>
+      </div>
+
+      <!-- 1-4 批量操作 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-emerald-500 px-3 py-2 flex justify-between items-center text-white"><button class="text-[10px]">取消</button><span class="text-xs font-semibold">已选 3 首</span><span class="w-6"></span></div>
+          <div class="bg-white px-3 py-1.5 flex gap-3 text-xs text-emerald-600 border-b border-stone-100"><button>全选</button><button>▶ 播放</button><button>＋ 歌单</button><button class="text-rose-500">🗑 删除</button></div>
+          <div class="bg-white flex-1 overflow-y-auto scrollbar-hide">
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center"><svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center"><svg class="w-4 h-4 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-700">夜曲</div><div class="text-[10px] text-stone-400">周杰伦</div></div></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center"><svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg></div><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center"><svg class="w-4 h-4 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-700">晴天</div><div class="text-[10px] text-stone-400">周杰伦</div></div></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-5 h-5 rounded-full border-2 border-stone-200"></div><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-stone-200 to-stone-300 flex items-center justify-center"><svg class="w-4 h-4 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-700">稻香</div><div class="text-[10px] text-stone-400">周杰伦</div></div></div>
+          </div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">1-4 批量操作</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Section 2: 播放器 -->
+  <div class="mb-10">
+    <h2 class="text-lg font-semibold text-stone-700 mb-4">二、播放器</h2>
+    <div class="flex flex-wrap gap-6">
+
+      <!-- 2-1 全屏播放器 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-gradient-to-br from-stone-800 to-stone-900">
+          <div class="phone-notch"></div>
+          <div class="px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-300"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="px-4 py-3 flex justify-between items-center">
+            <button class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10"><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="text-center"><div class="text-[10px] text-stone-400">正在播放</div><div class="text-xs text-stone-200">七里香歌单</div></div>
+            <button class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10"><svg class="w-4 h-4 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button>
+          </div>
+          <div class="px-8 py-4"><div class="aspect-square rounded-2xl bg-gradient-to-br from-emerald-300 to-teal-400 shadow-2xl flex items-center justify-center"><svg class="w-16 h-16 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div></div>
+          <div class="px-4 py-2 text-center"><div class="text-lg font-bold text-white">夜曲</div><div class="text-xs text-stone-400">周杰伦 · 十一月的萧邦</div></div>
+          <div class="px-4 py-2 flex justify-around"><button class="w-8 h-8"><svg class="w-5 h-5 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg></button><button class="w-8 h-8"><svg class="w-5 h-5 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button><button class="w-8 h-8"><svg class="w-5 h-5 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></button><button class="w-8 h-8"><svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></button></div>
+          <div class="px-4 py-2"><div class="h-1 bg-stone-700 rounded-full mb-1"><div class="h-full w-2/5 bg-emerald-400 rounded-full relative"><div class="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full"></div></div></div><div class="flex justify-between text-[10px] text-stone-400"><span>1:25</span><span>3:45</span></div></div>
+          <div class="px-4 py-2 flex justify-center items-center gap-4"><button class="w-8 h-8"><svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button><button class="w-10 h-10"><svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg></button><button class="w-8 h-8"><svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button></div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">2-1 全屏播放器</span>
+      </div>
+
+      <!-- 2-2 歌词页 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-gradient-to-br from-stone-800 to-stone-900">
+          <div class="phone-notch"></div>
+          <div class="px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-300"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="px-4 py-3 flex justify-between items-center">
+            <button class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10"><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></button>
+            <div class="text-center"><div class="text-sm text-white">夜曲</div><div class="text-[10px] text-stone-400">周杰伦</div></div>
+            <button class="w-8 h-8 flex items-center justify-center"><span class="text-xs text-stone-300">Aa</span></button>
+          </div>
+          <div class="flex-1 px-6 py-4 text-center">
+            <div class="text-[10px] text-stone-500 py-1">为你弹奏肖邦的夜曲</div>
+            <div class="text-xs text-stone-400 py-1">纪念我死去的爱情</div>
+            <div class="text-sm font-medium text-white py-1">我用我的琴声哭泣</div>
+            <div class="text-xs text-stone-400 py-1">他不懂我的深情</div>
+            <div class="text-[10px] text-stone-500 py-1">你以为爱情不渝</div>
+          </div>
+          <div class="border-t border-white/10 px-4 py-3">
+            <div class="text-center text-[10px] text-stone-500 mb-2">1:25 / 3:45</div>
+            <div class="flex justify-around"><button class="w-8 h-8"><svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button><button class="w-10 h-10"><svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg></button><button class="w-8 h-8"><svg class="w-5 h-5 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button></div>
+          </div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">2-2 歌词显示</span>
+      </div>
+
+      <!-- 2-3 播放队列 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><button class="text-xs text-emerald-600">‹ 播放器</button><span class="text-sm font-semibold text-stone-800">播放队列</span><button class="text-xs text-stone-400">清空</button></div>
+          <div class="bg-stone-100 px-3 py-1 text-[10px] text-stone-500">共 12 首 · 正在播放第 3 首</div>
+          <div class="bg-white flex-1 overflow-y-auto scrollbar-hide">
+            <div class="text-[10px] text-stone-400 px-3 py-1 bg-stone-50">已播放</div>
+            <div class="px-3 py-1.5 flex items-center gap-2 border-b border-stone-50 opacity-50"><span class="w-4 text-[10px] text-stone-400">1</span><div class="w-8 h-8 rounded-lg bg-stone-200 flex items-center justify-center"><svg class="w-4 h-4 text-stone-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs text-stone-700">晴天</div><div class="text-[10px] text-stone-400">周杰伦</div></div></div>
+            <div class="text-[10px] text-stone-400 px-3 py-1 bg-stone-50">正在播放</div>
+            <div class="px-3 py-1.5 flex items-center gap-2 border-b border-stone-50"><span class="w-4 text-[10px] text-emerald-600">▶</span><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs text-emerald-600">夜曲</div><div class="text-[10px] text-emerald-600">周杰伦</div></div></div>
+            <div class="text-[10px] text-stone-400 px-3 py-1 bg-stone-50">待播放</div>
+            <div class="px-3 py-1.5 flex items-center gap-2 border-b border-stone-50"><span class="w-4 text-[10px] text-stone-400">4</span><div class="w-8 h-8 rounded-lg bg-stone-200 flex items-center justify-center"><svg class="w-4 h-4 text-stone-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs text-stone-700">稻香</div><div class="text-[10px] text-stone-400">周杰伦</div></div></div>
+          </div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">2-3 播放队列</span>
+      </div>
+
+      <!-- 2-4 定时播放 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-gradient-to-br from-stone-800 to-stone-900">
+          <div class="phone-notch"></div>
+          <div class="px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-300"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="flex-1 flex flex-col items-center justify-center text-white py-8"><svg class="w-12 h-12 text-stone-400 mb-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg><div class="text-lg">夜曲</div><div class="text-xs text-stone-400 mb-3">周杰伦</div><div class="text-3xl font-bold text-emerald-400">⏱ 24:36</div><div class="text-[10px] text-stone-500">定时后停止播放</div></div>
+          <div class="bg-stone-900 rounded-t-3xl px-4 py-3">
+            <div class="text-sm font-semibold text-white text-center mb-2">定时停止</div>
+            <div class="text-[10px] text-stone-400 py-2 border-b border-stone-800">关闭定时器</div>
+            <div class="text-[10px] text-stone-400 py-2 border-b border-stone-800">15 分钟后停止</div>
+            <div class="text-[10px] text-emerald-400 py-2 border-b border-stone-800 font-medium">✓ 45 分钟后停止</div>
+            <div class="text-[10px] text-stone-400 py-2 border-b border-stone-800">60 分钟后停止</div>
+            <div class="text-[10px] text-stone-500 text-center py-2">后台定时暂停受系统调度影响</div>
+          </div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">2-4 定时播放</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Section 3: 歌单 -->
+  <div class="mb-10">
+    <h2 class="text-lg font-semibold text-stone-700 mb-4">三、歌单管理</h2>
+    <div class="flex flex-wrap gap-6">
+
+      <!-- 3-1 歌单列表 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-stone-50">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-stone-50 px-3 py-2 border-b border-stone-100 flex justify-between items-center"><span class="text-sm font-semibold text-stone-800">歌单</span><button class="w-7 h-7 flex items-center justify-center bg-emerald-500 rounded-full"><svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></button></div>
+          <div class="flex-1 overflow-y-auto scrollbar-hide p-3">
+            <div class="text-[10px] text-stone-400 mb-2 uppercase">系统歌单</div>
+            <div class="bg-white rounded-xl p-3 mb-3 flex items-center gap-3 shadow-sm"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-200 to-rose-300 flex items-center justify-center"><svg class="w-5 h-5 text-rose-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div><div class="flex-1"><div class="text-xs font-semibold text-stone-800">我喜欢</div><div class="text-[10px] text-stone-400">38 首歌曲</div></div></div>
+            <div class="bg-white rounded-xl p-3 mb-4 flex items-center gap-3 shadow-sm"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-200 to-sky-300 flex items-center justify-center"><svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><div class="flex-1"><div class="text-xs font-semibold text-stone-800">最近播放</div><div class="text-[10px] text-stone-400">52 首歌曲</div></div></div>
+            <div class="text-[10px] text-stone-400 mb-2 uppercase">我的歌单</div>
+            <div class="grid grid-cols-2 gap-2">
+              <div class="bg-white rounded-xl overflow-hidden shadow-sm"><div class="aspect-square bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center"><svg class="w-8 h-8 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="p-2"><div class="text-[10px] font-semibold text-stone-800">通勤必听</div><div class="text-[10px] text-stone-400">24 首</div></div></div>
+              <div class="bg-white rounded-xl overflow-hidden shadow-sm"><div class="aspect-square bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center"><svg class="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div><div class="p-2"><div class="text-[10px] font-semibold text-stone-800">运动节拍</div><div class="text-[10px] text-stone-400">18 首</div></div></div>
+            </div>
+          </div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">3-1 歌单列表</span>
+      </div>
+
+      <!-- 3-2 歌单详情 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><button class="text-xs text-emerald-600">‹ 歌单</button><span class="text-sm font-semibold text-stone-800">通勤必听</span><button class="text-xs text-stone-400">···</button></div>
+          <div class="bg-white px-3 py-3 flex gap-3 border-b border-stone-100"><div class="w-14 h-14 rounded-xl grid grid-cols-2 overflow-hidden"><div class="bg-emerald-200 flex items-center justify-center"><svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="bg-teal-200 flex items-center justify-center"><svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13"/></svg></div><div class="bg-teal-200 flex items-center justify-center"><svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9"/></svg></div><div class="bg-emerald-200 flex items-center justify-center"><svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div></div><div><div class="text-sm font-bold text-stone-800">通勤必听</div><div class="text-[10px] text-stone-400">24 首歌曲</div></div></div>
+          <div class="bg-white px-3 py-2 flex gap-2 border-b border-stone-100"><button class="flex-1 bg-emerald-500 text-white text-[10px] font-medium rounded-lg py-1.5">▶ 播放全部</button><button class="flex-1 border border-stone-200 text-stone-600 text-[10px] rounded-lg py-1.5">🔀 随机</button></div>
+          <div class="bg-white flex-1 overflow-y-auto scrollbar-hide">
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-emerald-600">夜曲</div><div class="text-[10px] text-stone-400">周杰伦 · 3:45</div></div></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-stone-200 flex items-center justify-center"><svg class="w-4 h-4 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-700">晴天</div><div class="text-[10px] text-stone-400">周杰伦 · 4:29</div></div></div>
+          </div>
+          <div class="bg-white/95 backdrop-blur border-t border-stone-100 px-3 py-1.5 flex items-center gap-2"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1 min-w-0"><div class="text-[10px] font-semibold text-stone-700 truncate">夜曲</div><div class="text-[10px] text-stone-400 truncate">周杰伦</div></div><button class="w-7 h-7 flex items-center justify-center"><svg class="w-4 h-4 text-stone-600" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg></button></div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">3-2 歌单详情</span>
+      </div>
+
+      <!-- 3-3 歌单分组 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><button class="text-xs text-emerald-600">‹ 歌单</button><span class="text-sm font-semibold text-stone-800">歌单分组</span><button class="w-6 h-6 flex items-center justify-center bg-emerald-500 rounded-full"><svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></button></div>
+          <div class="bg-white px-3 py-1.5"><div class="bg-stone-100 rounded-lg px-2 py-1.5 flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span class="text-xs text-stone-400">搜索分组</span></div></div>
+          <div class="bg-white flex-1 overflow-y-auto scrollbar-hide">
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-200 to-amber-300 flex items-center justify-center"><svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-800">通勤</div><div class="text-[10px] text-stone-400">3 个歌单 · 68 首歌曲</div></div><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-200 to-teal-300 flex items-center justify-center"><svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-800">运动</div><div class="text-[10px] text-stone-400">2 个歌单 · 42 首歌曲</div></div><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-200 to-indigo-300 flex items-center justify-center"><svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-800">睡前</div><div class="text-[10px] text-stone-400">4 个歌单 · 85 首歌曲</div></div><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div>
+          </div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">3-3 歌单分组</span>
+      </div>
+
+      <!-- 3-4 最近播放 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><button class="text-xs text-emerald-600">‹ 歌单</button><span class="text-sm font-semibold text-stone-800">最近播放</span></div>
+          <div class="bg-white flex gap-0 border-b border-stone-100"><button class="flex-1 py-1.5 text-[10px] text-stone-400">3天</button><button class="flex-1 py-1.5 text-[10px] text-emerald-600 font-semibold border-b-2 border-emerald-500">7天</button><button class="flex-1 py-1.5 text-[10px] text-stone-400">14天</button><button class="flex-1 py-1.5 text-[10px] text-stone-400">30天</button><button class="flex-1 py-1.5 text-[10px] text-stone-400">全部</button></div>
+          <div class="bg-white flex-1 overflow-y-auto scrollbar-hide">
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-700">夜曲</div><div class="text-[10px] text-stone-400">周杰伦 · 5分钟前</div></div></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-stone-200 flex items-center justify-center"><svg class="w-4 h-4 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-700">遇见</div><div class="text-[10px] text-stone-400">孙燕姿 · 32分钟前</div></div></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-stone-200 flex items-center justify-center"><svg class="w-4 h-4 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-700">稻香</div><div class="text-[10px] text-stone-400">周杰伦 · 2小时前</div></div></div>
+          </div>
+          <div class="bg-white/95 backdrop-blur border-t border-stone-100 px-3 py-1.5 flex items-center gap-2"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1 min-w-0"><div class="text-[10px] font-semibold text-stone-700 truncate">夜曲</div><div class="text-[10px] text-stone-400 truncate">周杰伦</div></div><button class="w-7 h-7 flex items-center justify-center"><svg class="w-4 h-4 text-stone-600" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg></button></div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">3-4 最近播放</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Section 4: 导入 -->
+  <div class="mb-10">
+    <h2 class="text-lg font-semibold text-stone-700 mb-4">四、音乐导入</h2>
+    <div class="flex flex-wrap gap-6">
+
+      <!-- 4-1 导入中 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><span class="text-sm font-semibold text-stone-800">正在导入</span><button class="text-xs text-rose-500">取消</button></div>
+          <div class="bg-white px-4 py-4 text-center"><div class="text-lg font-bold text-stone-800">正在导入音乐</div></div>
+          <div class="bg-white px-4"><div class="h-1.5 bg-stone-200 rounded-full mb-1"><div class="h-full w-3/5 bg-emerald-500 rounded-full"></div></div><div class="flex justify-between text-[10px] text-stone-500"><span>已完成 6/10</span><span>60%</span></div><div class="text-xs text-stone-700 mt-2">正在导入：周杰伦 - 夜曲.mp3</div><div class="text-[10px] text-stone-400">预计剩余：30 秒</div></div>
+          <div class="bg-stone-50 mx-4 my-3 rounded-xl p-3">
+            <div class="flex items-center gap-2 py-1 border-b border-stone-200"><svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span class="text-[10px] text-stone-700">成功：6 首</span></div>
+            <div class="flex items-center gap-2 py-1 border-b border-stone-200"><svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg><span class="text-[10px] text-amber-600">跳过：3 首（格式不支持）</span></div>
+            <div class="flex items-center gap-2 py-1 border-b border-stone-200"><svg class="w-4 h-4 text-rose-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg><span class="text-[10px] text-rose-500">失败：1 首（文件损坏）</span></div>
+            <div class="flex items-center gap-2 py-1"><svg class="w-4 h-4 text-stone-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg><span class="text-[10px] text-stone-500">元数据不完整：2 首</span></div>
+          </div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">4-1 导入中</span>
+      </div>
+
+      <!-- 4-2 导入完成 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><span class="text-sm font-semibold text-stone-800">导入完成</span></div>
+          <div class="bg-white px-4 py-6 text-center"><div class="w-12 h-12 rounded-full bg-emerald-100 mx-auto mb-2 flex items-center justify-center"><svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></div><div class="text-lg font-bold text-stone-800">导入完成</div><div class="text-xs text-stone-400 mt-1">共处理 10 个文件</div></div>
+          <div class="bg-stone-50 mx-4 rounded-xl p-3">
+            <div class="flex items-center gap-2 py-1 border-b border-stone-200"><svg class="w-3 h-3 text-emerald-500" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg><span class="text-[10px] text-stone-700">成功导入：7 首</span></div>
+            <div class="flex items-center gap-2 py-1 border-b border-stone-200"><svg class="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg><span class="text-[10px] text-amber-600">跳过重复：1 首</span></div>
+            <div class="flex items-center gap-2 py-1 border-b border-stone-200"><svg class="w-3 h-3 text-stone-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg><span class="text-[10px] text-stone-500">格式不支持：1 首</span></div>
+            <div class="flex items-center gap-2 py-1"><svg class="w-3 h-3 text-rose-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg><span class="text-[10px] text-rose-500">导入失败：1 首</span></div>
+          </div>
+          <div class="bg-white px-4 py-3 flex gap-2"><button class="flex-1 border border-stone-200 text-stone-600 text-[10px] rounded-lg py-2">查看详情</button><button class="flex-1 bg-emerald-500 text-white text-[10px] font-medium rounded-lg py-2">完成</button></div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">4-2 导入完成</span>
+      </div>
+
+      <!-- 4-3 WiFi传输 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><button class="text-xs text-emerald-600">‹ 导入</button><span class="text-sm font-semibold text-stone-800">WiFi 传输</span></div>
+          <div class="bg-amber-50 mx-3 my-2 rounded-xl p-2 flex gap-2 border border-amber-200"><svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg><span class="text-[10px] text-amber-700"><strong>安全提示</strong>：仅在可信 WiFi 网络中使用</span></div>
+          <div class="bg-white px-4 py-4 flex flex-col items-center"><div class="w-16 h-16 rounded-xl bg-stone-100 flex items-center justify-center mb-3"><div class="w-12 h-12 border-2 border-stone-300 rounded flex items-center justify-center"><svg class="w-6 h-6 text-stone-400" fill="currentColor" viewBox="0 0 24 24"><path d="M3 4h1v16H3V4zm16 0h1v16h-1V4zm-6 0h2v16h-2V4zm-4 0h2v16H9V4z"/></svg></div></div><div class="bg-stone-50 rounded-xl p-3 w-full"><div class="text-sm font-semibold text-emerald-600 text-center mb-1">http://192.168.1.100:8080</div><div class="text-[10px] text-stone-400 text-center mb-2">在电脑浏览器中打开以上地址</div><div class="flex items-center justify-between mb-1"><span class="text-[10px] font-medium text-stone-600">访问密码</span><div class="flex gap-1"><span class="w-5 h-6 border border-stone-300 rounded text-xs flex items-center justify-center font-bold">8</span><span class="w-5 h-6 border border-stone-300 rounded text-xs flex items-center justify-center font-bold">5</span><span class="w-5 h-6 border border-stone-300 rounded text-xs flex items-center justify-center font-bold">2</span><span class="w-5 h-6 border border-stone-300 rounded text-xs flex items-center justify-center font-bold">7</span><span class="w-5 h-6 border border-stone-300 rounded text-xs flex items-center justify-center font-bold">3</span><span class="w-5 h-6 border border-stone-300 rounded text-xs flex items-center justify-center font-bold">9</span></div></div></div><div class="flex items-center gap-2 my-2"><div class="w-2 h-2 rounded-full bg-stone-300"></div><span class="text-[10px] text-stone-400">等待连接中…</span></div><div class="px-3 py-2 flex items-center justify-between bg-stone-50 rounded-xl"><span class="text-[10px] text-stone-600">开启访问密码</span><div class="w-8 h-4 bg-emerald-500 rounded-full relative"><div class="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow"></div></div></div></div>
+          <div class="bg-white px-4 py-2"><button class="w-full py-2.5 bg-rose-500 text-white text-xs font-semibold rounded-xl">停止 WiFi 传输</button></div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">4-3 WiFi传输</span>
+      </div>
+
+      <!-- 4-4 空状态 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><span class="text-sm font-semibold text-stone-800">音乐库</span><svg class="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg></div>
+          <div class="bg-white flex border-b border-stone-100"><button class="flex-1 py-1.5 text-xs font-medium text-emerald-600 border-b-2 border-emerald-500">全部</button><button class="flex-1 py-1.5 text-xs text-stone-400">艺术家</button><button class="flex-1 py-1.5 text-xs text-stone-400">专辑</button><button class="flex-1 py-1.5 text-xs text-stone-400">歌单</button></div>
+          <div class="bg-white flex-1 flex flex-col items-center justify-center px-6 text-center"><svg class="w-14 h-14 text-stone-300 mb-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg><div class="text-sm font-semibold text-stone-800">还没有音乐文件</div><div class="text-xs text-stone-400 mt-1">从文件应用导入本地音乐，<br>或通过 WiFi 从电脑传输</div><div class="flex gap-2 mt-3"><button class="px-4 py-2 bg-emerald-500 text-white text-xs font-medium rounded-lg">从文件导入</button><button class="px-4 py-2 border border-emerald-500 text-emerald-600 text-xs font-medium rounded-lg">WiFi 传输</button></div></div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">4-4 空状态</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Section 5: 设置 & 详情 -->
+  <div class="mb-10">
+    <h2 class="text-lg font-semibold text-stone-700 mb-4">五、设置 & 歌曲详情</h2>
+    <div class="flex flex-wrap gap-6">
+
+      <!-- 5-1 设置页 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-stone-100">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-100 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-stone-100 px-3 py-2 flex justify-center"><span class="text-sm font-semibold text-stone-800">设置</span></div>
+          <div class="bg-stone-100 flex-1 overflow-y-auto scrollbar-hide px-3">
+            <div class="bg-white rounded-2xl overflow-hidden mb-3 shadow-sm"><div class="px-3 py-2.5 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-stone-200 flex items-center justify-center"><svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg></div><span class="flex-1 text-xs font-medium text-stone-700">主题外观</span><span class="text-[10px] text-stone-400">跟随系统</span><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div></div>
+            <div class="text-[10px] text-stone-400 mb-1 ml-1">播放设置</div>
+            <div class="bg-white rounded-2xl overflow-hidden mb-3 shadow-sm"><div class="px-3 py-2.5 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center"><svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></div><span class="flex-1 text-xs font-medium text-stone-700">播放模式</span><span class="text-[10px] text-stone-400">顺序播放</span><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div><div class="px-3 py-2.5 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center"><svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div><span class="flex-1 text-xs font-medium text-stone-700">播放速度</span><span class="text-[10px] text-stone-400">1.0x</span><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div><div class="px-3 py-2.5 flex items-center gap-2"><div class="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center"><svg class="w-4 h-4 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div><span class="flex-1 text-xs font-medium text-stone-700">定时停止</span><span class="text-[10px] text-stone-400">未开启</span><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div></div>
+            <div class="text-[10px] text-stone-400 mb-1 ml-1">导入设置</div>
+            <div class="bg-white rounded-2xl overflow-hidden mb-3 shadow-sm"><div class="px-3 py-2.5 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center"><svg class="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg></div><span class="flex-1 text-xs font-medium text-stone-700">WiFi 传输</span><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div><div class="px-3 py-2.5 flex items-center gap-2"><div class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center"><svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg></div><span class="flex-1 text-xs font-medium text-stone-700">文件管理</span><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div></div>
+          </div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">5-1 设置页</span>
+      </div>
+
+      <!-- 5-2 歌曲详情 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><button class="text-xs text-emerald-600">‹ 返回</button><span class="text-sm font-semibold text-stone-800">歌曲详情</span></div>
+          <div class="bg-white px-4 py-4 text-center"><div class="w-20 h-20 rounded-xl bg-gradient-to-br from-emerald-200 to-teal-200 mx-auto mb-2 flex items-center justify-center"><svg class="w-10 h-10 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="text-sm font-bold text-stone-800">夜曲</div><div class="text-xs text-stone-400">周杰伦 · 十一月的萧邦</div></div>
+          <div class="bg-white flex border-b border-stone-100"><button class="flex-1 py-2 flex flex-col items-center gap-1 text-emerald-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg><span class="text-[10px]">收藏</span></button><button class="flex-1 py-2 flex flex-col items-center gap-1 text-emerald-600"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span class="text-[10px]">播放</span></button><button class="flex-1 py-2 flex flex-col items-center gap-1 text-emerald-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg><span class="text-[10px]">歌单</span></button></div>
+          <div class="bg-white flex-1 overflow-y-auto scrollbar-hide">
+            <div class="px-3 py-2 bg-stone-50"><div class="text-[10px] text-stone-400 mb-1 uppercase">文件信息</div></div>
+            <div class="px-3 py-2 flex justify-between border-b border-stone-50 text-xs"><span class="text-stone-400">格式</span><span class="text-stone-700">MP3</span></div>
+            <div class="px-3 py-2 flex justify-between border-b border-stone-50 text-xs"><span class="text-stone-400">采样率</span><span class="text-stone-700">44100 Hz</span></div>
+            <div class="px-3 py-2 flex justify-between border-b border-stone-50 text-xs"><span class="text-stone-400">比特率</span><span class="text-stone-700">320 kbps</span></div>
+            <div class="px-3 py-2 flex justify-between border-b border-stone-50 text-xs"><span class="text-stone-400">时长</span><span class="text-stone-700">3:45</span></div>
+            <div class="px-3 py-2 bg-stone-50"><div class="text-[10px] text-stone-400 mb-1 uppercase">导入信息</div></div>
+            <div class="px-3 py-2 flex justify-between border-b border-stone-50 text-xs"><span class="text-stone-400">导入时间</span><span class="text-stone-700">2026-03-14</span></div>
+            <div class="px-3 py-2 flex justify-between border-b border-stone-50 text-xs"><span class="text-stone-400">播放次数</span><span class="text-stone-700">12 次</span></div>
+          </div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">5-2 歌曲详情</span>
+      </div>
+
+      <!-- 5-3 搜索结果 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-white">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-50 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-600"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-white px-3 py-2 border-b border-stone-100 flex justify-between items-center"><span class="text-sm font-semibold text-stone-800">音乐库</span></div>
+          <div class="bg-white flex border-b border-stone-100"><button class="flex-1 py-1.5 text-xs font-medium text-emerald-600 border-b-2 border-emerald-500">全部</button><button class="flex-1 py-1.5 text-xs text-stone-400">艺术家</button><button class="flex-1 py-1.5 text-xs text-stone-400">专辑</button><button class="flex-1 py-1.5 text-xs text-stone-400">歌单</button></div>
+          <div class="px-3 py-1.5 bg-emerald-500 rounded-xl mx-3 flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span class="text-xs text-white font-medium">周杰伦</span><svg class="w-3 h-3 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></div>
+          <div class="px-3 py-1 text-[10px] text-stone-400">搜索到 48 首歌曲，1 位艺术家，12 张专辑</div>
+          <div class="bg-white flex-1 overflow-y-auto scrollbar-hide">
+            <div class="text-[10px] text-stone-400 px-3 py-1 bg-stone-50">歌曲</div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-stone-200 flex items-center justify-center"><svg class="w-4 h-4 text-stone-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs"><span class="text-emerald-600 font-semibold">周杰伦</span> · 夜曲</div><div class="text-[10px] text-stone-400">十一月的萧邦 · 3:45</div></div></div>
+            <div class="text-[10px] text-stone-400 px-3 py-1 bg-stone-50">专辑</div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-50"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-800">七里香</div><div class="text-[10px] text-stone-400">周杰伦 · 10 首</div></div><svg class="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></div>
+          </div>
+          <div class="bg-white/95 backdrop-blur border-t border-stone-100 px-3 py-1.5 flex items-center gap-2"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-200 to-teal-200 flex items-center justify-center"><svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1 min-w-0"><div class="text-[10px] font-semibold text-stone-700 truncate">夜曲</div><div class="text-[10px] text-stone-400 truncate">周杰伦</div></div><button class="w-7 h-7 flex items-center justify-center"><svg class="w-4 h-4 text-stone-600" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg></button></div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">5-3 搜索功能</span>
+      </div>
+
+      <!-- 5-4 深色主题 -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="phone-frame bg-stone-900">
+          <div class="phone-notch"></div>
+          <div class="bg-stone-900 px-4 pt-8 pb-1 flex justify-between items-center text-xs text-stone-400"><span>9:41</span><div class="flex gap-1 text-[10px]">●●● WiFi 🔋</div></div>
+          <div class="bg-stone-900 px-3 py-2 border-b border-stone-800 flex justify-between items-center"><span class="text-sm font-semibold text-stone-200">音乐库</span><svg class="w-4 h-4 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg></div>
+          <div class="bg-stone-900 flex border-b border-stone-800"><button class="flex-1 py-1.5 text-xs font-medium text-emerald-400 border-b-2 border-emerald-500">全部</button><button class="flex-1 py-1.5 text-xs text-stone-600">艺术家</button><button class="flex-1 py-1.5 text-xs text-stone-600">专辑</button><button class="flex-1 py-1.5 text-xs text-stone-600">歌单</button></div>
+          <div class="px-3 py-1.5 bg-stone-800 rounded-xl mx-3 flex items-center gap-1.5"><svg class="w-3.5 h-3.5 text-stone-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span class="text-xs text-stone-600">搜索歌曲、艺术家...</span></div>
+          <div class="bg-stone-900 flex-1 overflow-y-auto scrollbar-hide">
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-800"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-stone-700 to-stone-800 flex items-center justify-center"><svg class="w-4 h-4 text-stone-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-emerald-400">夜曲</div><div class="text-[10px] text-stone-600">周杰伦 · 3:45</div></div></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-800"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-stone-700 to-stone-800 flex items-center justify-center"><svg class="w-4 h-4 text-stone-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-300">晴天</div><div class="text-[10px] text-stone-600">周杰伦 · 4:29</div></div></div>
+            <div class="px-3 py-2 flex items-center gap-2 border-b border-stone-800"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-stone-700 to-stone-800 flex items-center justify-center"><svg class="w-4 h-4 text-stone-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1"><div class="text-xs font-medium text-stone-300">七里香</div><div class="text-[10px] text-stone-600">周杰伦 · 4:59</div></div></div>
+          </div>
+          <div class="bg-stone-900/95 border-t border-stone-800 px-3 py-1.5 flex items-center gap-2"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center"><svg class="w-3.5 h-3.5 text-stone-800" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><div class="flex-1 min-w-0"><div class="text-[10px] font-semibold text-stone-300 truncate">夜曲</div><div class="text-[10px] text-stone-600 truncate">周杰伦</div></div><button class="w-7 h-7 flex items-center justify-center"><svg class="w-4 h-4 text-stone-300" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg></button></div>
+        </div>
+        <span class="text-[10px] font-medium text-stone-500">5-4 深色主题</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Color Palette -->
+  <div class="mt-8 mb-6">
+    <h2 class="text-lg font-semibold text-stone-700 mb-3 text-center">莫兰迪配色方案</h2>
+    <div class="flex justify-center gap-3 flex-wrap">
+      <div class="flex flex-col items-center gap-1"><div class="w-12 h-12 rounded-xl bg-emerald-400 shadow-md"></div><span class="text-[10px] text-stone-500">主色</span></div>
+      <div class="flex flex-col items-center gap-1"><div class="w-12 h-12 rounded-xl bg-stone-800 shadow-md"></div><span class="text-[10px] text-stone-500">深色背景</span></div>
+      <div class="flex flex-col items-center gap-1"><div class="w-12 h-12 rounded-xl bg-stone-100 shadow-md border border-stone-200"></div><span class="text-[10px] text-stone-500">浅色背景</span></div>
+      <div class="flex flex-col items-center gap-1"><div class="w-12 h-12 rounded-xl bg-rose-200 shadow-md"></div><span class="text-[10px] text-stone-500">强调色1</span></div>
+      <div class="flex flex-col items-center gap-1"><div class="w-12 h-12 rounded-xl bg-sky-200 shadow-md"></div><span class="text-[10px] text-stone-500">强调色2</span></div>
+      <div class="flex flex-col items-center gap-1"><div class="w-12 h-12 rounded-xl bg-amber-200 shadow-md"></div><span class="text-[10px] text-stone-500">强调色3</span></div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
