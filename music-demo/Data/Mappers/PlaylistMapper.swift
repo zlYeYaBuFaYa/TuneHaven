@@ -8,7 +8,8 @@ enum PlaylistMapper {
               let createdAt = entity.createdAt,
               let updatedAt = entity.updatedAt else { return nil }
 
-        let songCount = (entity.songs?.allObjects as? [PlaylistSongEntity])?.count ?? 0
+        let systemType = SystemPlaylistType(rawValue: entity.systemType) ?? .normal
+        let songCount = computeSongCount(entity: entity, id: id, systemType: systemType)
         let coverPath = entity.customCoverPath ?? entity.autoCoverPath
 
         return Playlist(
@@ -18,13 +19,38 @@ enum PlaylistMapper {
             coverImagePath: coverPath,
             autoCoverHash: entity.autoCoverHash,
             isSystem: entity.isSystem,
-            systemType: SystemPlaylistType(rawValue: entity.systemType) ?? .normal,
+            systemType: systemType,
             songCount: songCount,
             groupId: entity.groupId,
             sortOrder: Int(entity.sortOrder),
             createdAt: createdAt,
             updatedAt: updatedAt
         )
+    }
+
+    private static func computeSongCount(entity: PlaylistEntity, id: UUID, systemType: SystemPlaylistType) -> Int {
+        guard let ctx = entity.managedObjectContext else {
+            return (entity.songs?.allObjects as? [PlaylistSongEntity])?.count ?? 0
+        }
+
+        if entity.isSystem {
+            switch systemType {
+            case .favorites:
+                let req = SongEntity.fetchRequest() as NSFetchRequest<SongEntity>
+                req.predicate = NSPredicate(format: "isFavorite == YES AND softDeleted == NO")
+                return (try? ctx.count(for: req)) ?? 0
+            case .recentlyPlayed:
+                let req = SongEntity.fetchRequest() as NSFetchRequest<SongEntity>
+                req.predicate = NSPredicate(format: "lastPlayedDate != nil AND softDeleted == NO")
+                return (try? ctx.count(for: req)) ?? 0
+            default:
+                return 0
+            }
+        } else {
+            let req = PlaylistSongEntity.fetchRequest() as NSFetchRequest<PlaylistSongEntity>
+            req.predicate = NSPredicate(format: "playlistId == %@", id as CVarArg)
+            return (try? ctx.count(for: req)) ?? 0
+        }
     }
 
     static func toEntity(_ playlist: Playlist, context: NSManagedObjectContext) -> PlaylistEntity {

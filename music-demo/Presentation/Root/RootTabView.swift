@@ -8,51 +8,32 @@ struct RootTabView: View {
     @Environment(\.themePalette) private var palette
     @Environment(\.colorScheme) private var colorScheme
 
+    @EnvironmentObject private var libraryService: MusicLibraryService
+
     var body: some View {
-        ZStack(alignment: .bottom) {
-            TabView(selection: $router.selectedTab) {
-                LibraryTabView()
-                    .tag(AppTab.library)
-                    .tabItem { Label("音乐库", systemImage: "music.note.list") }
-
-                PlaylistTabView()
-                    .tag(AppTab.playlist)
-                    .tabItem { Label("歌单", systemImage: "music.note.house") }
-
-                SettingsTabView()
-                    .tag(AppTab.settings)
-                    .tabItem { Label("设置", systemImage: "gearshape") }
-            }
-            .accentColor(palette.primary)
-
-            // Mini Player 固定在 TabBar 上方
-            VStack(spacing: 0) {
+        LibraryTabView()
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 MiniPlayerBar()
-                    .padding(.bottom, 4)
-                Color.clear.frame(height: 0)
             }
-        }
-        .fullScreenCover(isPresented: .init(
-            get:  { router.isPlayerPresented },
-            set:  { router.isPlayerPresented = $0 }
-        )) {
-            PlayerView()
-                .environment(\.themePalette, resolvedPalette)
-                .environmentObject(router)
-                .environmentObject(playlistService)
-                .environmentObject(snackbar)
-        }
-        .sheet(item: $router.sheet) { destination in
-            sheetView(for: destination)
-                .environment(\.themePalette, resolvedPalette)
-                .environmentObject(router)
-                .environmentObject(playlistService)
-                .environmentObject(snackbar)
-        }
-        // 每当 colorMode / theme 改变时重新计算色板
-        .onChange(of: themeManager.colorMode) { _, _ in
-            // SwiftUI 自动 re-render，palette 通过 resolvedPalette 传下去
-        }
+            .fullScreenCover(isPresented: .init(
+                get:  { router.isPlayerPresented },
+                set:  { router.isPlayerPresented = $0 }
+            )) {
+                PlayerView()
+                    .environmentObject(themeManager)
+                    .environmentObject(router)
+                    .environmentObject(libraryService)
+                    .environmentObject(playlistService)
+                    .environmentObject(snackbar)
+            }
+            .sheet(item: $router.sheet) { destination in
+                sheetView(for: destination)
+                    .environment(\.themePalette, resolvedPalette)
+                    .environmentObject(router)
+                    .environmentObject(playlistService)
+                    .environmentObject(snackbar)
+            }
+            .onChange(of: themeManager.colorMode) { _, _ in }
     }
 
     private var resolvedPalette: ThemeColorPalette {
@@ -76,6 +57,8 @@ struct RootTabView: View {
             ImportFilesView()
         case .playlistCoverPicker(let id):
             PlaylistCoverPickerSheet(playlistId: id)
+        case .batchAddSongs(let id):
+            BatchAddSongsView(playlistId: id)
         }
     }
 }

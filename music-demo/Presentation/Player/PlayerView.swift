@@ -2,17 +2,26 @@ import SwiftUI
 
 struct PlayerView: View {
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var themeManager: ThemeManager
+    @EnvironmentObject private var libraryService: MusicLibraryService
+    @EnvironmentObject private var playlistService: PlaylistService
     @ObservedObject private var playback = PlaybackService.shared
     @ObservedObject private var engine = AudioEngine.shared
-    @Environment(\.themePalette) private var palette
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var lyricsData: LyricsData?
     @State private var showQueue = false
+    @State private var playerSheet: SheetDestination? = nil
+    @State private var showMoreSheet = false
     @State private var dragOffset: CGFloat = 0
+
+    private var palette: ThemeColorPalette {
+        themeManager.resolvedPalette(for: colorScheme)
+    }
 
     var body: some View {
         ZStack {
-            palette.playerBackground
+            palette.background
                 .ignoresSafeArea()
 
             if showQueue {
@@ -22,38 +31,71 @@ struct PlayerView: View {
                 mainPlayerContent
             }
         }
-        .onChange(of: playback.currentSong?.id) { _, _ in
+        .environment(\.themePalette, palette)
+        .offset(y: dragOffset)
+        .sheet(item: $playerSheet) { destination in
+            playerSheetView(for: destination)
+                .environment(\.themePalette, palette)
+                .environmentObject(playlistService)
+        }
+        .sheet(isPresented: $showMoreSheet) {
+            moreActionSheet
+                .environment(\.themePalette, palette)
+                .environmentObject(playlistService)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
+        .onChange(of: playback.currentSong?.id) { _, newValue in
+            if newValue == nil {
+                router.closePlayer()
+            }
             Task { await loadLyrics() }
         }
         .task { await loadLyrics() }
     }
 
+    // MARK: - Main Content
+
     private var mainPlayerContent: some View {
         VStack(spacing: 0) {
-            dragHandle
-            header
-            Spacer(minLength: 16)
+            dragDismissZone
+            Spacer(minLength: 20)
             coverSection
-            Spacer(minLength: 24)
+            Spacer(minLength: 28)
             songInfo
             progressBar
             controls
-            bottomBar
         }
         .padding(.horizontal, 24)
-        .padding(.bottom, 24)
+        .padding(.top, 16)
+        .padding(.bottom, 36)
     }
 
-    private var dragHandle: some View {
-        Button {
-            router.closePlayer()
-        } label: {
-            Capsule()
-                .fill(Color.white.opacity(0.3))
-                .frame(width: 36, height: 4)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-        }
+    /// 仅此区域响应下拉关闭手势，不影响下方 Slider 等交互控件
+    private var dragDismissZone: some View {
+        header
+            .padding(.bottom, 4)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 15)
+                    .onChanged { value in
+                        let dy = value.translation.height
+                        if dy > 0 {
+                            dragOffset = dy * 0.5
+                        }
+                    }
+                    .onEnded { value in
+                        if value.translation.height > 100
+                            || value.predictedEndTranslation.height > 350 {
+                            dragOffset = 0
+                            router.closePlayer()
+                        } else {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                dragOffset = 0
+                            }
+                        }
+                    }
+            )
     }
 
     private var header: some View {
@@ -61,23 +103,131 @@ struct PlayerView: View {
             Button { router.closePlayer() } label: {
                 Image(systemName: "chevron.down")
                     .font(.title3)
-                    .foregroundColor(palette.playerText)
+                    .foregroundColor(palette.textPrimary)
             }
             Spacer()
             if let song = playback.currentSong {
                 Text(song.album.isEmpty || song.album == "未知专辑" ? "正在播放" : song.album)
                     .font(.subheadline)
-                    .foregroundColor(palette.playerSubtext)
+                    .foregroundColor(palette.textSecondary)
             }
             Spacer()
-            Button { router.present(.addToPlaylist(songIds: [playback.currentSong?.id].compactMap { $0 })) } label: {
+            Button { showMoreSheet = true } label: {
                 Image(systemName: "ellipsis")
                     .font(.title3)
-                    .foregroundColor(palette.playerText)
+                    .foregroundColor(palette.textPrimary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
         }
         .padding(.horizontal, 4)
     }
+
+    // MARK: - More Action Sheet
+
+    private var moreActionSheet: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button {
+                        showMoreSheet = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            playerSheet = .setSleepTimer
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: playback.sleepTimerRemaining != nil ? "moon.zzz.fill" : "moon.zzz")
+                                .font(.body)
+                                .foregroundColor(palette.primary)
+                                .frame(width: 28)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("定时关闭")
+                                    .font(.subheadline)
+                                    .foregroundColor(palette.textPrimary)
+                                if let remaining = playback.sleepTimerRemaining {
+                                    Text(remaining.formattedTime)
+                                        .font(.caption)
+                                        .foregroundColor(palette.textSecondary)
+                                }
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption2)
+                                .foregroundColor(palette.textTertiary)
+                        }
+                    }
+                    .listRowBackground(palette.surface)
+
+                    Button {
+                        showMoreSheet = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            playerSheet = .playbackSpeedPicker
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "speedometer")
+                                .font(.body)
+                                .foregroundColor(palette.primary)
+                                .frame(width: 28)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("倍速播放")
+                                    .font(.subheadline)
+                                    .foregroundColor(palette.textPrimary)
+                                Text("\(String(format: "%.1f", playback.playbackSpeed))x")
+                                    .font(.caption)
+                                    .foregroundColor(palette.textSecondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption2)
+                                .foregroundColor(palette.textTertiary)
+                        }
+                    }
+                    .listRowBackground(palette.surface)
+                }
+
+                if let songId = playback.currentSong?.id {
+                    Section {
+                        Button {
+                            showMoreSheet = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                playerSheet = .addToPlaylist(songIds: [songId])
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "text.badge.plus")
+                                    .font(.body)
+                                    .foregroundColor(palette.primary)
+                                    .frame(width: 28)
+                                Text("添加到歌单")
+                                    .font(.subheadline)
+                                    .foregroundColor(palette.textPrimary)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2)
+                                    .foregroundColor(palette.textTertiary)
+                            }
+                        }
+                        .listRowBackground(palette.surface)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(palette.background)
+            .navigationTitle("更多操作")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { showMoreSheet = false }
+                        .font(.subheadline)
+                        .foregroundColor(palette.primary)
+                }
+            }
+        }
+    }
+
+    // MARK: - Cover / Info / Progress / Controls
 
     private var coverSection: some View {
         Group {
@@ -89,7 +239,7 @@ struct PlayerView: View {
                     CoverImageView(path: song.coverImagePath,
                                    size: UIScreen.main.bounds.width - 48,
                                    cornerRadius: 16)
-                        .shadow(color: .black.opacity(0.4), radius: 20, y: 8)
+                        .shadow(color: .black.opacity(0.3), radius: 20, y: 8)
                 }
             } else {
                 PlaceholderCoverView(size: UIScreen.main.bounds.width - 48)
@@ -102,25 +252,25 @@ struct PlayerView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(playback.currentSong?.title ?? "未在播放")
                     .font(.title3.bold())
-                    .foregroundColor(palette.playerText)
+                    .foregroundColor(palette.textPrimary)
                     .lineLimit(1)
                 Text(playback.currentSong?.artist ?? "—")
                     .font(.subheadline)
-                    .foregroundColor(palette.playerSubtext)
+                    .foregroundColor(palette.textSecondary)
                     .lineLimit(1)
             }
             Spacer()
             Button {
                 Task {
                     if let id = playback.currentSong?.id {
-                        let lib = MusicLibraryService()
-                        try? await lib.toggleFavorite(songId: id)
+                        try? await libraryService.toggleFavorite(songId: id)
+                        playback.toggleCurrentSongFavorite()
                     }
                 }
             } label: {
                 Image(systemName: playback.currentSong?.isFavorite == true ? "heart.fill" : "heart")
                     .font(.title2)
-                    .foregroundColor(playback.currentSong?.isFavorite == true ? SemanticColor.danger : palette.playerSubtext)
+                    .foregroundColor(playback.currentSong?.isFavorite == true ? SemanticColor.danger : palette.textSecondary)
             }
         }
         .padding(.vertical, 12)
@@ -139,11 +289,11 @@ struct PlayerView: View {
             HStack {
                 Text(engine.currentTime.formattedTime)
                     .font(.caption.monospacedDigit())
-                    .foregroundColor(palette.playerSubtext)
+                    .foregroundColor(palette.textSecondary)
                 Spacer()
                 Text("-\((engine.duration - engine.currentTime).formattedTime)")
                     .font(.caption.monospacedDigit())
-                    .foregroundColor(palette.playerSubtext)
+                    .foregroundColor(palette.textSecondary)
             }
         }
         .padding(.bottom, 8)
@@ -154,14 +304,14 @@ struct PlayerView: View {
             Button { playback.cyclePlayMode() } label: {
                 Image(systemName: playback.playMode.iconName)
                     .font(.title3)
-                    .foregroundColor(palette.playerSubtext)
+                    .foregroundColor(palette.textSecondary)
             }
             .frame(maxWidth: .infinity)
 
             Button { playback.playPrevious() } label: {
                 Image(systemName: "backward.fill")
                     .font(.title)
-                    .foregroundColor(palette.playerText)
+                    .foregroundColor(palette.textPrimary)
             }
             .frame(maxWidth: .infinity)
 
@@ -169,7 +319,8 @@ struct PlayerView: View {
                 ZStack {
                     Circle()
                         .fill(palette.primary)
-                        .frame(width: 64, height: 64)
+                        .frame(width: 68, height: 68)
+                        .shadow(color: palette.primary.opacity(0.3), radius: 10, y: 4)
                     Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
                         .font(.title2)
                         .foregroundColor(.white)
@@ -180,47 +331,34 @@ struct PlayerView: View {
             Button { playback.playNext() } label: {
                 Image(systemName: "forward.fill")
                     .font(.title)
-                    .foregroundColor(palette.playerText)
+                    .foregroundColor(palette.textPrimary)
             }
             .frame(maxWidth: .infinity)
 
-            Button { Task { await playback.dislikeAndSkip() } } label: {
-                Image(systemName: "hand.thumbsdown")
-                    .font(.title3)
-                    .foregroundColor(palette.playerSubtext)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .padding(.vertical, 8)
-    }
-
-    private var bottomBar: some View {
-        HStack {
-            Button { router.present(.setSleepTimer) } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "moon.zzz")
-                    if let remaining = playback.sleepTimerRemaining {
-                        Text(remaining.formattedTime)
-                            .font(.caption.monospacedDigit())
-                    }
-                }
-                .font(.title3)
-                .foregroundColor(playback.sleepTimerRemaining != nil ? palette.primary : palette.playerSubtext)
-            }
-            Spacer()
-            Button { router.present(.playbackSpeedPicker) } label: {
-                Text("\(String(format: "%.1f", playback.playbackSpeed))x")
-                    .font(.subheadline.bold())
-                    .foregroundColor(playback.playbackSpeed != 1.0 ? palette.primary : palette.playerSubtext)
-            }
-            Spacer()
             Button { withAnimation { showQueue = true } } label: {
                 Image(systemName: "list.bullet")
                     .font(.title3)
-                    .foregroundColor(palette.playerSubtext)
+                    .foregroundColor(palette.textSecondary)
             }
+            .frame(maxWidth: .infinity)
         }
-        .padding(.top, 12)
+        .padding(.vertical, 12)
+    }
+
+    // MARK: - Player Sheet Router
+
+    @ViewBuilder
+    private func playerSheetView(for destination: SheetDestination) -> some View {
+        switch destination {
+        case .setSleepTimer:
+            SleepTimerSheet()
+        case .playbackSpeedPicker:
+            PlaybackSpeedSheet()
+        case .addToPlaylist(let ids):
+            AddToPlaylistSheet(songIds: ids)
+        default:
+            EmptyView()
+        }
     }
 
     private func loadLyrics() async {

@@ -114,7 +114,14 @@ struct AlbumDetailView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        Task { await playback.play(song: song, in: .album(name: albumName, artist: artistName)) }
+                        if playback.currentSong?.id == song.id {
+                            router.openPlayer()
+                        } else {
+                            Task {
+                                await playback.play(song: song, in: .album(name: albumName, artist: artistName))
+                                router.openPlayer()
+                            }
+                        }
                     }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {

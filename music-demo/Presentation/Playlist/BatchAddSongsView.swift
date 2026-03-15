@@ -1,0 +1,195 @@
+import SwiftUI
+
+struct BatchAddSongsView: View {
+    let playlistId: UUID
+
+    @EnvironmentObject private var playlistService: PlaylistService
+    @Environment(\.themePalette) private var palette
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var allSongs: [Song] = []
+    @State private var existingSongIds: Set<UUID> = []
+    @State private var selectedIds: Set<UUID> = []
+    @State private var searchText = ""
+    @State private var isLoading = true
+    @State private var isSaving = false
+
+    private var filteredSongs: [Song] {
+        let available = allSongs.filter { !existingSongIds.contains($0.id) }
+        guard !searchText.isEmpty else { return available }
+        let keyword = searchText.lowercased()
+        return available.filter {
+            $0.title.lowercased().contains(keyword) ||
+            $0.artist.lowercased().contains(keyword) ||
+            $0.album.lowercased().contains(keyword)
+        }
+    }
+
+    private var groupedByArtist: [(String, [Song])] {
+        let grouped = Dictionary(grouping: filteredSongs) { $0.artist }
+        return grouped.sorted { $0.key < $1.key }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isLoading {
+                    ProgressView()
+                } else if allSongs.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "music.note")
+                            .font(.system(size: 48))
+                            .foregroundColor(palette.iconSecondary)
+                        Text("音乐库中暂无歌曲")
+                            .foregroundColor(palette.textSecondary)
+                    }
+                } else {
+                    songList
+                }
+            }
+            .background(palette.background)
+            .navigationTitle("添加歌曲")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                        .foregroundColor(palette.primary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        Task { await addSelected() }
+                    } label: {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Text("添加 (\(selectedIds.count))")
+                        }
+                    }
+                    .foregroundColor(palette.primary)
+                    .disabled(selectedIds.isEmpty || isSaving)
+                }
+            }
+            .searchable(text: $searchText, prompt: "搜索歌曲、艺术家、专辑")
+        }
+        .task { await loadData() }
+    }
+
+    private var songList: some View {
+        List {
+            if !filteredSongs.isEmpty {
+                selectAllSection
+            }
+
+            ForEach(groupedByArtist, id: \.0) { artist, songs in
+                Section {
+                    ForEach(songs) { song in
+                        songSelectRow(song)
+                    }
+                } header: {
+                    HStack {
+                        Text(artist)
+                            .foregroundColor(palette.textSecondary)
+                        Spacer()
+                        Button {
+                            let songIds = Set(songs.map(\.id))
+                            let allSelected = songIds.isSubset(of: selectedIds)
+                            if allSelected {
+                                selectedIds.subtract(songIds)
+                            } else {
+                                selectedIds.formUnion(songIds)
+                            }
+                        } label: {
+                            let songIds = Set(songs.map(\.id))
+                            Text(songIds.isSubset(of: selectedIds) ? "取消全选" : "全选")
+                                .font(.caption)
+                                .foregroundColor(palette.primary)
+                        }
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+    }
+
+    private var selectAllSection: some View {
+        Section {
+            Button {
+                let allIds = Set(filteredSongs.map(\.id))
+                if allIds.isSubset(of: selectedIds) {
+                    selectedIds.subtract(allIds)
+                } else {
+                    selectedIds.formUnion(allIds)
+                }
+            } label: {
+                HStack {
+                    let allIds = Set(filteredSongs.map(\.id))
+                    let allSelected = allIds.isSubset(of: selectedIds)
+                    Image(systemName: allSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundColor(allSelected ? palette.primary : palette.textTertiary)
+                        .font(.title3)
+                    Text(allSelected ? "取消全选" : "全选 (\(filteredSongs.count) 首)")
+                        .foregroundColor(palette.textPrimary)
+                    Spacer()
+                    Text("已选 \(selectedIds.count) 首")
+                        .font(.caption)
+                        .foregroundColor(palette.textSecondary)
+                }
+            }
+            .listRowBackground(palette.surface)
+        }
+    }
+
+    private func songSelectRow(_ song: Song) -> some View {
+        Button {
+            if selectedIds.contains(song.id) {
+                selectedIds.remove(song.id)
+            } else {
+                selectedIds.insert(song.id)
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: selectedIds.contains(song.id) ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(selectedIds.contains(song.id) ? palette.primary : palette.textTertiary)
+                    .font(.title3)
+
+                CoverImageView(path: song.coverImagePath, size: 44)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(song.title)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundColor(palette.textPrimary)
+                        .lineLimit(1)
+                    Text(song.artist)
+                        .font(.caption)
+                        .foregroundColor(palette.textSecondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Text(song.duration.formattedTime)
+                    .font(.caption.monospacedDigit())
+                    .foregroundColor(palette.textTertiary)
+            }
+            .padding(.vertical, 4)
+        }
+        .listRowBackground(palette.surface)
+    }
+
+    private func loadData() async {
+        let repo = CoreDataSongRepository()
+        allSongs = await repo.fetchAll(sortBy: .artist, ascending: true)
+        if let detail = await playlistService.fetchDetail(playlistId: playlistId) {
+            existingSongIds = Set(detail.songs.map(\.id))
+        }
+        isLoading = false
+    }
+
+    private func addSelected() async {
+        isSaving = true
+        try? await playlistService.addSongs(Array(selectedIds), to: playlistId)
+        isSaving = false
+        dismiss()
+    }
+}

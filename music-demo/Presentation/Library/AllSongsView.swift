@@ -79,7 +79,16 @@ struct AllSongsView: View {
                 SongRow(
                     song: song,
                     isPlaying: playback.currentSong?.id == song.id,
-                    onTap: { Task { await PlaybackService.shared.play(song: song, in: .allSongs(sortBy: sortOption)) } },
+                    onTap: {
+                        if playback.currentSong?.id == song.id {
+                            router.openPlayer()
+                        } else {
+                            Task {
+                                await PlaybackService.shared.play(song: song, in: .allSongs(sortBy: sortOption))
+                                router.openPlayer()
+                            }
+                        }
+                    },
                     onFavorite: { Task { try? await libraryService.toggleFavorite(songId: song.id) } },
                     onDelete: { softDelete(song) },
                     onAddToPlaylist: { router.present(.addToPlaylist(songIds: [song.id])) },

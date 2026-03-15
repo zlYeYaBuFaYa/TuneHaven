@@ -27,6 +27,7 @@ enum SheetDestination: Identifiable {
     case setSleepTimer
     case playbackSpeedPicker
     case importFromFiles
+    case batchAddSongs(playlistId: UUID)
 
     var id: String {
         switch self {
@@ -37,6 +38,7 @@ enum SheetDestination: Identifiable {
         case .setSleepTimer: return "sleepTimer"
         case .playbackSpeedPicker: return "speedPicker"
         case .importFromFiles: return "importFromFiles"
+        case .batchAddSongs(let id): return "batchAddSongs_\(id)"
         }
     }
 }

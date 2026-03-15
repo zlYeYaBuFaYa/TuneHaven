@@ -85,7 +85,16 @@ struct ArtistDetailView: View {
                     SongRow(
                         song: song,
                         isPlaying: playback.currentSong?.id == song.id,
-                        onTap: { Task { await playback.play(song: song, in: .artist(name: artistName)) } },
+                        onTap: {
+                            if playback.currentSong?.id == song.id {
+                                router.openPlayer()
+                            } else {
+                                Task {
+                                    await playback.play(song: song, in: .artist(name: artistName))
+                                    router.openPlayer()
+                                }
+                            }
+                        },
                         onFavorite: { Task { try? await libraryService.toggleFavorite(songId: song.id) } },
                         onDelete: {
                             Task {

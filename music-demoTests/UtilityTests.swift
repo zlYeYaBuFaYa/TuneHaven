@@ -381,7 +381,6 @@ struct LibraryTabExtendedTests {
         #expect(LibraryTab.all.rawValue == "all")
         #expect(LibraryTab.artist.rawValue == "artist")
         #expect(LibraryTab.album.rawValue == "album")
-        #expect(LibraryTab.playlist.rawValue == "playlist")
     }
 
     @Test("可从合法 rawValue 初始化")
@@ -389,7 +388,6 @@ struct LibraryTabExtendedTests {
         #expect(LibraryTab(rawValue: "all") == .all)
         #expect(LibraryTab(rawValue: "artist") == .artist)
         #expect(LibraryTab(rawValue: "album") == .album)
-        #expect(LibraryTab(rawValue: "playlist") == .playlist)
     }
 
     @Test("非法 rawValue 初始化返回 nil")
@@ -398,9 +396,9 @@ struct LibraryTabExtendedTests {
         #expect(LibraryTab(rawValue: "") == nil)
     }
 
-    @Test("allCases 包含 4 个选项")
+    @Test("allCases 包含 3 个选项")
     func testAllCasesCount() {
-        #expect(LibraryTab.allCases.count == 4)
+        #expect(LibraryTab.allCases.count == 3)
     }
 
     @Test("displayName 与语义一致")
@@ -408,7 +406,6 @@ struct LibraryTabExtendedTests {
         #expect(LibraryTab.all.displayName == "全部")
         #expect(LibraryTab.artist.displayName == "艺术家")
         #expect(LibraryTab.album.displayName == "专辑")
-        #expect(LibraryTab.playlist.displayName == "歌单")
     }
 }
 

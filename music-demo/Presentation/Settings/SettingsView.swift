@@ -4,10 +4,11 @@ import UserNotifications
 struct SettingsView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var searchService: SearchService
+    @EnvironmentObject private var importService: ImportService
+    @EnvironmentObject private var libraryService: MusicLibraryService
     @Environment(\.themePalette) private var palette
     @Environment(\.colorScheme) private var colorScheme
 
-    // MARK: - UserDefaults Keys (TDD Section 2.5)
     @AppStorage("color_mode")              private var colorModeRaw: Int = 0
     @AppStorage("recent_play_range")       private var recentPlayRange: Int = 7
     @AppStorage("speed_memory_mode")       private var speedMemoryMode: Int = 0
@@ -20,13 +21,24 @@ struct SettingsView: View {
     @State private var showClearHistoryConfirm = false
     @State private var notificationPermissionStatus: UNAuthorizationStatus = .notDetermined
 
+    @State private var expandedImport = false
+    @State private var expandedAppearance = false
+    @State private var expandedPlayback = false
+    @State private var expandedStorage = false
+    @State private var expandedAbout = false
+
+    @State private var showDocumentPicker = false
+    @State private var showWifiTransfer = false
+    @State private var showAppleMusicImport = false
+
+    @EnvironmentObject private var router: AppRouter
+
     var body: some View {
         List {
+            importSection
             appearanceSection
             playbackSection
-            wifiSection
             storageSection
-            privacySection
             aboutSection
         }
         .listStyle(.insetGrouped)
@@ -38,299 +50,464 @@ struct SettingsView: View {
             await calculateCacheSize()
             await checkNotificationPermission()
         }
+        .fileImporter(
+            isPresented: $showDocumentPicker,
+            allowedContentTypes: [.audio, .mpeg4Audio],
+            allowsMultipleSelection: true
+        ) { result in
+            if case .success(let urls) = result {
+                Task {
+                    _ = await importService.importFromFiles(urls: urls) { _ in }
+                    await libraryService.loadSongs()
+                }
+            }
+        }
+        .sheet(isPresented: $showWifiTransfer) {
+            WiFiTransferView()
+                .environment(\.themePalette, palette)
+                .environmentObject(importService)
+                .environmentObject(libraryService)
+        }
+        .sheet(isPresented: $showAppleMusicImport) {
+            AppleMusicImportView()
+                .environment(\.themePalette, palette)
+                .environmentObject(importService)
+                .environmentObject(libraryService)
+        }
+    }
+
+    // MARK: - Import Section
+
+    private var importSection: some View {
+        Section {
+            DisclosureGroup(isExpanded: $expandedImport) {
+                Button {
+                    showDocumentPicker = true
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("文件导入")
+                                .font(.subheadline)
+                                .foregroundColor(palette.textPrimary)
+                            Text("从 Files 导入 MP3, M4A 等格式")
+                                .font(.caption)
+                                .foregroundColor(palette.textSecondary)
+                        }
+                    } icon: {
+                        Image(systemName: "folder")
+                            .foregroundColor(palette.primary)
+                    }
+                }
+                .listRowBackground(palette.surface)
+
+                Button {
+                    showAppleMusicImport = true
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("从 Apple Music 资料库导入")
+                                .font(.subheadline)
+                                .foregroundColor(palette.textPrimary)
+                            Text("扫描设备上已下载的本地音乐")
+                                .font(.caption)
+                                .foregroundColor(palette.textSecondary)
+                        }
+                    } icon: {
+                        Image(systemName: "music.note.house")
+                            .foregroundColor(palette.primary)
+                    }
+                }
+                .listRowBackground(palette.surface)
+
+                Button {
+                    showWifiTransfer = true
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("WiFi 传输")
+                                .font(.subheadline)
+                                .foregroundColor(palette.textPrimary)
+                            Text("通过浏览器从电脑无线传输音乐")
+                                .font(.caption)
+                                .foregroundColor(palette.textSecondary)
+                        }
+                    } icon: {
+                        Image(systemName: "wifi")
+                            .foregroundColor(palette.primary)
+                    }
+                }
+                .listRowBackground(palette.surface)
+            } label: {
+                Label {
+                    Text("导入音乐")
+                        .foregroundColor(palette.textPrimary)
+                } icon: {
+                    Image(systemName: "square.and.arrow.down")
+                        .foregroundColor(palette.primary)
+                }
+            }
+            .tint(palette.textSecondary)
+            .listRowBackground(palette.surface)
+        }
     }
 
     // MARK: - Appearance Section
+
     private var appearanceSection: some View {
         Section {
-            // 颜色模式选择（TDD Section 8.1）
-            VStack(alignment: .leading, spacing: 10) {
-                Text("颜色模式")
-                    .font(.subheadline)
-                    .foregroundColor(palette.textSecondary)
-                HStack(spacing: 0) {
-                    ForEach(ColorMode.allCases) { mode in
-                        Button {
-                            themeManager.setColorMode(mode)
-                        } label: {
-                            VStack(spacing: 4) {
-                                Image(systemName: mode.iconName)
-                                    .font(.subheadline)
-                                Text(mode.displayName)
-                                    .font(.caption2)
+            DisclosureGroup(isExpanded: $expandedAppearance) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("颜色模式")
+                        .font(.caption)
+                        .foregroundColor(palette.textSecondary)
+                    HStack(spacing: 0) {
+                        ForEach(ColorMode.allCases) { mode in
+                            Button {
+                                themeManager.setColorMode(mode)
+                            } label: {
+                                VStack(spacing: 4) {
+                                    Image(systemName: mode.iconName)
+                                        .font(.subheadline)
+                                    Text(mode.displayName)
+                                        .font(.caption2)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(
+                                    themeManager.colorMode == mode
+                                        ? palette.primary.opacity(0.15)
+                                        : Color.clear
+                                )
+                                .foregroundColor(
+                                    themeManager.colorMode == mode
+                                        ? palette.primary
+                                        : palette.textSecondary
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(
+                                            themeManager.colorMode == mode ? palette.primary : Color.clear,
+                                            lineWidth: 1.5
+                                        )
+                                )
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(
-                                themeManager.colorMode == mode
-                                    ? palette.primary.opacity(0.15)
-                                    : Color.clear
-                            )
-                            .foregroundColor(
-                                themeManager.colorMode == mode
-                                    ? palette.primary
-                                    : palette.textSecondary
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(
-                                        themeManager.colorMode == mode ? palette.primary : Color.clear,
-                                        lineWidth: 1.5
-                                    )
-                            )
+                            .buttonStyle(.borderless)
                         }
                     }
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-            .listRowBackground(palette.surface)
+                .listRowBackground(palette.surface)
 
-            // 主题风格选择（TDD Section 8.3）
-            VStack(alignment: .leading, spacing: 10) {
-                Text("主题风格")
-                    .font(.subheadline)
-                    .foregroundColor(palette.textSecondary)
-                ForEach(ThemeStyle.allStyles) { style in
-                    Button {
-                        themeManager.setTheme(style)
-                    } label: {
-                        HStack(spacing: 14) {
-                            Circle()
-                                .fill(style.previewColor)
-                                .frame(width: 30, height: 30)
-                                .shadow(color: style.previewColor.opacity(0.4), radius: 4)
-                            Text(style.displayName)
-                                .foregroundColor(palette.textPrimary)
-                            Spacer()
-                            if themeManager.currentStyle.id == style.id {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(palette.primary)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("主题风格")
+                        .font(.caption)
+                        .foregroundColor(palette.textSecondary)
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 10),
+                        GridItem(.flexible(), spacing: 10),
+                        GridItem(.flexible(), spacing: 10)
+                    ], spacing: 10) {
+                        ForEach(ThemeRegistry.shared.allThemes) { style in
+                            Button {
+                                themeManager.setTheme(style)
+                            } label: {
+                                themeCard(style: style)
                             }
+                            .buttonStyle(.borderless)
                         }
                     }
-                    .listRowBackground(palette.surface)
+                }
+                .padding(.vertical, 4)
+                .listRowBackground(palette.surface)
+            } label: {
+                Label {
+                    Text("外观")
+                        .foregroundColor(palette.textPrimary)
+                } icon: {
+                    Image(systemName: "paintbrush")
+                        .foregroundColor(palette.primary)
                 }
             }
-            .padding(.vertical, 4)
+            .tint(palette.textSecondary)
             .listRowBackground(palette.surface)
-        } header: {
-            Text("外观")
-                .foregroundColor(palette.textSecondary)
         }
     }
 
     // MARK: - Playback Section
+
     private var playbackSection: some View {
         Section {
-            // 最近播放时间范围
-            HStack {
-                Label("最近播放范围", systemImage: "clock")
-                    .foregroundColor(palette.textPrimary)
-                Spacer()
-                Menu {
-                    ForEach(RecentPlayRange.allCases) { range in
-                        Button {
-                            recentPlayRange = range.days
-                        } label: {
-                            HStack {
-                                Text(range.displayName)
-                                if recentPlayRange == range.days {
-                                    Image(systemName: "checkmark")
+            DisclosureGroup(isExpanded: $expandedPlayback) {
+                HStack {
+                    Label("最近播放范围", systemImage: "clock")
+                        .font(.subheadline)
+                        .foregroundColor(palette.textPrimary)
+                    Spacer()
+                    Menu {
+                        ForEach(RecentPlayRange.allCases) { range in
+                            Button {
+                                recentPlayRange = range.days
+                            } label: {
+                                HStack {
+                                    Text(range.displayName)
+                                    if recentPlayRange == range.days {
+                                        Image(systemName: "checkmark")
+                                    }
                                 }
                             }
                         }
+                    } label: {
+                        Text(RecentPlayRange(days: recentPlayRange)?.displayName ?? "\(recentPlayRange)天")
+                            .font(.subheadline)
+                            .foregroundColor(palette.primary)
                     }
-                } label: {
-                    Text(RecentPlayRange(days: recentPlayRange)?.displayName ?? "\(recentPlayRange)天")
+                }
+                .listRowBackground(palette.surface)
+
+                HStack {
+                    Label("速度记忆模式", systemImage: "speedometer")
                         .font(.subheadline)
-                        .foregroundColor(palette.primary)
-                }
-            }
-            .listRowBackground(palette.surface)
-
-            // 播放速度记忆模式
-            HStack {
-                Label("速度记忆模式", systemImage: "speedometer")
-                    .foregroundColor(palette.textPrimary)
-                Spacer()
-                Picker("", selection: $speedMemoryMode) {
-                    Text("全局记忆").tag(0)
-                    Text("单曲记忆").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 150)
-            }
-            .listRowBackground(palette.surface)
-
-            // 定时停止通知
-            Toggle(isOn: $sleepTimerNotification) {
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("定时停止提醒")
-                            .foregroundColor(palette.textPrimary)
-                        Text("定时结束前发送本地通知")
-                            .font(.caption)
-                            .foregroundColor(palette.textSecondary)
-                    }
-                } icon: {
-                    Image(systemName: "moon.zzz")
-                        .foregroundColor(palette.primary)
-                }
-            }
-            .tint(palette.primary)
-            .listRowBackground(palette.surface)
-            .onChange(of: sleepTimerNotification) { _, enabled in
-                if enabled { requestNotificationPermission() }
-            }
-
-            if notificationPermissionStatus == .denied && sleepTimerNotification {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(SemanticColor.warning)
-                    Text("通知权限已关闭，请在系统设置中开启")
-                        .font(.caption)
-                        .foregroundColor(palette.textSecondary)
+                        .foregroundColor(palette.textPrimary)
                     Spacer()
-                    Button("去开启") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) {
-                            UIApplication.shared.open(url)
-                        }
+                    Picker("", selection: $speedMemoryMode) {
+                        Text("全局").tag(0)
+                        Text("单曲").tag(1)
                     }
-                    .font(.caption)
-                    .foregroundColor(palette.primary)
+                    .pickerStyle(.segmented)
+                    .frame(width: 120)
                 }
-                .listRowBackground(palette.surfaceSecondary)
-            }
-        } header: {
-            Text("播放")
-                .foregroundColor(palette.textSecondary)
-        }
-    }
+                .listRowBackground(palette.surface)
 
-    // MARK: - WiFi Section
-    private var wifiSection: some View {
-        Section {
-            Toggle(isOn: $wifiPasswordEnabled) {
-                Label {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("WiFi 传输密码保护")
-                            .foregroundColor(palette.textPrimary)
-                        Text("开启后需要输入密码才能上传文件")
+                Toggle(isOn: $sleepTimerNotification) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("定时停止提醒")
+                                .font(.subheadline)
+                                .foregroundColor(palette.textPrimary)
+                            Text("定时结束前发送通知")
+                                .font(.caption)
+                                .foregroundColor(palette.textSecondary)
+                        }
+                    } icon: {
+                        Image(systemName: "moon.zzz")
+                            .foregroundColor(palette.primary)
+                    }
+                }
+                .tint(palette.primary)
+                .listRowBackground(palette.surface)
+                .onChange(of: sleepTimerNotification) { _, enabled in
+                    if enabled { requestNotificationPermission() }
+                }
+
+                if notificationPermissionStatus == .denied && sleepTimerNotification {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(SemanticColor.warning)
+                        Text("通知权限已关闭，请在系统设置中开启")
                             .font(.caption)
                             .foregroundColor(palette.textSecondary)
+                        Spacer()
+                        Button("去开启") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundColor(palette.primary)
                     }
+                    .listRowBackground(palette.surfaceSecondary)
+                }
+
+                Toggle(isOn: $wifiPasswordEnabled) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("WiFi 传输密码保护")
+                                .font(.subheadline)
+                                .foregroundColor(palette.textPrimary)
+                            Text("开启后上传文件需要密码")
+                                .font(.caption)
+                                .foregroundColor(palette.textSecondary)
+                        }
+                    } icon: {
+                        Image(systemName: "lock.shield")
+                            .foregroundColor(palette.primary)
+                    }
+                }
+                .tint(palette.primary)
+                .listRowBackground(palette.surface)
+            } label: {
+                Label {
+                    Text("播放")
+                        .foregroundColor(palette.textPrimary)
                 } icon: {
-                    Image(systemName: "lock.wifi")
+                    Image(systemName: "play.circle")
                         .foregroundColor(palette.primary)
                 }
             }
-            .tint(palette.primary)
+            .tint(palette.textSecondary)
             .listRowBackground(palette.surface)
-        } header: {
-            Text("WiFi 传输")
-                .foregroundColor(palette.textSecondary)
         }
     }
 
     // MARK: - Storage Section
+
     private var storageSection: some View {
         Section {
-            HStack {
-                Label("封面缓存占用", systemImage: "photo.stack")
-                    .foregroundColor(palette.textPrimary)
-                Spacer()
-                Text(currentCacheSize)
-                    .font(.subheadline)
-                    .foregroundColor(palette.textSecondary)
-            }
-            .listRowBackground(palette.surface)
-
-            VStack(alignment: .leading, spacing: 6) {
+            DisclosureGroup(isExpanded: $expandedStorage) {
                 HStack {
-                    Text("最大缓存限制")
+                    Label("封面缓存占用", systemImage: "photo.stack")
+                        .font(.subheadline)
                         .foregroundColor(palette.textPrimary)
                     Spacer()
-                    Text("\(cacheLimitMB) MB")
-                        .font(.subheadline.monospacedDigit())
+                    Text(currentCacheSize)
+                        .font(.subheadline)
                         .foregroundColor(palette.textSecondary)
                 }
-                Slider(value: Binding(
-                    get: { Double(cacheLimitMB) },
-                    set: {
-                        cacheLimitMB = Int($0)
-                        ImageCacheManager.shared.setCacheLimit(cacheLimitMB)
-                    }
-                ), in: 50...300, step: 50)
-                .tint(palette.primary)
-            }
-            .listRowBackground(palette.surface)
+                .listRowBackground(palette.surface)
 
-            Button {
-                showClearCacheConfirm = true
-            } label: {
-                Label("清理封面缓存", systemImage: "trash")
-                    .foregroundColor(SemanticColor.danger)
-            }
-            .listRowBackground(palette.surface)
-            .confirmationDialog("清理缓存", isPresented: $showClearCacheConfirm) {
-                Button("清理", role: .destructive) {
-                    Task {
-                        await ImageCacheManager.shared.clearAll()
-                        await calculateCacheSize()
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("最大缓存限制")
+                            .font(.subheadline)
+                            .foregroundColor(palette.textPrimary)
+                        Spacer()
+                        Text("\(cacheLimitMB) MB")
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundColor(palette.textSecondary)
                     }
+                    Slider(value: Binding(
+                        get: { Double(cacheLimitMB) },
+                        set: {
+                            cacheLimitMB = Int($0)
+                            ImageCacheManager.shared.setCacheLimit(cacheLimitMB)
+                        }
+                    ), in: 50...300, step: 50)
+                    .tint(palette.primary)
                 }
-            } message: {
-                Text("将清除所有封面图片缓存，下次加载时会重新生成")
-            }
-        } header: {
-            Text("存储")
-                .foregroundColor(palette.textSecondary)
-        }
-    }
+                .listRowBackground(palette.surface)
 
-    // MARK: - Privacy Section
-    private var privacySection: some View {
-        Section {
-            Button {
-                showClearHistoryConfirm = true
-            } label: {
-                Label("清除搜索记录", systemImage: "magnifyingglass.circle")
-                    .foregroundColor(SemanticColor.danger)
-            }
-            .listRowBackground(palette.surface)
-            .confirmationDialog("清除搜索记录", isPresented: $showClearHistoryConfirm) {
-                Button("清除", role: .destructive) {
-                    Task { await searchService.clearHistory() }
+                Button {
+                    showClearCacheConfirm = true
+                } label: {
+                    Label("清理封面缓存", systemImage: "trash")
+                        .font(.subheadline)
+                        .foregroundColor(SemanticColor.danger)
                 }
-            } message: {
-                Text("将清除所有搜索历史记录")
+                .listRowBackground(palette.surface)
+                .confirmationDialog("清理缓存", isPresented: $showClearCacheConfirm) {
+                    Button("清理", role: .destructive) {
+                        Task {
+                            await ImageCacheManager.shared.clearAll()
+                            await calculateCacheSize()
+                        }
+                    }
+                } message: {
+                    Text("将清除所有封面图片缓存，下次加载时会重新生成")
+                }
+
+                Button {
+                    showClearHistoryConfirm = true
+                } label: {
+                    Label("清除搜索记录", systemImage: "magnifyingglass")
+                        .font(.subheadline)
+                        .foregroundColor(SemanticColor.danger)
+                }
+                .listRowBackground(palette.surface)
+                .confirmationDialog("清除搜索记录", isPresented: $showClearHistoryConfirm) {
+                    Button("清除", role: .destructive) {
+                        Task { await searchService.clearHistory() }
+                    }
+                } message: {
+                    Text("将清除所有搜索历史记录")
+                }
+            } label: {
+                Label {
+                    Text("存储与隐私")
+                        .foregroundColor(palette.textPrimary)
+                } icon: {
+                    Image(systemName: "externaldrive")
+                        .foregroundColor(palette.primary)
+                }
             }
-        } header: {
-            Text("隐私")
-                .foregroundColor(palette.textSecondary)
+            .tint(palette.textSecondary)
+            .listRowBackground(palette.surface)
         }
     }
 
     // MARK: - About Section
+
     private var aboutSection: some View {
         Section {
-            infoRow("版本", Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
-            infoRow("支持格式", "MP3 / M4A / AAC / WAV / ALAC")
-            infoRow("最大文件", "500 MB / 首")
-            infoRow("数据存储", "iTunes 文件共享 / iCloud 备份")
-        } header: {
-            Text("关于")
-                .foregroundColor(palette.textSecondary)
+            DisclosureGroup(isExpanded: $expandedAbout) {
+                infoRow("版本", Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
+                infoRow("支持格式", "MP3 / M4A / AAC / WAV / ALAC")
+                infoRow("最大文件", "500 MB / 首")
+                infoRow("数据存储", "iTunes 文件共享 / iCloud 备份")
+            } label: {
+                Label {
+                    Text("关于")
+                        .foregroundColor(palette.textPrimary)
+                } icon: {
+                    Image(systemName: "info.circle")
+                        .foregroundColor(palette.primary)
+                }
+            }
+            .tint(palette.textSecondary)
+            .listRowBackground(palette.surface)
         }
     }
 
     private func infoRow(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).foregroundColor(palette.textPrimary)
+            Text(label)
+                .font(.subheadline)
+                .foregroundColor(palette.textPrimary)
             Spacer()
-            Text(value).font(.subheadline).foregroundColor(palette.textSecondary).multilineTextAlignment(.trailing)
+            Text(value)
+                .font(.subheadline)
+                .foregroundColor(palette.textSecondary)
+                .multilineTextAlignment(.trailing)
         }
         .listRowBackground(palette.surface)
+    }
+
+    // MARK: - Theme Card
+
+    private func themeCard(style: ThemeStyle) -> some View {
+        let isSelected = themeManager.currentStyle.id == style.id
+        return VStack(spacing: 6) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(
+                        LinearGradient(
+                            colors: [style.lightPalette.gradientStart, style.lightPalette.gradientEnd],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(height: 44)
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.caption.bold())
+                        .foregroundColor(.white)
+                        .padding(4)
+                        .background(Circle().fill(Color.white.opacity(0.3)))
+                }
+            }
+            Text(style.displayName)
+                .font(.caption2)
+                .foregroundColor(isSelected ? palette.primary : palette.textSecondary)
+                .lineLimit(1)
+        }
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isSelected ? palette.primary.opacity(0.08) : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isSelected ? palette.primary : Color.clear, lineWidth: 1.5)
+        )
     }
 
     // MARK: - Helpers
@@ -355,7 +532,6 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - 最近播放时间范围枚举（TDD Section 2.5 recent_play_range）
 enum RecentPlayRange: Int, CaseIterable, Identifiable {
     case three  = 3
     case seven  = 7

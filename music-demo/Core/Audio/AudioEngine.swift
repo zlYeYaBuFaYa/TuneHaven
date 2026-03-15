@@ -17,7 +17,7 @@ final class AudioEngine: ObservableObject {
     @Published var isBuffering: Bool = false
     @Published var playbackSpeed: Float = 1.0
 
-    private var player: AVPlayer = AVPlayer()
+    private var player: AVPlayer
     private var playerItem: AVPlayerItem?
     private var timeObserver: Any?
     private var itemObservation: NSKeyValueObservation?
@@ -28,12 +28,20 @@ final class AudioEngine: ObservableObject {
         return false
     }
 
+    private var interruptionObserver: Any?
+    private var routeChangeObserver: Any?
+
     private init() {
+        self.player = AVPlayer()
+        player.automaticallyWaitsToMinimizeStalling = false
+        player.allowsExternalPlayback = false
         setupNotifications()
     }
 
     func load(url: URL) async {
         state = .loading
+        AudioSessionManager.shared.ensureActive()
+
         let asset = AVURLAsset(url: url)
         let item = AVPlayerItem(asset: asset)
         playerItem = item
@@ -69,7 +77,11 @@ final class AudioEngine: ObservableObject {
     }
 
     func play() {
-        player.rate = playbackSpeed
+        AudioSessionManager.shared.ensureActive()
+        player.play()
+        if playbackSpeed != 1.0 {
+            player.rate = playbackSpeed
+        }
         state = .playing
     }
 
@@ -103,16 +115,21 @@ final class AudioEngine: ObservableObject {
 
     func setSpeed(_ speed: Float) {
         playbackSpeed = speed
-        if isPlaying { player.rate = speed }
+        if isPlaying {
+            player.rate = speed
+        }
     }
 
     var onPlaybackEnded: (() -> Void)?
+    var onTimeUpdate: ((TimeInterval, TimeInterval) -> Void)?
 
     private func addTimeObserver() {
         removeTimeObserver()
         let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
         timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-            self?.currentTime = time.seconds
+            guard let self else { return }
+            self.currentTime = time.seconds
+            self.onTimeUpdate?(time.seconds, self.duration)
         }
         NotificationCenter.default.addObserver(self,
             selector: #selector(playerItemDidFinish),
@@ -135,36 +152,52 @@ final class AudioEngine: ObservableObject {
     }
 
     private func setupNotifications() {
-        NotificationCenter.default.addObserver(self,
-            selector: #selector(handleInterruption(_:)),
-            name: AVAudioSession.interruptionNotification,
-            object: nil)
-        NotificationCenter.default.addObserver(self,
-            selector: #selector(handleRouteChange(_:)),
-            name: AVAudioSession.routeChangeNotification,
-            object: nil)
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleInterruption(notification)
+        }
+        routeChangeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleRouteChange(notification)
+        }
     }
 
-    @objc private func handleInterruption(_ notification: Notification) {
+    private func handleInterruption(_ notification: Notification) {
         guard let info = notification.userInfo,
               let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
               let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
         switch type {
         case .began:
-            pause()
+            state = .paused
         case .ended:
             if let optValue = info[AVAudioSessionInterruptionOptionKey] as? UInt {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optValue)
-                if options.contains(.shouldResume) { play() }
+                if options.contains(.shouldResume) {
+                    AudioSessionManager.shared.ensureActive()
+                    player.play()
+                    if playbackSpeed != 1.0 {
+                        player.rate = playbackSpeed
+                    }
+                    state = .playing
+                }
             }
         @unknown default: break
         }
     }
 
-    @objc private func handleRouteChange(_ notification: Notification) {
+    private func handleRouteChange(_ notification: Notification) {
         guard let info = notification.userInfo,
               let reasonValue = info[AVAudioSessionRouteChangeReasonKey] as? UInt,
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
-        if reason == .oldDeviceUnavailable { pause() }
+        if reason == .oldDeviceUnavailable {
+            player.pause()
+            state = .paused
+        }
     }
 }

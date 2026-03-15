@@ -20,6 +20,16 @@ final class NowPlayingManager {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
+    /// Lightweight update — only refreshes elapsed time without recreating the entire info dict.
+    /// Called periodically from the time observer to keep iOS informed of playback progress.
+    func updateElapsedTime(currentTime: TimeInterval, duration: TimeInterval, speed: Float) {
+        guard var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        info[MPMediaItemPropertyPlaybackDuration] = duration
+        info[MPNowPlayingInfoPropertyPlaybackRate] = speed
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
     func clear() {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
@@ -32,11 +42,20 @@ final class NowPlayingManager {
         onSeek: @escaping (TimeInterval) -> Void
     ) {
         let center = MPRemoteCommandCenter.shared()
+
+        center.playCommand.removeTarget(nil)
+        center.pauseCommand.removeTarget(nil)
+        center.togglePlayPauseCommand.removeTarget(nil)
+        center.nextTrackCommand.removeTarget(nil)
+        center.previousTrackCommand.removeTarget(nil)
+        center.changePlaybackPositionCommand.removeTarget(nil)
+
         center.playCommand.isEnabled = true
         center.pauseCommand.isEnabled = true
         center.nextTrackCommand.isEnabled = true
         center.previousTrackCommand.isEnabled = true
         center.changePlaybackPositionCommand.isEnabled = true
+        center.togglePlayPauseCommand.isEnabled = true
 
         center.playCommand.addTarget { _ in onPlay(); return .success }
         center.pauseCommand.addTarget { _ in onPause(); return .success }

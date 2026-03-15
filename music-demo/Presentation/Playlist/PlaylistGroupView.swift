@@ -119,7 +119,7 @@ struct PlaylistGroupView: View {
         Section {
             ForEach(group.playlists) { playlist in
                 Button {
-                    router.navigate(to: .playlistDetail(id: playlist.id), in: .playlist)
+                    router.navigate(to: .playlistDetail(id: playlist.id), in: .library)
                 } label: {
                     PlaylistRow(playlist: playlist)
                 }
@@ -175,7 +175,7 @@ struct PlaylistGroupView: View {
     @ViewBuilder
     private func ungroupedPlaylistRow(_ playlist: Playlist) -> some View {
         Button {
-            router.navigate(to: .playlistDetail(id: playlist.id), in: .playlist)
+            router.navigate(to: .playlistDetail(id: playlist.id), in: .library)
         } label: {
             PlaylistRow(playlist: playlist)
         }

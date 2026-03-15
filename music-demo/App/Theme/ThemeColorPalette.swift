@@ -1,18 +1,25 @@
 import SwiftUI
 
-/// 完整的主题色板（TDD Section 8.2 扩展版）
+/// 完整的主题色板
 struct ThemeColorPalette {
-    // MARK: - TDD 核心色
-    let primary: Color           // 品牌主色
-    let primaryDark: Color       // 主色深色变体
-    let primaryLight: Color      // 主色浅色变体（用于 tag、highlight）
-    let background: Color        // 页面背景
-    let surface: Color           // 卡片/列表行背景
-    let surfaceSecondary: Color  // 输入框、三级背景
+    // MARK: - 核心色
+    let primary: Color
+    let primaryDark: Color
+    let primaryLight: Color
+    let background: Color
+    let surface: Color
+    let surfaceSecondary: Color
     let textPrimary: Color
     let textSecondary: Color
     let textTertiary: Color
     let separator: Color
+
+    // MARK: - 扩展色
+    let secondary: Color
+    let accent: Color
+    let highlight: Color
+    let gradientStart: Color
+    let gradientEnd: Color
 
     // MARK: - 播放器专用色
     let playerBackground: Color

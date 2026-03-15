@@ -21,6 +21,7 @@ final class PlaybackService: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var sleepTimerEndDate: Date?
     private var sleepTimerTimer: Timer?
+    private var currentCover: UIImage?
     private var dislikes: [String: Int] {
         UserDefaults.standard.dictionary(forKey: "song_dislikes") as? [String: Int] ?? [:]
     }
@@ -92,9 +93,7 @@ final class PlaybackService: ObservableObject {
 
     func seek(to time: TimeInterval) {
         engine.seek(to: time)
-        if let song = currentSong {
-            NowPlayingManager.shared.update(song: song, currentTime: time, duration: engine.duration, speed: playbackSpeed, cover: nil)
-        }
+        updateNowPlayingTime(currentTime: time)
     }
 
     func skip(by seconds: TimeInterval) {
@@ -104,7 +103,15 @@ final class PlaybackService: ObservableObject {
     func stop() {
         engine.stop()
         isPlaying = false
+        currentSong = nil
+        currentCover = nil
         NowPlayingManager.shared.clear()
+    }
+
+    func toggleCurrentSongFavorite() {
+        guard var song = currentSong else { return }
+        song.isFavorite.toggle()
+        currentSong = song
     }
 
     func cyclePlayMode() {
@@ -114,7 +121,7 @@ final class PlaybackService: ObservableObject {
         UserDefaults.standard.set(playMode.rawValue, forKey: "play_mode")
     }
 
-    // MARK: - 播放速度（含单曲记忆，TDD §2.5 per_song_speeds）
+    // MARK: - Speed
 
     func setSpeed(_ speed: Float) {
         playbackSpeed = speed
@@ -122,17 +129,14 @@ final class PlaybackService: ObservableObject {
 
         let memMode = UserDefaults.standard.integer(forKey: "speed_memory_mode")
         if memMode == 1, let song = currentSong {
-            // 单曲记忆模式：保存到该曲的独立键
             var perSongSpeeds = UserDefaults.standard.dictionary(forKey: "per_song_speeds") as? [String: Float] ?? [:]
             perSongSpeeds[song.id.uuidString] = speed
             UserDefaults.standard.set(perSongSpeeds, forKey: "per_song_speeds")
         } else {
-            // 全局记忆模式
             UserDefaults.standard.set(speed, forKey: "playback_speed")
         }
     }
 
-    /// 切换到新曲目时应用正确的速度
     private func applySpeedForSong(_ song: Song) {
         let memMode = UserDefaults.standard.integer(forKey: "speed_memory_mode")
         if memMode == 1 {
@@ -149,6 +153,8 @@ final class PlaybackService: ObservableObject {
             }
         }
     }
+
+    // MARK: - Sleep Timer
 
     func setSleepTimer(minutes: Int?) {
         sleepTimerTimer?.invalidate()
@@ -179,6 +185,8 @@ final class PlaybackService: ObservableObject {
         executeSleepTimerStop()
     }
 
+    // MARK: - Private
+
     private func loadAndPlay(song: Song) async {
         currentSong = song
         let fileURL = SandboxPathManager.musicFileURL(relativePath: song.fileRelativePath)
@@ -186,15 +194,24 @@ final class PlaybackService: ObservableObject {
             ErrorLogger.shared.log(.playbackFileNotFound(song.id), context: "PlaybackService.loadAndPlay")
             return
         }
+
+        AudioSessionManager.shared.ensureActive()
+
         await engine.load(url: fileURL)
-        applySpeedForSong(song)   // 单曲/全局速度记忆
+        applySpeedForSong(song)
         engine.setSpeed(playbackSpeed)
         engine.play()
         isPlaying = true
         try? await libraryService.recordPlay(songId: song.id)
 
-        let cover = loadCoverSync(for: song)
-        NowPlayingManager.shared.update(song: song, currentTime: 0, duration: engine.duration, speed: playbackSpeed, cover: cover)
+        currentCover = loadCoverSync(for: song)
+        NowPlayingManager.shared.update(
+            song: song,
+            currentTime: 0,
+            duration: engine.duration,
+            speed: playbackSpeed,
+            cover: currentCover
+        )
     }
 
     private func loadCoverSync(for song: Song) -> UIImage? {
@@ -202,12 +219,30 @@ final class PlaybackService: ObservableObject {
         return imageCacheManager.image(forKey: path)
     }
 
+    private func updateNowPlayingTime(currentTime: TimeInterval) {
+        guard let song = currentSong else { return }
+        NowPlayingManager.shared.update(
+            song: song,
+            currentTime: currentTime,
+            duration: engine.duration,
+            speed: isPlaying ? playbackSpeed : 0,
+            cover: currentCover
+        )
+    }
+
     private func setupBindings() {
         engine.$state.sink { [weak self] state in
             Task { @MainActor [weak self] in
-                if case .playing = state { self?.isPlaying = true }
-                else if case .paused = state { self?.isPlaying = false }
-                else if case .idle = state { self?.isPlaying = false }
+                guard let self else { return }
+                if case .playing = state {
+                    self.isPlaying = true
+                    self.updateNowPlayingTime(currentTime: self.engine.currentTime)
+                } else if case .paused = state {
+                    self.isPlaying = false
+                    self.updateNowPlayingTime(currentTime: self.engine.currentTime)
+                } else if case .idle = state {
+                    self.isPlaying = false
+                }
             }
         }.store(in: &cancellables)
 
@@ -215,12 +250,33 @@ final class PlaybackService: ObservableObject {
             Task { @MainActor [weak self] in self?.playNext() }
         }
 
+        // Periodically update NowPlayingInfo so iOS knows we're still actively playing
+        engine.onTimeUpdate = { [weak self] currentTime, duration in
+            Task { @MainActor [weak self] in
+                guard let self, self.isPlaying, let song = self.currentSong else { return }
+                NowPlayingManager.shared.updateElapsedTime(currentTime: currentTime, duration: duration, speed: self.playbackSpeed)
+            }
+        }
+
         NowPlayingManager.shared.setupRemoteCommands(
-            onPlay: { [weak self] in Task { @MainActor in self?.engine.play() } },
-            onPause: { [weak self] in Task { @MainActor in self?.engine.pause() } },
-            onNext: { [weak self] in self?.playNext() },
-            onPrevious: { [weak self] in self?.playPrevious() },
-            onSeek: { [weak self] time in Task { @MainActor in self?.engine.seek(to: time) } }
+            onPlay: { [weak self] in
+                Task { @MainActor in
+                    AudioSessionManager.shared.ensureActive()
+                    self?.engine.play()
+                }
+            },
+            onPause: { [weak self] in
+                Task { @MainActor in self?.engine.pause() }
+            },
+            onNext: { [weak self] in
+                Task { @MainActor in self?.playNext() }
+            },
+            onPrevious: { [weak self] in
+                Task { @MainActor in self?.playPrevious() }
+            },
+            onSeek: { [weak self] time in
+                Task { @MainActor in self?.engine.seek(to: time) }
+            }
         )
     }
 
@@ -243,4 +299,3 @@ final class PlaybackService: ObservableObject {
         isPlaying = false
     }
 }
-

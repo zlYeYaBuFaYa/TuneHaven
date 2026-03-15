@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MiniPlayerBar: View {
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var libraryService: MusicLibraryService
     @ObservedObject private var playback = PlaybackService.shared
     @ObservedObject private var engine = AudioEngine.shared
     @Environment(\.themePalette) private var palette
@@ -27,7 +28,21 @@ struct MiniPlayerBar: View {
 
                     Spacer()
 
-                    HStack(spacing: 20) {
+                    HStack(spacing: 16) {
+                        Button {
+                            Task {
+                                if let id = playback.currentSong?.id {
+                                    try? await libraryService.toggleFavorite(songId: id)
+                                    playback.toggleCurrentSongFavorite()
+                                }
+                            }
+                        } label: {
+                            Image(systemName: song.isFavorite ? "heart.fill" : "heart")
+                                .font(.body)
+                                .foregroundColor(song.isFavorite ? SemanticColor.danger : palette.textSecondary)
+                        }
+                        .buttonStyle(.plain)
+
                         Button {
                             playback.togglePlayPause()
                         } label: {

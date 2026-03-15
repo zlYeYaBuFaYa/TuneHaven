@@ -17,7 +17,16 @@ struct SearchResultView: View {
                         SongRow(
                             song: song,
                             isPlaying: playback.currentSong?.id == song.id,
-                            onTap: { Task { await playback.play(song: song, in: .allSongs(sortBy: .title)) } }
+                            onTap: {
+                                if playback.currentSong?.id == song.id {
+                                    router.openPlayer()
+                                } else {
+                                    Task {
+                                        await playback.play(song: song, in: .allSongs(sortBy: .title))
+                                        router.openPlayer()
+                                    }
+                                }
+                            }
                         )
                         .listRowBackground(palette.surface)
                     }

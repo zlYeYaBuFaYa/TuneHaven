@@ -16,6 +16,7 @@ struct ImportFilesView: View {
 
     @State private var showDocumentPicker = false
     @State private var showWifiTransfer = false
+    @State private var showAppleMusicImport = false
     @State private var importResult: ImportResult?
     @State private var isImporting = false
     @State private var progress: ImportProgress?
@@ -38,6 +39,25 @@ struct ImportFilesView: View {
                             }
                         } icon: {
                             Image(systemName: "folder")
+                                .foregroundColor(palette.primary)
+                        }
+                    }
+                    .listRowBackground(palette.surface)
+
+                    Button {
+                        showAppleMusicImport = true
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("从 Apple Music 资料库导入")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundColor(palette.textPrimary)
+                                Text("扫描并导入设备上已下载的本地音乐文件")
+                                    .font(.caption)
+                                    .foregroundColor(palette.textSecondary)
+                            }
+                        } icon: {
+                            Image(systemName: "music.note.house")
                                 .foregroundColor(palette.primary)
                         }
                     }
@@ -125,6 +145,12 @@ struct ImportFilesView: View {
         }
         .sheet(isPresented: $showWifiTransfer) {
             WiFiTransferView()
+                .environment(\.themePalette, palette)
+                .environmentObject(importService)
+                .environmentObject(libraryService)
+        }
+        .sheet(isPresented: $showAppleMusicImport) {
+            AppleMusicImportView()
                 .environment(\.themePalette, palette)
                 .environmentObject(importService)
                 .environmentObject(libraryService)

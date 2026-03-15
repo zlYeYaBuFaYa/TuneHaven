@@ -69,7 +69,11 @@ final class ImportService: ObservableObject {
         return await processFile(url: tempURL, overrideName: originalFilename)
     }
 
-    private func processFile(url: URL, overrideName: String? = nil) async -> SingleImportResult {
+    func processAppleMusicFile(tempURL: URL, originalFilename: String, title: String?, artist: String?, album: String?, coverImage: UIImage?) async -> SingleImportResult {
+        return await processFile(url: tempURL, overrideName: originalFilename, titleOverride: title, artistOverride: artist, albumOverride: album, coverOverride: coverImage)
+    }
+
+    private func processFile(url: URL, overrideName: String? = nil, titleOverride: String? = nil, artistOverride: String? = nil, albumOverride: String? = nil, coverOverride: UIImage? = nil) async -> SingleImportResult {
         let fileName = overrideName ?? url.lastPathComponent
         let ext = (fileName as NSString).pathExtension.lowercased()
 
@@ -96,13 +100,19 @@ final class ImportService: ObservableObject {
 
         let parsed = await AudioMetadataParser.shared.parse(url: url)
 
+        let finalTitle = titleOverride ?? parsed.title
+        let finalArtist = artistOverride ?? parsed.artist
+        let finalAlbum = albumOverride ?? parsed.album
+        let finalCover = coverOverride ?? parsed.coverImage
+        let isIncomplete = parsed.isIncomplete && titleOverride == nil
+
         let relPath: String
         do { relPath = try fileService.copyToMusic(from: url, fileHash: hash, originalFileName: fileName) } catch {
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "文件复制失败")
         }
 
         var coverImagePath: String? = nil
-        if let coverImage = parsed.coverImage {
+        if let coverImage = finalCover {
             let songId = UUID()
             let mediumThumb = ThumbnailGenerator.resize(coverImage, to: .medium)
             let cacheURL = SandboxPathManager.coverImageURL(songId: songId, size: .medium)
@@ -115,9 +125,9 @@ final class ImportService: ObservableObject {
 
         let song = Song(
             id: UUID(),
-            title: parsed.title,
-            artist: parsed.artist,
-            album: parsed.album,
+            title: finalTitle,
+            artist: finalArtist,
+            album: finalAlbum,
             duration: parsed.duration,
             fileHash: hash,
             fileRelativePath: relPath,
@@ -144,7 +154,7 @@ final class ImportService: ObservableObject {
 
         do {
             try await songRepo.insert(song: song)
-            return SingleImportResult(fileName: fileName, status: parsed.isIncomplete ? .successIncompleteMetadata : .success, song: song, errorMessage: nil)
+            return SingleImportResult(fileName: fileName, status: isIncomplete ? .successIncompleteMetadata : .success, song: song, errorMessage: nil)
         } catch {
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: error.localizedDescription)
         }

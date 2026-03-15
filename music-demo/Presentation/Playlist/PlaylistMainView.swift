@@ -20,7 +20,14 @@ struct PlaylistMainView: View {
             Section {
                 ForEach(systemPlaylists) { playlist in
                     SystemPlaylistRow(playlist: playlist) {
-                        router.navigate(to: .playlistDetail(id: playlist.id), in: .playlist)
+                        switch playlist.systemType {
+                        case .favorites:
+                            router.navigate(to: .songList(title: "我喜欢", context: .favorites), in: .library)
+                        case .recentlyPlayed:
+                            router.navigate(to: .songList(title: "最近播放", context: .recentlyPlayed), in: .library)
+                        default:
+                            router.navigate(to: .playlistDetail(id: playlist.id), in: .library)
+                        }
                     }
                     .listRowBackground(palette.surface)
                 }
@@ -34,7 +41,7 @@ struct PlaylistMainView: View {
                 } else {
                     ForEach(userPlaylists) { playlist in
                         Button {
-                            router.navigate(to: .playlistDetail(id: playlist.id), in: .playlist)
+                            router.navigate(to: .playlistDetail(id: playlist.id), in: .library)
                         } label: {
                             PlaylistRow(playlist: playlist)
                         }

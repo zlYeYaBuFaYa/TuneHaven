@@ -1,7 +1,10 @@
 import SwiftUI
+import AVFoundation
 
 @main
 struct music_demoApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     @StateObject private var themeManager = ThemeManager()
     @StateObject private var libraryService = MusicLibraryService()
     @StateObject private var playlistService = PlaylistService()
@@ -10,11 +13,11 @@ struct music_demoApp: App {
     @StateObject private var router = AppRouter()
     @StateObject private var snackbar = SnackbarState()
 
-    // 读取系统颜色模式，配合 ThemeManager 解析出正确色板
     @Environment(\.colorScheme) private var systemColorScheme
 
     private let playbackService = PlaybackService.shared
 
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isReady = false
     @State private var initError: String?
 
@@ -52,6 +55,16 @@ struct music_demoApp: App {
             }
             .preferredColorScheme(themeManager.resolvedColorScheme)
             .task { await initialize() }
+            .onChange(of: scenePhase) { _, phase in
+                switch phase {
+                case .active:
+                    playbackService.checkSleepTimerOnForeground()
+                case .background:
+                    AudioSessionManager.shared.ensureActive()
+                default:
+                    break
+                }
+            }
         }
     }
 
@@ -64,7 +77,6 @@ struct music_demoApp: App {
             MigrationManager.shared.runVersionUpgradeTasks()
             try await CoreDataStack.shared.load()
             SandboxPathManager.createAllDirectories()
-            try? AudioSessionManager.shared.configure()
             try await playlistService.initializeSystemPlaylists()
             await libraryService.loadSongs()
             await libraryService.cleanupOnLaunch()

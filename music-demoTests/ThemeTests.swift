@@ -69,62 +69,103 @@ struct ColorModeTests {
     }
 }
 
+// MARK: - ThemeRegistry Tests
+
+@Suite("ThemeRegistry Tests")
+struct ThemeRegistryTests {
+
+    @Test("bootstrap 后注册表包含 6 个主题")
+    func testAllThemesCount() {
+        let registry = ThemeRegistry.shared
+        registry.bootstrap()
+        #expect(registry.allThemes.count == 6)
+    }
+
+    @Test("所有主题 id 唯一")
+    func testAllThemeIdsUnique() {
+        let registry = ThemeRegistry.shared
+        registry.bootstrap()
+        let ids = registry.allThemes.map { $0.id }
+        #expect(ids.count == Set(ids).count)
+    }
+
+    @Test("所有主题 displayName 不为空")
+    func testAllThemeDisplayNamesNotEmpty() {
+        let registry = ThemeRegistry.shared
+        registry.bootstrap()
+        for theme in registry.allThemes {
+            #expect(!theme.displayName.isEmpty, "主题 \(theme.id) 的 displayName 不应为空")
+        }
+    }
+
+    @Test("可通过 id 查找主题")
+    func testThemeLookup() {
+        let registry = ThemeRegistry.shared
+        registry.bootstrap()
+        #expect(registry.theme(for: "meadow_breeze") != nil)
+        #expect(registry.theme(for: "rose_dream") != nil)
+        #expect(registry.theme(for: "frost_elegance") != nil)
+        #expect(registry.theme(for: "minimal_pure") != nil)
+        #expect(registry.theme(for: "warm_sunlight") != nil)
+        #expect(registry.theme(for: "digital_mist") != nil)
+    }
+
+    @Test("查找不存在的 id 返回 nil")
+    func testThemeLookupNotFound() {
+        let registry = ThemeRegistry.shared
+        registry.bootstrap()
+        #expect(registry.theme(for: "nonexistent") == nil)
+    }
+
+    @Test("默认主题为翠野清风")
+    func testDefaultTheme() {
+        let registry = ThemeRegistry.shared
+        #expect(registry.defaultTheme.id == "meadow_breeze")
+    }
+}
+
 // MARK: - ThemeStyle Tests
 
 @Suite("ThemeStyle Tests")
 struct ThemeStyleTests {
 
-    @Test("allStyles 包含 3 种内置主题")
-    func testAllStylesCount() {
-        #expect(ThemeStyle.allStyles.count == 3)
+    @Test("meadowBreeze 的 id 为 meadow_breeze")
+    func testMeadowBreezeId() {
+        #expect(ThemeStyle.meadowBreeze.id == "meadow_breeze")
     }
 
-    @Test("morandiGreen 的 id 为 morandi_green")
-    func testMorandiGreenId() {
-        #expect(ThemeStyle.morandiGreen.id == "morandi_green")
+    @Test("roseDream 的 id 为 rose_dream")
+    func testRoseDreamId() {
+        #expect(ThemeStyle.roseDream.id == "rose_dream")
     }
 
-    @Test("classicIndigo 的 id 为 classic_indigo")
-    func testClassicIndigoId() {
-        #expect(ThemeStyle.classicIndigo.id == "classic_indigo")
+    @Test("frostElegance 的 id 为 frost_elegance")
+    func testFrostEleganceId() {
+        #expect(ThemeStyle.frostElegance.id == "frost_elegance")
     }
 
-    @Test("sakuraPink 的 id 为 sakura_pink")
-    func testSakuraPinkId() {
-        #expect(ThemeStyle.sakuraPink.id == "sakura_pink")
+    @Test("minimalPure 的 id 为 minimal_pure")
+    func testMinimalPureId() {
+        #expect(ThemeStyle.minimalPure.id == "minimal_pure")
     }
 
-    @Test("allStyles 中所有主题的 id 唯一")
-    func testAllStyleIdsUnique() {
-        let ids = ThemeStyle.allStyles.map { $0.id }
-        #expect(ids.count == Set(ids).count)
+    @Test("warmSunlight 的 id 为 warm_sunlight")
+    func testWarmSunlightId() {
+        #expect(ThemeStyle.warmSunlight.id == "warm_sunlight")
     }
 
-    @Test("allStyles 中所有主题的 displayName 不为空")
-    func testAllStyleDisplayNamesNotEmpty() {
-        for style in ThemeStyle.allStyles {
-            #expect(!style.displayName.isEmpty, "主题 \(style.id) 的 displayName 不应为空")
-        }
-    }
-
-    @Test("allStyles 包含 morandiGreen")
-    func testAllStylesContainsMorandiGreen() {
-        #expect(ThemeStyle.allStyles.contains { $0.id == "morandi_green" })
-    }
-
-    @Test("allStyles 包含 classicIndigo")
-    func testAllStylesContainsClassicIndigo() {
-        #expect(ThemeStyle.allStyles.contains { $0.id == "classic_indigo" })
-    }
-
-    @Test("allStyles 包含 sakuraPink")
-    func testAllStylesContainsSakuraPink() {
-        #expect(ThemeStyle.allStyles.contains { $0.id == "sakura_pink" })
+    @Test("digitalMist 的 id 为 digital_mist")
+    func testDigitalMistId() {
+        #expect(ThemeStyle.digitalMist.id == "digital_mist")
     }
 
     @Test("ThemeStyle 实现 Identifiable，id 不为空")
     func testIdentifiable() {
-        for style in ThemeStyle.allStyles {
+        let themes: [ThemeStyle] = [
+            .meadowBreeze, .roseDream, .frostElegance,
+            .minimalPure, .warmSunlight, .digitalMist
+        ]
+        for style in themes {
             #expect(!style.id.isEmpty)
         }
     }
@@ -224,13 +265,9 @@ struct SemanticColorTests {
 @Suite("ThemeColorPalette Tests")
 struct ThemeColorPaletteTests {
 
-    private var samplePalette: ThemeColorPalette {
-        ThemeStyle.morandiGreen.lightPalette
-    }
-
     @Test("lightPalette 所有颜色字段可被访问")
     func testLightPaletteAccessible() {
-        let palette = ThemeStyle.morandiGreen.lightPalette
+        let palette = ThemeStyle.meadowBreeze.lightPalette
         _ = palette.primary
         _ = palette.primaryDark
         _ = palette.primaryLight
@@ -241,6 +278,11 @@ struct ThemeColorPaletteTests {
         _ = palette.textSecondary
         _ = palette.textTertiary
         _ = palette.separator
+        _ = palette.secondary
+        _ = palette.accent
+        _ = palette.highlight
+        _ = palette.gradientStart
+        _ = palette.gradientEnd
         _ = palette.playerBackground
         _ = palette.playerText
         _ = palette.playerSubtext
@@ -252,16 +294,22 @@ struct ThemeColorPaletteTests {
 
     @Test("darkPalette 所有颜色字段可被访问")
     func testDarkPaletteAccessible() {
-        let palette = ThemeStyle.morandiGreen.darkPalette
+        let palette = ThemeStyle.meadowBreeze.darkPalette
         _ = palette.primary
         _ = palette.background
         _ = palette.surface
         _ = palette.textPrimary
+        _ = palette.secondary
+        _ = palette.gradientStart
     }
 
     @Test("每个主题都有 lightPalette 和 darkPalette")
     func testEachStyleHasBothPalettes() {
-        for style in ThemeStyle.allStyles {
+        let themes: [ThemeStyle] = [
+            .meadowBreeze, .roseDream, .frostElegance,
+            .minimalPure, .warmSunlight, .digitalMist
+        ]
+        for style in themes {
             _ = style.lightPalette
             _ = style.darkPalette
         }

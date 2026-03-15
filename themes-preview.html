@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Demo - 5套莫兰迪主题风格预览</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        // 主题1: 玫瑰梦境 (少女粉莫兰迪)
+        rose: {
+          bg: '#FDF0ED',
+          bgSec: '#F9E4DF',
+          card: '#FFFFFF',
+          cardSec: '#F7E4E0',
+          primary: '#D4A5A5',
+          primaryDark: '#C08E8E',
+          secondary: '#C9B1BD',
+          accent: '#E2BAA8',
+          text: '#6B4F5F',
+          textSec: '#9A7E8A',
+          textTer: '#BFA3AF',
+          border: '#EEDAD5',
+          highlight: '#F2D0C7',
+          gradFrom: '#D4A5A5',
+          gradTo: '#C9B1BD',
+        },
+        // 主题2: 霜色风雅 (清冷高级莫兰迪)
+        frost: {
+          bg: '#EFF2F1',
+          bgSec: '#E4EAE8',
+          card: '#FAFBFB',
+          cardSec: '#E8EDEC',
+          primary: '#8BA5A0',
+          primaryDark: '#728F89',
+          secondary: '#A3AEB5',
+          accent: '#9BB0A5',
+          text: '#3D4A4F',
+          textSec: '#6B7D82',
+          textTer: '#95A5AA',
+          border: '#D5DEDD',
+          highlight: '#D0DDD9',
+          gradFrom: '#8BA5A0',
+          gradTo: '#A3AEB5',
+        },
+        // 主题3: 素简之境 (现代简约莫兰迪)
+        minimal: {
+          bg: '#F5F3F0',
+          bgSec: '#EDEAE6',
+          card: '#FAFAF8',
+          cardSec: '#EEEBE7',
+          primary: '#A09890',
+          primaryDark: '#8A827A',
+          secondary: '#B5AEA4',
+          accent: '#A8A098',
+          text: '#4A4540',
+          textSec: '#7A746E',
+          textTer: '#A09A94',
+          border: '#DDD9D4',
+          highlight: '#D8D3CC',
+          gradFrom: '#A09890',
+          gradTo: '#B5AEA4',
+        },
+        // 主题4: 暖阳拾光 (温暖莫兰迪)
+        warm: {
+          bg: '#F8F0E8',
+          bgSec: '#F0E6DA',
+          card: '#FDFAF6',
+          cardSec: '#F2E8DC',
+          primary: '#C4A882',
+          primaryDark: '#AD926C',
+          secondary: '#D4A28E',
+          accent: '#C8AD90',
+          text: '#5C4B3C',
+          textSec: '#8A7462',
+          textTer: '#AC9A88',
+          border: '#E6D8C8',
+          highlight: '#E8D6C2',
+          gradFrom: '#C4A882',
+          gradTo: '#D4A28E',
+        },
+        // 主题5: 数字迷雾 (科技莫兰迪)
+        tech: {
+          bg: '#1E2128',
+          bgSec: '#262A32',
+          card: '#2C313A',
+          cardSec: '#343A44',
+          primary: '#7E8FA5',
+          primaryDark: '#6A7B91',
+          secondary: '#6B7A8A',
+          accent: '#8A97A8',
+          text: '#D0D4DA',
+          textSec: '#9AA0AC',
+          textTer: '#6B7280',
+          border: '#3A4050',
+          highlight: '#353B48',
+          gradFrom: '#7E8FA5',
+          gradTo: '#6B7A8A',
+        },
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  .theme-section { scroll-margin-top: 80px; }
+  .phone-frame {
+    width: 375px;
+    height: 720px;
+    border-radius: 40px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+  }
+  .phone-inner {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .phone-inner::-webkit-scrollbar { display: none; }
+  .progress-bar { height: 3px; border-radius: 2px; }
+  .color-dot { width: 40px; height: 40px; border-radius: 10px; }
+  .nav-pill { transition: all 0.2s; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', sans-serif; }
+</style>
+</head>
+<body class="bg-neutral-100">
+
+<!-- 顶部导航 -->
+<nav class="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md z-50 border-b border-neutral-200">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <h1 class="text-xl font-semibold text-neutral-800">Music Demo -- 莫兰迪主题风格设计</h1>
+    <div class="flex gap-2 text-sm">
+      <a href="#theme1" class="px-3 py-1.5 rounded-full bg-rose-primary/10 text-rose-text hover:bg-rose-primary/20" style="background:#D4A5A520;color:#6B4F5F">玫瑰梦境</a>
+      <a href="#theme2" class="px-3 py-1.5 rounded-full hover:bg-neutral-100" style="background:#8BA5A020;color:#3D4A4F">霜色风雅</a>
+      <a href="#theme3" class="px-3 py-1.5 rounded-full hover:bg-neutral-100" style="background:#A0989020;color:#4A4540">素简之境</a>
+      <a href="#theme4" class="px-3 py-1.5 rounded-full hover:bg-neutral-100" style="background:#C4A88220;color:#5C4B3C">暖阳拾光</a>
+      <a href="#theme5" class="px-3 py-1.5 rounded-full hover:bg-neutral-100" style="background:#7E8FA520;color:#1E2128">数字迷雾</a>
+    </div>
+  </div>
+</nav>
+
+<div class="pt-20 pb-20 max-w-7xl mx-auto px-6">
+
+<!-- ========================================== -->
+<!-- 主题1: 玫瑰梦境 (少女粉莫兰迪) -->
+<!-- ========================================== -->
+<section id="theme1" class="theme-section mb-24">
+  <div class="mb-8">
+    <div class="flex items-center gap-4 mb-3">
+      <div class="w-3 h-3 rounded-full" style="background: linear-gradient(135deg, #D4A5A5, #C9B1BD)"></div>
+      <h2 class="text-3xl font-bold text-neutral-800">Theme 1 -- 玫瑰梦境</h2>
+      <span class="text-sm text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">少女粉莫兰迪</span>
+    </div>
+    <p class="text-neutral-500 ml-7">温柔浪漫的粉调莫兰迪，以低饱和玫瑰粉与雾感紫粉为主色调，营造柔美静谧的视听氛围。</p>
+    <!-- 色板 -->
+    <div class="flex gap-3 mt-5 ml-7">
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#D4A5A5"></div>
+        <span class="text-xs text-neutral-500">#D4A5A5</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#C9B1BD"></div>
+        <span class="text-xs text-neutral-500">#C9B1BD</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#E2BAA8"></div>
+        <span class="text-xs text-neutral-500">#E2BAA8</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#F9E4DF"></div>
+        <span class="text-xs text-neutral-500">#F9E4DF</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#6B4F5F"></div>
+        <span class="text-xs text-neutral-500">#6B4F5F</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#FDF0ED"></div>
+        <span class="text-xs text-neutral-500">#FDF0ED</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-10 items-start">
+    <!-- 音乐库页面 -->
+    <div class="phone-frame border-4" style="border-color:#EEDAD5">
+      <div class="phone-inner" style="background:#FDF0ED">
+        <!-- 状态栏 -->
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#6B4F5F">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#6B4F5F"></i>
+            <i class="fas fa-wifi text-xs" style="color:#6B4F5F"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#6B4F5F"></i>
+          </div>
+        </div>
+        <!-- 头部 -->
+        <div class="px-6 pt-2 pb-4 flex justify-between items-center">
+          <h3 class="text-2xl font-bold" style="color:#6B4F5F">音乐库</h3>
+          <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:#F2D0C7">
+            <i class="fas fa-gear text-sm" style="color:#C08E8E"></i>
+          </div>
+        </div>
+        <!-- 搜索框 -->
+        <div class="px-6 mb-4">
+          <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl" style="background:#F9E4DF">
+            <i class="fas fa-search text-sm" style="color:#BFA3AF"></i>
+            <span class="text-sm" style="color:#BFA3AF">搜索歌曲、艺术家</span>
+          </div>
+        </div>
+        <!-- 标签栏 -->
+        <div class="flex gap-2 px-6 mb-5 overflow-x-auto">
+          <span class="px-4 py-1.5 rounded-full text-sm font-medium text-white whitespace-nowrap" style="background: linear-gradient(135deg, #D4A5A5, #C9B1BD)">全部歌曲</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#F9E4DF;color:#9A7E8A">艺术家</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#F9E4DF;color:#9A7E8A">专辑</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#F9E4DF;color:#9A7E8A">歌单</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#F9E4DF;color:#9A7E8A">收藏</span>
+        </div>
+        <!-- 歌曲列表 -->
+        <div class="px-6 space-y-1">
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FFFFFF">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #D4A5A5, #E2BAA8)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#6B4F5F">Merry Christmas Mr. Lawrence</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#9A7E8A">Ryuichi Sakamoto</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#D4A5A5"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FFFFFF">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #C9B1BD, #D4A5A5)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#6B4F5F">Clair de Lune</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#9A7E8A">Claude Debussy</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#D4A5A5"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FFFFFF">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #E2BAA8, #C9B1BD)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#6B4F5F">Flower Dance</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#9A7E8A">DJ Okawari</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#D4A5A5"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FFFFFF">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #D4A5A5, #C9B1BD)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#6B4F5F">Kiss The Rain</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#9A7E8A">Yiruma</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#D4A5A5"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FFFFFF">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #C9B1BD, #E2BAA8)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#6B4F5F">River Flows in You</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#9A7E8A">Yiruma</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#D4A5A5"></i>
+          </div>
+        </div>
+        <!-- 迷你播放器 -->
+        <div class="absolute bottom-14 left-3 right-3">
+          <div class="flex items-center gap-3 p-3 rounded-2xl shadow-lg" style="background:linear-gradient(135deg, #D4A5A5, #C9B1BD)">
+            <div class="w-10 h-10 rounded-lg flex-shrink-0" style="background:rgba(255,255,255,0.3)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-white truncate">Clair de Lune</p>
+              <p class="text-xs text-white/70 truncate">Claude Debussy</p>
+            </div>
+            <i class="fas fa-heart text-xs text-white/80"></i>
+            <i class="fas fa-pause text-white text-sm mx-1"></i>
+            <i class="fas fa-forward-step text-white/80 text-xs"></i>
+          </div>
+        </div>
+        <!-- 底部标签栏 -->
+        <div class="absolute bottom-0 left-0 right-0 flex justify-around items-center py-3 border-t" style="background:#FFFFFF;border-color:#EEDAD5">
+          <div class="flex flex-col items-center">
+            <i class="fas fa-music text-base" style="color:#D4A5A5"></i>
+            <span class="text-xs mt-1 font-medium" style="color:#D4A5A5">音乐库</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <i class="fas fa-list text-base" style="color:#BFA3AF"></i>
+            <span class="text-xs mt-1" style="color:#BFA3AF">歌单</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 播放器页面 -->
+    <div class="phone-frame border-4" style="border-color:#EEDAD5">
+      <div class="phone-inner" style="background: linear-gradient(180deg, #FDF0ED 0%, #F9E4DF 50%, #F2D0C7 100%)">
+        <!-- 状态栏 -->
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#6B4F5F">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#6B4F5F"></i>
+            <i class="fas fa-wifi text-xs" style="color:#6B4F5F"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#6B4F5F"></i>
+          </div>
+        </div>
+        <!-- 顶部操作栏 -->
+        <div class="flex justify-between items-center px-6 pt-2 pb-4">
+          <i class="fas fa-chevron-down text-lg" style="color:#6B4F5F"></i>
+          <span class="text-sm font-medium" style="color:#9A7E8A">正在播放</span>
+          <i class="fas fa-ellipsis text-lg" style="color:#6B4F5F"></i>
+        </div>
+        <!-- 封面 -->
+        <div class="px-10 mt-4 mb-8">
+          <div class="aspect-square rounded-3xl shadow-xl" style="background: linear-gradient(135deg, #D4A5A5, #C9B1BD, #E2BAA8)"></div>
+        </div>
+        <!-- 歌曲信息 -->
+        <div class="px-8 flex justify-between items-start mb-6">
+          <div>
+            <h4 class="text-xl font-bold" style="color:#6B4F5F">Clair de Lune</h4>
+            <p class="text-sm mt-1" style="color:#9A7E8A">Claude Debussy</p>
+          </div>
+          <i class="fas fa-heart text-xl" style="color:#D4A5A5"></i>
+        </div>
+        <!-- 进度条 -->
+        <div class="px-8 mb-4">
+          <div class="progress-bar w-full" style="background:#EEDAD5">
+            <div class="progress-bar w-2/5" style="background: linear-gradient(90deg, #D4A5A5, #C9B1BD)"></div>
+          </div>
+          <div class="flex justify-between mt-1.5">
+            <span class="text-xs" style="color:#BFA3AF">1:52</span>
+            <span class="text-xs" style="color:#BFA3AF">4:38</span>
+          </div>
+        </div>
+        <!-- 播放控制 -->
+        <div class="flex justify-center items-center gap-8 px-8 mb-6">
+          <i class="fas fa-shuffle text-base" style="color:#9A7E8A"></i>
+          <i class="fas fa-backward-step text-xl" style="color:#6B4F5F"></i>
+          <div class="w-14 h-14 rounded-full flex items-center justify-center shadow-md" style="background: linear-gradient(135deg, #D4A5A5, #C9B1BD)">
+            <i class="fas fa-pause text-white text-xl pl-0.5"></i>
+          </div>
+          <i class="fas fa-forward-step text-xl" style="color:#6B4F5F"></i>
+          <i class="fas fa-repeat text-base" style="color:#9A7E8A"></i>
+        </div>
+        <!-- 底部功能 -->
+        <div class="flex justify-center items-center gap-10 px-8">
+          <i class="fas fa-volume-high text-sm" style="color:#9A7E8A"></i>
+          <i class="fas fa-list-ul text-sm" style="color:#9A7E8A"></i>
+          <i class="fas fa-sliders text-sm" style="color:#9A7E8A"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置页面 -->
+    <div class="phone-frame border-4" style="border-color:#EEDAD5">
+      <div class="phone-inner" style="background:#FDF0ED">
+        <!-- 状态栏 -->
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#6B4F5F">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#6B4F5F"></i>
+            <i class="fas fa-wifi text-xs" style="color:#6B4F5F"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#6B4F5F"></i>
+          </div>
+        </div>
+        <div class="px-6 pt-2 pb-4 flex items-center gap-3">
+          <i class="fas fa-chevron-left" style="color:#D4A5A5"></i>
+          <h3 class="text-2xl font-bold" style="color:#6B4F5F">设置</h3>
+        </div>
+        <!-- 设置列表 -->
+        <div class="px-6 space-y-3">
+          <!-- 导入 -->
+          <div class="rounded-2xl overflow-hidden" style="background:#FFFFFF">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#F2D0C7">
+                  <i class="fas fa-download text-sm" style="color:#C08E8E"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#6B4F5F">导入</span>
+              </div>
+              <i class="fas fa-chevron-down text-xs" style="color:#BFA3AF"></i>
+            </div>
+            <div class="px-4 pb-3 space-y-2">
+              <div class="flex items-center gap-3 p-2.5 rounded-xl" style="background:#FDF0ED">
+                <i class="fas fa-file-audio text-sm" style="color:#D4A5A5"></i>
+                <span class="text-xs" style="color:#9A7E8A">文件导入</span>
+              </div>
+              <div class="flex items-center gap-3 p-2.5 rounded-xl" style="background:#FDF0ED">
+                <i class="fab fa-apple text-sm" style="color:#D4A5A5"></i>
+                <span class="text-xs" style="color:#9A7E8A">从 Apple Music 资料库导入</span>
+              </div>
+              <div class="flex items-center gap-3 p-2.5 rounded-xl" style="background:#FDF0ED">
+                <i class="fas fa-wifi text-sm" style="color:#D4A5A5"></i>
+                <span class="text-xs" style="color:#9A7E8A">WiFi 传输</span>
+              </div>
+            </div>
+          </div>
+          <!-- 外观 -->
+          <div class="rounded-2xl overflow-hidden" style="background:#FFFFFF">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#F2D0C7">
+                  <i class="fas fa-palette text-sm" style="color:#C08E8E"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#6B4F5F">外观</span>
+              </div>
+              <i class="fas fa-chevron-down text-xs" style="color:#BFA3AF"></i>
+            </div>
+            <div class="px-4 pb-3 space-y-2">
+              <div class="flex items-center justify-between p-2.5 rounded-xl" style="background:#FDF0ED">
+                <span class="text-xs" style="color:#9A7E8A">显示模式</span>
+                <span class="text-xs font-medium" style="color:#D4A5A5">跟随系统</span>
+              </div>
+              <div>
+                <p class="text-xs mb-2 px-1" style="color:#9A7E8A">主题风格</p>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="p-2 rounded-xl text-center ring-2" style="background:#FDF0ED;ring-color:#D4A5A5">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #D4A5A5, #C9B1BD)"></div>
+                    <span class="text-xs" style="color:#6B4F5F">玫瑰梦境</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background:#FDF0ED">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #8BA5A0, #A3AEB5)"></div>
+                    <span class="text-xs" style="color:#9A7E8A">霜色风雅</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background:#FDF0ED">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #A09890, #B5AEA4)"></div>
+                    <span class="text-xs" style="color:#9A7E8A">素简之境</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background:#FDF0ED">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #C4A882, #D4A28E)"></div>
+                    <span class="text-xs" style="color:#9A7E8A">暖阳拾光</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background:#FDF0ED">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #7E8FA5, #6B7A8A)"></div>
+                    <span class="text-xs" style="color:#9A7E8A">数字迷雾</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 播放 -->
+          <div class="rounded-2xl overflow-hidden" style="background:#FFFFFF">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#F2D0C7">
+                  <i class="fas fa-play text-sm" style="color:#C08E8E"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#6B4F5F">播放</span>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#BFA3AF"></i>
+            </div>
+          </div>
+          <!-- 关于 -->
+          <div class="rounded-2xl overflow-hidden" style="background:#FFFFFF">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#F2D0C7">
+                  <i class="fas fa-circle-info text-sm" style="color:#C08E8E"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#6B4F5F">关于</span>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#BFA3AF"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========================================== -->
+<!-- 主题2: 霜色风雅 (清冷高级莫兰迪) -->
+<!-- ========================================== -->
+<section id="theme2" class="theme-section mb-24">
+  <div class="mb-8">
+    <div class="flex items-center gap-4 mb-3">
+      <div class="w-3 h-3 rounded-full" style="background: linear-gradient(135deg, #8BA5A0, #A3AEB5)"></div>
+      <h2 class="text-3xl font-bold text-neutral-800">Theme 2 -- 霜色风雅</h2>
+      <span class="text-sm text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">清冷高级莫兰迪</span>
+    </div>
+    <p class="text-neutral-500 ml-7">清冷通透的灰绿色调，如晨雾笼罩的湖面，以低饱和薄荷灰与雾蓝为核心色，传递高级感与宁静。</p>
+    <div class="flex gap-3 mt-5 ml-7">
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#8BA5A0"></div>
+        <span class="text-xs text-neutral-500">#8BA5A0</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#A3AEB5"></div>
+        <span class="text-xs text-neutral-500">#A3AEB5</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#9BB0A5"></div>
+        <span class="text-xs text-neutral-500">#9BB0A5</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#E4EAE8"></div>
+        <span class="text-xs text-neutral-500">#E4EAE8</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#3D4A4F"></div>
+        <span class="text-xs text-neutral-500">#3D4A4F</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#EFF2F1"></div>
+        <span class="text-xs text-neutral-500">#EFF2F1</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-10 items-start">
+    <!-- 音乐库页面 -->
+    <div class="phone-frame border-4" style="border-color:#D5DEDD">
+      <div class="phone-inner" style="background:#EFF2F1">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#3D4A4F">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#3D4A4F"></i>
+            <i class="fas fa-wifi text-xs" style="color:#3D4A4F"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#3D4A4F"></i>
+          </div>
+        </div>
+        <div class="px-6 pt-2 pb-4 flex justify-between items-center">
+          <h3 class="text-2xl font-bold" style="color:#3D4A4F">音乐库</h3>
+          <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:#D0DDD9">
+            <i class="fas fa-gear text-sm" style="color:#728F89"></i>
+          </div>
+        </div>
+        <div class="px-6 mb-4">
+          <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl" style="background:#E4EAE8">
+            <i class="fas fa-search text-sm" style="color:#95A5AA"></i>
+            <span class="text-sm" style="color:#95A5AA">搜索歌曲、艺术家</span>
+          </div>
+        </div>
+        <div class="flex gap-2 px-6 mb-5 overflow-x-auto">
+          <span class="px-4 py-1.5 rounded-full text-sm font-medium text-white whitespace-nowrap" style="background: linear-gradient(135deg, #8BA5A0, #A3AEB5)">全部歌曲</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#E4EAE8;color:#6B7D82">艺术家</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#E4EAE8;color:#6B7D82">专辑</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#E4EAE8;color:#6B7D82">歌单</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#E4EAE8;color:#6B7D82">收藏</span>
+        </div>
+        <div class="px-6 space-y-1">
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFBFB">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #8BA5A0, #9BB0A5)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#3D4A4F">Gymnopedies No.1</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#6B7D82">Erik Satie</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#8BA5A0"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFBFB">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #A3AEB5, #8BA5A0)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#3D4A4F">Nuvole Bianche</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#6B7D82">Ludovico Einaudi</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#8BA5A0"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFBFB">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #9BB0A5, #A3AEB5)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#3D4A4F">Experience</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#6B7D82">Ludovico Einaudi</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#8BA5A0"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFBFB">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #8BA5A0, #A3AEB5)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#3D4A4F">Comptine d'un autre ete</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#6B7D82">Yann Tiersen</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#8BA5A0"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFBFB">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #A3AEB5, #9BB0A5)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#3D4A4F">Watermark</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#6B7D82">Enya</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#8BA5A0"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-14 left-3 right-3">
+          <div class="flex items-center gap-3 p-3 rounded-2xl shadow-lg" style="background:linear-gradient(135deg, #8BA5A0, #A3AEB5)">
+            <div class="w-10 h-10 rounded-lg flex-shrink-0" style="background:rgba(255,255,255,0.25)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-white truncate">Nuvole Bianche</p>
+              <p class="text-xs text-white/70 truncate">Ludovico Einaudi</p>
+            </div>
+            <i class="fas fa-heart text-xs text-white/80"></i>
+            <i class="fas fa-pause text-white text-sm mx-1"></i>
+            <i class="fas fa-forward-step text-white/80 text-xs"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 flex justify-around items-center py-3 border-t" style="background:#FAFBFB;border-color:#D5DEDD">
+          <div class="flex flex-col items-center">
+            <i class="fas fa-music text-base" style="color:#8BA5A0"></i>
+            <span class="text-xs mt-1 font-medium" style="color:#8BA5A0">音乐库</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <i class="fas fa-list text-base" style="color:#95A5AA"></i>
+            <span class="text-xs mt-1" style="color:#95A5AA">歌单</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 播放器页面 -->
+    <div class="phone-frame border-4" style="border-color:#D5DEDD">
+      <div class="phone-inner" style="background: linear-gradient(180deg, #EFF2F1 0%, #E4EAE8 50%, #D0DDD9 100%)">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#3D4A4F">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#3D4A4F"></i>
+            <i class="fas fa-wifi text-xs" style="color:#3D4A4F"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#3D4A4F"></i>
+          </div>
+        </div>
+        <div class="flex justify-between items-center px-6 pt-2 pb-4">
+          <i class="fas fa-chevron-down text-lg" style="color:#3D4A4F"></i>
+          <span class="text-sm font-medium" style="color:#6B7D82">正在播放</span>
+          <i class="fas fa-ellipsis text-lg" style="color:#3D4A4F"></i>
+        </div>
+        <div class="px-10 mt-4 mb-8">
+          <div class="aspect-square rounded-3xl shadow-xl" style="background: linear-gradient(135deg, #8BA5A0, #A3AEB5, #9BB0A5)"></div>
+        </div>
+        <div class="px-8 flex justify-between items-start mb-6">
+          <div>
+            <h4 class="text-xl font-bold" style="color:#3D4A4F">Nuvole Bianche</h4>
+            <p class="text-sm mt-1" style="color:#6B7D82">Ludovico Einaudi</p>
+          </div>
+          <i class="fas fa-heart text-xl" style="color:#8BA5A0"></i>
+        </div>
+        <div class="px-8 mb-4">
+          <div class="progress-bar w-full" style="background:#D5DEDD">
+            <div class="progress-bar w-3/5" style="background: linear-gradient(90deg, #8BA5A0, #A3AEB5)"></div>
+          </div>
+          <div class="flex justify-between mt-1.5">
+            <span class="text-xs" style="color:#95A5AA">2:45</span>
+            <span class="text-xs" style="color:#95A5AA">5:12</span>
+          </div>
+        </div>
+        <div class="flex justify-center items-center gap-8 px-8 mb-6">
+          <i class="fas fa-shuffle text-base" style="color:#6B7D82"></i>
+          <i class="fas fa-backward-step text-xl" style="color:#3D4A4F"></i>
+          <div class="w-14 h-14 rounded-full flex items-center justify-center shadow-md" style="background: linear-gradient(135deg, #8BA5A0, #A3AEB5)">
+            <i class="fas fa-pause text-white text-xl pl-0.5"></i>
+          </div>
+          <i class="fas fa-forward-step text-xl" style="color:#3D4A4F"></i>
+          <i class="fas fa-repeat text-base" style="color:#6B7D82"></i>
+        </div>
+        <div class="flex justify-center items-center gap-10 px-8">
+          <i class="fas fa-volume-high text-sm" style="color:#6B7D82"></i>
+          <i class="fas fa-list-ul text-sm" style="color:#6B7D82"></i>
+          <i class="fas fa-sliders text-sm" style="color:#6B7D82"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 歌单页面 -->
+    <div class="phone-frame border-4" style="border-color:#D5DEDD">
+      <div class="phone-inner" style="background:#EFF2F1">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#3D4A4F">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#3D4A4F"></i>
+            <i class="fas fa-wifi text-xs" style="color:#3D4A4F"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#3D4A4F"></i>
+          </div>
+        </div>
+        <div class="px-6 pt-2 pb-4 flex justify-between items-center">
+          <h3 class="text-2xl font-bold" style="color:#3D4A4F">歌单</h3>
+          <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:#D0DDD9">
+            <i class="fas fa-plus text-sm" style="color:#728F89"></i>
+          </div>
+        </div>
+        <!-- 系统歌单 -->
+        <div class="px-6 mb-5">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="p-4 rounded-2xl" style="background: linear-gradient(135deg, #8BA5A0, #9BB0A5)">
+              <i class="fas fa-heart text-white text-lg mb-2"></i>
+              <p class="text-sm font-medium text-white">我喜欢</p>
+              <p class="text-xs text-white/70 mt-0.5">12 首</p>
+            </div>
+            <div class="p-4 rounded-2xl" style="background: linear-gradient(135deg, #A3AEB5, #8BA5A0)">
+              <i class="fas fa-clock-rotate-left text-white text-lg mb-2"></i>
+              <p class="text-sm font-medium text-white">最近播放</p>
+              <p class="text-xs text-white/70 mt-0.5">28 首</p>
+            </div>
+          </div>
+        </div>
+        <!-- 自建歌单 -->
+        <div class="px-6">
+          <p class="text-xs font-medium mb-3" style="color:#95A5AA">自建歌单</p>
+          <div class="space-y-2">
+            <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFBFB">
+              <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #9BB0A5, #8BA5A0)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate" style="color:#3D4A4F">深夜静听</p>
+                <p class="text-xs mt-0.5" style="color:#6B7D82">8 首</p>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#95A5AA"></i>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFBFB">
+              <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #A3AEB5, #9BB0A5)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate" style="color:#3D4A4F">工作专注</p>
+                <p class="text-xs mt-0.5" style="color:#6B7D82">15 首</p>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#95A5AA"></i>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFBFB">
+              <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #8BA5A0, #A3AEB5)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate" style="color:#3D4A4F">周末漫步</p>
+                <p class="text-xs mt-0.5" style="color:#6B7D82">22 首</p>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#95A5AA"></i>
+            </div>
+          </div>
+        </div>
+        <div class="absolute bottom-14 left-3 right-3">
+          <div class="flex items-center gap-3 p-3 rounded-2xl shadow-lg" style="background:linear-gradient(135deg, #8BA5A0, #A3AEB5)">
+            <div class="w-10 h-10 rounded-lg flex-shrink-0" style="background:rgba(255,255,255,0.25)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-white truncate">Nuvole Bianche</p>
+              <p class="text-xs text-white/70 truncate">Ludovico Einaudi</p>
+            </div>
+            <i class="fas fa-heart text-xs text-white/80"></i>
+            <i class="fas fa-pause text-white text-sm mx-1"></i>
+            <i class="fas fa-forward-step text-white/80 text-xs"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 flex justify-around items-center py-3 border-t" style="background:#FAFBFB;border-color:#D5DEDD">
+          <div class="flex flex-col items-center">
+            <i class="fas fa-music text-base" style="color:#95A5AA"></i>
+            <span class="text-xs mt-1" style="color:#95A5AA">音乐库</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <i class="fas fa-list text-base" style="color:#8BA5A0"></i>
+            <span class="text-xs mt-1 font-medium" style="color:#8BA5A0">歌单</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========================================== -->
+<!-- 主题3: 素简之境 (现代简约莫兰迪) -->
+<!-- ========================================== -->
+<section id="theme3" class="theme-section mb-24">
+  <div class="mb-8">
+    <div class="flex items-center gap-4 mb-3">
+      <div class="w-3 h-3 rounded-full" style="background: linear-gradient(135deg, #A09890, #B5AEA4)"></div>
+      <h2 class="text-3xl font-bold text-neutral-800">Theme 3 -- 素简之境</h2>
+      <span class="text-sm text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">现代简约莫兰迪 (默认主题)</span>
+    </div>
+    <p class="text-neutral-500 ml-7">中性温和的灰棕调，克制而优雅，以暖灰与淡米为主色调，呈现无印良品般的极简质感。</p>
+    <div class="flex gap-3 mt-5 ml-7">
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#A09890"></div>
+        <span class="text-xs text-neutral-500">#A09890</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#B5AEA4"></div>
+        <span class="text-xs text-neutral-500">#B5AEA4</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#A8A098"></div>
+        <span class="text-xs text-neutral-500">#A8A098</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#EDEAE6"></div>
+        <span class="text-xs text-neutral-500">#EDEAE6</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#4A4540"></div>
+        <span class="text-xs text-neutral-500">#4A4540</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#F5F3F0"></div>
+        <span class="text-xs text-neutral-500">#F5F3F0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-10 items-start">
+    <!-- 音乐库页面 -->
+    <div class="phone-frame border-4" style="border-color:#DDD9D4">
+      <div class="phone-inner" style="background:#F5F3F0">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#4A4540">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#4A4540"></i>
+            <i class="fas fa-wifi text-xs" style="color:#4A4540"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#4A4540"></i>
+          </div>
+        </div>
+        <div class="px-6 pt-2 pb-4 flex justify-between items-center">
+          <h3 class="text-2xl font-bold" style="color:#4A4540">音乐库</h3>
+          <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:#D8D3CC">
+            <i class="fas fa-gear text-sm" style="color:#8A827A"></i>
+          </div>
+        </div>
+        <div class="px-6 mb-4">
+          <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl" style="background:#EDEAE6">
+            <i class="fas fa-search text-sm" style="color:#A09A94"></i>
+            <span class="text-sm" style="color:#A09A94">搜索歌曲、艺术家</span>
+          </div>
+        </div>
+        <div class="flex gap-2 px-6 mb-5 overflow-x-auto">
+          <span class="px-4 py-1.5 rounded-full text-sm font-medium text-white whitespace-nowrap" style="background: linear-gradient(135deg, #A09890, #B5AEA4)">全部歌曲</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#EDEAE6;color:#7A746E">艺术家</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#EDEAE6;color:#7A746E">专辑</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#EDEAE6;color:#7A746E">歌单</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#EDEAE6;color:#7A746E">收藏</span>
+        </div>
+        <div class="px-6 space-y-1">
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFAF8">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #A09890, #B5AEA4)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#4A4540">Nocturne Op.9 No.2</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#7A746E">Frederic Chopin</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#A09890"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFAF8">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #B5AEA4, #A8A098)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#4A4540">Moonlight Sonata</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#7A746E">Ludwig van Beethoven</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#A09890"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFAF8">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #A8A098, #A09890)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#4A4540">Fur Elise</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#7A746E">Ludwig van Beethoven</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#A09890"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFAF8">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #A09890, #A8A098)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#4A4540">Canon in D Major</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#7A746E">Johann Pachelbel</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#A09890"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FAFAF8">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #B5AEA4, #A09890)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#4A4540">Spring (Four Seasons)</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#7A746E">Antonio Vivaldi</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#A09890"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-14 left-3 right-3">
+          <div class="flex items-center gap-3 p-3 rounded-2xl shadow-lg" style="background:linear-gradient(135deg, #A09890, #B5AEA4)">
+            <div class="w-10 h-10 rounded-lg flex-shrink-0" style="background:rgba(255,255,255,0.2)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-white truncate">Moonlight Sonata</p>
+              <p class="text-xs text-white/70 truncate">Beethoven</p>
+            </div>
+            <i class="fas fa-heart text-xs text-white/80"></i>
+            <i class="fas fa-pause text-white text-sm mx-1"></i>
+            <i class="fas fa-forward-step text-white/80 text-xs"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 flex justify-around items-center py-3 border-t" style="background:#FAFAF8;border-color:#DDD9D4">
+          <div class="flex flex-col items-center">
+            <i class="fas fa-music text-base" style="color:#A09890"></i>
+            <span class="text-xs mt-1 font-medium" style="color:#A09890">音乐库</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <i class="fas fa-list text-base" style="color:#A09A94"></i>
+            <span class="text-xs mt-1" style="color:#A09A94">歌单</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 播放器页面 -->
+    <div class="phone-frame border-4" style="border-color:#DDD9D4">
+      <div class="phone-inner" style="background: linear-gradient(180deg, #F5F3F0 0%, #EDEAE6 50%, #D8D3CC 100%)">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#4A4540">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#4A4540"></i>
+            <i class="fas fa-wifi text-xs" style="color:#4A4540"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#4A4540"></i>
+          </div>
+        </div>
+        <div class="flex justify-between items-center px-6 pt-2 pb-4">
+          <i class="fas fa-chevron-down text-lg" style="color:#4A4540"></i>
+          <span class="text-sm font-medium" style="color:#7A746E">正在播放</span>
+          <i class="fas fa-ellipsis text-lg" style="color:#4A4540"></i>
+        </div>
+        <div class="px-10 mt-4 mb-8">
+          <div class="aspect-square rounded-3xl shadow-xl" style="background: linear-gradient(135deg, #A09890, #B5AEA4, #A8A098)"></div>
+        </div>
+        <div class="px-8 flex justify-between items-start mb-6">
+          <div>
+            <h4 class="text-xl font-bold" style="color:#4A4540">Moonlight Sonata</h4>
+            <p class="text-sm mt-1" style="color:#7A746E">Ludwig van Beethoven</p>
+          </div>
+          <i class="fas fa-heart text-xl" style="color:#A09890"></i>
+        </div>
+        <div class="px-8 mb-4">
+          <div class="progress-bar w-full" style="background:#DDD9D4">
+            <div class="progress-bar w-1/3" style="background: linear-gradient(90deg, #A09890, #B5AEA4)"></div>
+          </div>
+          <div class="flex justify-between mt-1.5">
+            <span class="text-xs" style="color:#A09A94">2:10</span>
+            <span class="text-xs" style="color:#A09A94">6:24</span>
+          </div>
+        </div>
+        <div class="flex justify-center items-center gap-8 px-8 mb-6">
+          <i class="fas fa-shuffle text-base" style="color:#7A746E"></i>
+          <i class="fas fa-backward-step text-xl" style="color:#4A4540"></i>
+          <div class="w-14 h-14 rounded-full flex items-center justify-center shadow-md" style="background: linear-gradient(135deg, #A09890, #B5AEA4)">
+            <i class="fas fa-pause text-white text-xl pl-0.5"></i>
+          </div>
+          <i class="fas fa-forward-step text-xl" style="color:#4A4540"></i>
+          <i class="fas fa-repeat text-base" style="color:#7A746E"></i>
+        </div>
+        <div class="flex justify-center items-center gap-10 px-8">
+          <i class="fas fa-volume-high text-sm" style="color:#7A746E"></i>
+          <i class="fas fa-list-ul text-sm" style="color:#7A746E"></i>
+          <i class="fas fa-sliders text-sm" style="color:#7A746E"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置页面 -->
+    <div class="phone-frame border-4" style="border-color:#DDD9D4">
+      <div class="phone-inner" style="background:#F5F3F0">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#4A4540">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#4A4540"></i>
+            <i class="fas fa-wifi text-xs" style="color:#4A4540"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#4A4540"></i>
+          </div>
+        </div>
+        <div class="px-6 pt-2 pb-4 flex items-center gap-3">
+          <i class="fas fa-chevron-left" style="color:#A09890"></i>
+          <h3 class="text-2xl font-bold" style="color:#4A4540">设置</h3>
+        </div>
+        <div class="px-6 space-y-3">
+          <div class="rounded-2xl overflow-hidden" style="background:#FAFAF8">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#D8D3CC">
+                  <i class="fas fa-download text-sm" style="color:#8A827A"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#4A4540">导入</span>
+              </div>
+              <i class="fas fa-chevron-down text-xs" style="color:#A09A94"></i>
+            </div>
+            <div class="px-4 pb-3 space-y-2">
+              <div class="flex items-center gap-3 p-2.5 rounded-xl" style="background:#F5F3F0">
+                <i class="fas fa-file-audio text-sm" style="color:#A09890"></i>
+                <span class="text-xs" style="color:#7A746E">文件导入</span>
+              </div>
+              <div class="flex items-center gap-3 p-2.5 rounded-xl" style="background:#F5F3F0">
+                <i class="fab fa-apple text-sm" style="color:#A09890"></i>
+                <span class="text-xs" style="color:#7A746E">从 Apple Music 资料库导入</span>
+              </div>
+              <div class="flex items-center gap-3 p-2.5 rounded-xl" style="background:#F5F3F0">
+                <i class="fas fa-wifi text-sm" style="color:#A09890"></i>
+                <span class="text-xs" style="color:#7A746E">WiFi 传输</span>
+              </div>
+            </div>
+          </div>
+          <div class="rounded-2xl overflow-hidden" style="background:#FAFAF8">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#D8D3CC">
+                  <i class="fas fa-palette text-sm" style="color:#8A827A"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#4A4540">外观</span>
+              </div>
+              <i class="fas fa-chevron-down text-xs" style="color:#A09A94"></i>
+            </div>
+            <div class="px-4 pb-3 space-y-2">
+              <div class="flex items-center justify-between p-2.5 rounded-xl" style="background:#F5F3F0">
+                <span class="text-xs" style="color:#7A746E">显示模式</span>
+                <span class="text-xs font-medium" style="color:#A09890">跟随系统</span>
+              </div>
+              <div>
+                <p class="text-xs mb-2 px-1" style="color:#7A746E">主题风格</p>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="p-2 rounded-xl text-center" style="background:#F5F3F0">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #D4A5A5, #C9B1BD)"></div>
+                    <span class="text-xs" style="color:#7A746E">玫瑰梦境</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background:#F5F3F0">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #8BA5A0, #A3AEB5)"></div>
+                    <span class="text-xs" style="color:#7A746E">霜色风雅</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center ring-2" style="background:#F5F3F0;ring-color:#A09890">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #A09890, #B5AEA4)"></div>
+                    <span class="text-xs" style="color:#4A4540">素简之境</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background:#F5F3F0">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #C4A882, #D4A28E)"></div>
+                    <span class="text-xs" style="color:#7A746E">暖阳拾光</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background:#F5F3F0">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #7E8FA5, #6B7A8A)"></div>
+                    <span class="text-xs" style="color:#7A746E">数字迷雾</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="rounded-2xl overflow-hidden" style="background:#FAFAF8">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#D8D3CC">
+                  <i class="fas fa-play text-sm" style="color:#8A827A"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#4A4540">播放</span>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#A09A94"></i>
+            </div>
+          </div>
+          <div class="rounded-2xl overflow-hidden" style="background:#FAFAF8">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#D8D3CC">
+                  <i class="fas fa-circle-info text-sm" style="color:#8A827A"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#4A4540">关于</span>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#A09A94"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========================================== -->
+<!-- 主题4: 暖阳拾光 (温暖莫兰迪) -->
+<!-- ========================================== -->
+<section id="theme4" class="theme-section mb-24">
+  <div class="mb-8">
+    <div class="flex items-center gap-4 mb-3">
+      <div class="w-3 h-3 rounded-full" style="background: linear-gradient(135deg, #C4A882, #D4A28E)"></div>
+      <h2 class="text-3xl font-bold text-neutral-800">Theme 4 -- 暖阳拾光</h2>
+      <span class="text-sm text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">温暖莫兰迪</span>
+    </div>
+    <p class="text-neutral-500 ml-7">柔和温润的暖棕调，如午后阳光洒落，以低饱和焦糖色与暖杏色为主色调，给人温暖治愈的感受。</p>
+    <div class="flex gap-3 mt-5 ml-7">
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#C4A882"></div>
+        <span class="text-xs text-neutral-500">#C4A882</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#D4A28E"></div>
+        <span class="text-xs text-neutral-500">#D4A28E</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#C8AD90"></div>
+        <span class="text-xs text-neutral-500">#C8AD90</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#F0E6DA"></div>
+        <span class="text-xs text-neutral-500">#F0E6DA</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#5C4B3C"></div>
+        <span class="text-xs text-neutral-500">#5C4B3C</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#F8F0E8"></div>
+        <span class="text-xs text-neutral-500">#F8F0E8</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-10 items-start">
+    <!-- 音乐库页面 -->
+    <div class="phone-frame border-4" style="border-color:#E6D8C8">
+      <div class="phone-inner" style="background:#F8F0E8">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#5C4B3C">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#5C4B3C"></i>
+            <i class="fas fa-wifi text-xs" style="color:#5C4B3C"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#5C4B3C"></i>
+          </div>
+        </div>
+        <div class="px-6 pt-2 pb-4 flex justify-between items-center">
+          <h3 class="text-2xl font-bold" style="color:#5C4B3C">音乐库</h3>
+          <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:#E8D6C2">
+            <i class="fas fa-gear text-sm" style="color:#AD926C"></i>
+          </div>
+        </div>
+        <div class="px-6 mb-4">
+          <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl" style="background:#F0E6DA">
+            <i class="fas fa-search text-sm" style="color:#AC9A88"></i>
+            <span class="text-sm" style="color:#AC9A88">搜索歌曲、艺术家</span>
+          </div>
+        </div>
+        <div class="flex gap-2 px-6 mb-5 overflow-x-auto">
+          <span class="px-4 py-1.5 rounded-full text-sm font-medium text-white whitespace-nowrap" style="background: linear-gradient(135deg, #C4A882, #D4A28E)">全部歌曲</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#F0E6DA;color:#8A7462">艺术家</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#F0E6DA;color:#8A7462">专辑</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#F0E6DA;color:#8A7462">歌单</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#F0E6DA;color:#8A7462">收藏</span>
+        </div>
+        <div class="px-6 space-y-1">
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FDFAF6">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #C4A882, #D4A28E)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#5C4B3C">Sunflower</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#8A7462">Post Malone</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#C4A882"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FDFAF6">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #D4A28E, #C8AD90)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#5C4B3C">Golden Hour</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#8A7462">JVKE</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#C4A882"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FDFAF6">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #C8AD90, #C4A882)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#5C4B3C">Here Comes The Sun</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#8A7462">The Beatles</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#C4A882"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FDFAF6">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #C4A882, #C8AD90)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#5C4B3C">Warm On A Cold Night</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#8A7462">HONNE</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#C4A882"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FDFAF6">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #D4A28E, #C4A882)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#5C4B3C">Harvest Moon</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#8A7462">Neil Young</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#C4A882"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-14 left-3 right-3">
+          <div class="flex items-center gap-3 p-3 rounded-2xl shadow-lg" style="background:linear-gradient(135deg, #C4A882, #D4A28E)">
+            <div class="w-10 h-10 rounded-lg flex-shrink-0" style="background:rgba(255,255,255,0.25)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-white truncate">Golden Hour</p>
+              <p class="text-xs text-white/70 truncate">JVKE</p>
+            </div>
+            <i class="fas fa-heart text-xs text-white/80"></i>
+            <i class="fas fa-pause text-white text-sm mx-1"></i>
+            <i class="fas fa-forward-step text-white/80 text-xs"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 flex justify-around items-center py-3 border-t" style="background:#FDFAF6;border-color:#E6D8C8">
+          <div class="flex flex-col items-center">
+            <i class="fas fa-music text-base" style="color:#C4A882"></i>
+            <span class="text-xs mt-1 font-medium" style="color:#C4A882">音乐库</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <i class="fas fa-list text-base" style="color:#AC9A88"></i>
+            <span class="text-xs mt-1" style="color:#AC9A88">歌单</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 播放器页面 -->
+    <div class="phone-frame border-4" style="border-color:#E6D8C8">
+      <div class="phone-inner" style="background: linear-gradient(180deg, #F8F0E8 0%, #F0E6DA 50%, #E8D6C2 100%)">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#5C4B3C">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#5C4B3C"></i>
+            <i class="fas fa-wifi text-xs" style="color:#5C4B3C"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#5C4B3C"></i>
+          </div>
+        </div>
+        <div class="flex justify-between items-center px-6 pt-2 pb-4">
+          <i class="fas fa-chevron-down text-lg" style="color:#5C4B3C"></i>
+          <span class="text-sm font-medium" style="color:#8A7462">正在播放</span>
+          <i class="fas fa-ellipsis text-lg" style="color:#5C4B3C"></i>
+        </div>
+        <div class="px-10 mt-4 mb-8">
+          <div class="aspect-square rounded-3xl shadow-xl" style="background: linear-gradient(135deg, #C4A882, #D4A28E, #C8AD90)"></div>
+        </div>
+        <div class="px-8 flex justify-between items-start mb-6">
+          <div>
+            <h4 class="text-xl font-bold" style="color:#5C4B3C">Golden Hour</h4>
+            <p class="text-sm mt-1" style="color:#8A7462">JVKE</p>
+          </div>
+          <i class="fas fa-heart text-xl" style="color:#D4A28E"></i>
+        </div>
+        <div class="px-8 mb-4">
+          <div class="progress-bar w-full" style="background:#E6D8C8">
+            <div class="progress-bar w-3/4" style="background: linear-gradient(90deg, #C4A882, #D4A28E)"></div>
+          </div>
+          <div class="flex justify-between mt-1.5">
+            <span class="text-xs" style="color:#AC9A88">2:18</span>
+            <span class="text-xs" style="color:#AC9A88">3:29</span>
+          </div>
+        </div>
+        <div class="flex justify-center items-center gap-8 px-8 mb-6">
+          <i class="fas fa-shuffle text-base" style="color:#8A7462"></i>
+          <i class="fas fa-backward-step text-xl" style="color:#5C4B3C"></i>
+          <div class="w-14 h-14 rounded-full flex items-center justify-center shadow-md" style="background: linear-gradient(135deg, #C4A882, #D4A28E)">
+            <i class="fas fa-pause text-white text-xl pl-0.5"></i>
+          </div>
+          <i class="fas fa-forward-step text-xl" style="color:#5C4B3C"></i>
+          <i class="fas fa-repeat text-base" style="color:#8A7462"></i>
+        </div>
+        <div class="flex justify-center items-center gap-10 px-8">
+          <i class="fas fa-volume-high text-sm" style="color:#8A7462"></i>
+          <i class="fas fa-list-ul text-sm" style="color:#8A7462"></i>
+          <i class="fas fa-sliders text-sm" style="color:#8A7462"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 歌单页面 -->
+    <div class="phone-frame border-4" style="border-color:#E6D8C8">
+      <div class="phone-inner" style="background:#F8F0E8">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#5C4B3C">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#5C4B3C"></i>
+            <i class="fas fa-wifi text-xs" style="color:#5C4B3C"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#5C4B3C"></i>
+          </div>
+        </div>
+        <div class="px-6 pt-2 pb-4 flex justify-between items-center">
+          <h3 class="text-2xl font-bold" style="color:#5C4B3C">歌单</h3>
+          <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:#E8D6C2">
+            <i class="fas fa-plus text-sm" style="color:#AD926C"></i>
+          </div>
+        </div>
+        <div class="px-6 mb-5">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="p-4 rounded-2xl" style="background: linear-gradient(135deg, #D4A28E, #C8AD90)">
+              <i class="fas fa-heart text-white text-lg mb-2"></i>
+              <p class="text-sm font-medium text-white">我喜欢</p>
+              <p class="text-xs text-white/70 mt-0.5">18 首</p>
+            </div>
+            <div class="p-4 rounded-2xl" style="background: linear-gradient(135deg, #C4A882, #C8AD90)">
+              <i class="fas fa-clock-rotate-left text-white text-lg mb-2"></i>
+              <p class="text-sm font-medium text-white">最近播放</p>
+              <p class="text-xs text-white/70 mt-0.5">35 首</p>
+            </div>
+          </div>
+        </div>
+        <div class="px-6">
+          <p class="text-xs font-medium mb-3" style="color:#AC9A88">自建歌单</p>
+          <div class="space-y-2">
+            <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FDFAF6">
+              <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #C4A882, #D4A28E)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate" style="color:#5C4B3C">午后咖啡</p>
+                <p class="text-xs mt-0.5" style="color:#8A7462">16 首</p>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#AC9A88"></i>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FDFAF6">
+              <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #D4A28E, #C8AD90)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate" style="color:#5C4B3C">周杰伦精选</p>
+                <p class="text-xs mt-0.5" style="color:#8A7462">42 首</p>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#AC9A88"></i>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#FDFAF6">
+              <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #C8AD90, #C4A882)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium truncate" style="color:#5C4B3C">驾车出行</p>
+                <p class="text-xs mt-0.5" style="color:#8A7462">30 首</p>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#AC9A88"></i>
+            </div>
+          </div>
+        </div>
+        <div class="absolute bottom-14 left-3 right-3">
+          <div class="flex items-center gap-3 p-3 rounded-2xl shadow-lg" style="background:linear-gradient(135deg, #C4A882, #D4A28E)">
+            <div class="w-10 h-10 rounded-lg flex-shrink-0" style="background:rgba(255,255,255,0.25)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-white truncate">Golden Hour</p>
+              <p class="text-xs text-white/70 truncate">JVKE</p>
+            </div>
+            <i class="fas fa-heart text-xs text-white/80"></i>
+            <i class="fas fa-pause text-white text-sm mx-1"></i>
+            <i class="fas fa-forward-step text-white/80 text-xs"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 flex justify-around items-center py-3 border-t" style="background:#FDFAF6;border-color:#E6D8C8">
+          <div class="flex flex-col items-center">
+            <i class="fas fa-music text-base" style="color:#AC9A88"></i>
+            <span class="text-xs mt-1" style="color:#AC9A88">音乐库</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <i class="fas fa-list text-base" style="color:#C4A882"></i>
+            <span class="text-xs mt-1 font-medium" style="color:#C4A882">歌单</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========================================== -->
+<!-- 主题5: 数字迷雾 (科技莫兰迪) -->
+<!-- ========================================== -->
+<section id="theme5" class="theme-section mb-24">
+  <div class="mb-8">
+    <div class="flex items-center gap-4 mb-3">
+      <div class="w-3 h-3 rounded-full" style="background: linear-gradient(135deg, #7E8FA5, #6B7A8A)"></div>
+      <h2 class="text-3xl font-bold text-neutral-800">Theme 5 -- 数字迷雾</h2>
+      <span class="text-sm text-neutral-500 bg-neutral-100 px-3 py-1 rounded-full">科技莫兰迪</span>
+    </div>
+    <p class="text-neutral-500 ml-7">深邃沉稳的暗色科技感，以低饱和灰蓝与深空灰为主色调，在暗色背景上呈现克制而高级的科技质感。</p>
+    <div class="flex gap-3 mt-5 ml-7">
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#7E8FA5"></div>
+        <span class="text-xs text-neutral-500">#7E8FA5</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#6B7A8A"></div>
+        <span class="text-xs text-neutral-500">#6B7A8A</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#8A97A8"></div>
+        <span class="text-xs text-neutral-500">#8A97A8</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#262A32"></div>
+        <span class="text-xs text-neutral-500">#262A32</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#D0D4DA"></div>
+        <span class="text-xs text-neutral-500">#D0D4DA</span>
+      </div>
+      <div class="text-center">
+        <div class="color-dot mb-1" style="background:#1E2128"></div>
+        <span class="text-xs text-neutral-500">#1E2128</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-10 items-start">
+    <!-- 音乐库页面 -->
+    <div class="phone-frame border-4" style="border-color:#3A4050">
+      <div class="phone-inner" style="background:#1E2128">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#D0D4DA">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#D0D4DA"></i>
+            <i class="fas fa-wifi text-xs" style="color:#D0D4DA"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#D0D4DA"></i>
+          </div>
+        </div>
+        <div class="px-6 pt-2 pb-4 flex justify-between items-center">
+          <h3 class="text-2xl font-bold" style="color:#D0D4DA">音乐库</h3>
+          <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:#353B48">
+            <i class="fas fa-gear text-sm" style="color:#7E8FA5"></i>
+          </div>
+        </div>
+        <div class="px-6 mb-4">
+          <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl" style="background:#262A32">
+            <i class="fas fa-search text-sm" style="color:#6B7280"></i>
+            <span class="text-sm" style="color:#6B7280">搜索歌曲、艺术家</span>
+          </div>
+        </div>
+        <div class="flex gap-2 px-6 mb-5 overflow-x-auto">
+          <span class="px-4 py-1.5 rounded-full text-sm font-medium text-white whitespace-nowrap" style="background: linear-gradient(135deg, #7E8FA5, #6B7A8A)">全部歌曲</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#262A32;color:#9AA0AC">艺术家</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#262A32;color:#9AA0AC">专辑</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#262A32;color:#9AA0AC">歌单</span>
+          <span class="px-4 py-1.5 rounded-full text-sm whitespace-nowrap" style="background:#262A32;color:#9AA0AC">收藏</span>
+        </div>
+        <div class="px-6 space-y-1">
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#2C313A">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #7E8FA5, #6B7A8A)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#D0D4DA">Strobe</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#9AA0AC">deadmau5</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#7E8FA5"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#2C313A">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #6B7A8A, #8A97A8)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#D0D4DA">Midnight City</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#9AA0AC">M83</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#7E8FA5"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#2C313A">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #8A97A8, #7E8FA5)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#D0D4DA">Resonance</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#9AA0AC">HOME</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#7E8FA5"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#2C313A">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #7E8FA5, #8A97A8)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#D0D4DA">Intro</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#9AA0AC">The xx</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#7E8FA5"></i>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-2xl" style="background:#2C313A">
+            <div class="w-12 h-12 rounded-xl flex-shrink-0" style="background: linear-gradient(135deg, #6B7A8A, #7E8FA5)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate" style="color:#D0D4DA">Teardrop</p>
+              <p class="text-xs mt-0.5 truncate" style="color:#9AA0AC">Massive Attack</p>
+            </div>
+            <i class="fas fa-play text-xs" style="color:#7E8FA5"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-14 left-3 right-3">
+          <div class="flex items-center gap-3 p-3 rounded-2xl shadow-lg" style="background:linear-gradient(135deg, #7E8FA5, #6B7A8A)">
+            <div class="w-10 h-10 rounded-lg flex-shrink-0" style="background:rgba(255,255,255,0.15)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-white truncate">Midnight City</p>
+              <p class="text-xs text-white/70 truncate">M83</p>
+            </div>
+            <i class="fas fa-heart text-xs text-white/80"></i>
+            <i class="fas fa-pause text-white text-sm mx-1"></i>
+            <i class="fas fa-forward-step text-white/80 text-xs"></i>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 flex justify-around items-center py-3 border-t" style="background:#2C313A;border-color:#3A4050">
+          <div class="flex flex-col items-center">
+            <i class="fas fa-music text-base" style="color:#7E8FA5"></i>
+            <span class="text-xs mt-1 font-medium" style="color:#7E8FA5">音乐库</span>
+          </div>
+          <div class="flex flex-col items-center">
+            <i class="fas fa-list text-base" style="color:#6B7280"></i>
+            <span class="text-xs mt-1" style="color:#6B7280">歌单</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 播放器页面 -->
+    <div class="phone-frame border-4" style="border-color:#3A4050">
+      <div class="phone-inner" style="background: linear-gradient(180deg, #1E2128 0%, #262A32 50%, #2C313A 100%)">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#D0D4DA">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#D0D4DA"></i>
+            <i class="fas fa-wifi text-xs" style="color:#D0D4DA"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#D0D4DA"></i>
+          </div>
+        </div>
+        <div class="flex justify-between items-center px-6 pt-2 pb-4">
+          <i class="fas fa-chevron-down text-lg" style="color:#D0D4DA"></i>
+          <span class="text-sm font-medium" style="color:#9AA0AC">正在播放</span>
+          <i class="fas fa-ellipsis text-lg" style="color:#D0D4DA"></i>
+        </div>
+        <div class="px-10 mt-4 mb-8">
+          <div class="aspect-square rounded-3xl shadow-2xl" style="background: linear-gradient(135deg, #7E8FA5, #6B7A8A, #8A97A8)"></div>
+        </div>
+        <div class="px-8 flex justify-between items-start mb-6">
+          <div>
+            <h4 class="text-xl font-bold" style="color:#D0D4DA">Midnight City</h4>
+            <p class="text-sm mt-1" style="color:#9AA0AC">M83</p>
+          </div>
+          <i class="fas fa-heart text-xl" style="color:#7E8FA5"></i>
+        </div>
+        <div class="px-8 mb-4">
+          <div class="progress-bar w-full" style="background:#3A4050">
+            <div class="progress-bar w-1/2" style="background: linear-gradient(90deg, #7E8FA5, #8A97A8)"></div>
+          </div>
+          <div class="flex justify-between mt-1.5">
+            <span class="text-xs" style="color:#6B7280">2:02</span>
+            <span class="text-xs" style="color:#6B7280">4:03</span>
+          </div>
+        </div>
+        <div class="flex justify-center items-center gap-8 px-8 mb-6">
+          <i class="fas fa-shuffle text-base" style="color:#9AA0AC"></i>
+          <i class="fas fa-backward-step text-xl" style="color:#D0D4DA"></i>
+          <div class="w-14 h-14 rounded-full flex items-center justify-center shadow-md" style="background: linear-gradient(135deg, #7E8FA5, #6B7A8A)">
+            <i class="fas fa-pause text-white text-xl pl-0.5"></i>
+          </div>
+          <i class="fas fa-forward-step text-xl" style="color:#D0D4DA"></i>
+          <i class="fas fa-repeat text-base" style="color:#9AA0AC"></i>
+        </div>
+        <div class="flex justify-center items-center gap-10 px-8">
+          <i class="fas fa-volume-high text-sm" style="color:#9AA0AC"></i>
+          <i class="fas fa-list-ul text-sm" style="color:#9AA0AC"></i>
+          <i class="fas fa-sliders text-sm" style="color:#9AA0AC"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置页面 -->
+    <div class="phone-frame border-4" style="border-color:#3A4050">
+      <div class="phone-inner" style="background:#1E2128">
+        <div class="flex justify-between items-center px-6 pt-4 pb-2">
+          <span class="text-sm font-medium" style="color:#D0D4DA">9:41</span>
+          <div class="flex gap-1.5">
+            <i class="fas fa-signal text-xs" style="color:#D0D4DA"></i>
+            <i class="fas fa-wifi text-xs" style="color:#D0D4DA"></i>
+            <i class="fas fa-battery-full text-xs" style="color:#D0D4DA"></i>
+          </div>
+        </div>
+        <div class="px-6 pt-2 pb-4 flex items-center gap-3">
+          <i class="fas fa-chevron-left" style="color:#7E8FA5"></i>
+          <h3 class="text-2xl font-bold" style="color:#D0D4DA">设置</h3>
+        </div>
+        <div class="px-6 space-y-3">
+          <div class="rounded-2xl overflow-hidden" style="background:#2C313A">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#353B48">
+                  <i class="fas fa-download text-sm" style="color:#7E8FA5"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#D0D4DA">导入</span>
+              </div>
+              <i class="fas fa-chevron-down text-xs" style="color:#6B7280"></i>
+            </div>
+            <div class="px-4 pb-3 space-y-2">
+              <div class="flex items-center gap-3 p-2.5 rounded-xl" style="background:#1E2128">
+                <i class="fas fa-file-audio text-sm" style="color:#7E8FA5"></i>
+                <span class="text-xs" style="color:#9AA0AC">文件导入</span>
+              </div>
+              <div class="flex items-center gap-3 p-2.5 rounded-xl" style="background:#1E2128">
+                <i class="fab fa-apple text-sm" style="color:#7E8FA5"></i>
+                <span class="text-xs" style="color:#9AA0AC">从 Apple Music 资料库导入</span>
+              </div>
+              <div class="flex items-center gap-3 p-2.5 rounded-xl" style="background:#1E2128">
+                <i class="fas fa-wifi text-sm" style="color:#7E8FA5"></i>
+                <span class="text-xs" style="color:#9AA0AC">WiFi 传输</span>
+              </div>
+            </div>
+          </div>
+          <div class="rounded-2xl overflow-hidden" style="background:#2C313A">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#353B48">
+                  <i class="fas fa-palette text-sm" style="color:#7E8FA5"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#D0D4DA">外观</span>
+              </div>
+              <i class="fas fa-chevron-down text-xs" style="color:#6B7280"></i>
+            </div>
+            <div class="px-4 pb-3 space-y-2">
+              <div class="flex items-center justify-between p-2.5 rounded-xl" style="background:#1E2128">
+                <span class="text-xs" style="color:#9AA0AC">显示模式</span>
+                <span class="text-xs font-medium" style="color:#7E8FA5">深色模式</span>
+              </div>
+              <div>
+                <p class="text-xs mb-2 px-1" style="color:#9AA0AC">主题风格</p>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="p-2 rounded-xl text-center" style="background:#1E2128">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #D4A5A5, #C9B1BD)"></div>
+                    <span class="text-xs" style="color:#6B7280">玫瑰梦境</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background:#1E2128">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #8BA5A0, #A3AEB5)"></div>
+                    <span class="text-xs" style="color:#6B7280">霜色风雅</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background:#1E2128">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #A09890, #B5AEA4)"></div>
+                    <span class="text-xs" style="color:#6B7280">素简之境</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center" style="background:#1E2128">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #C4A882, #D4A28E)"></div>
+                    <span class="text-xs" style="color:#6B7280">暖阳拾光</span>
+                  </div>
+                  <div class="p-2 rounded-xl text-center ring-2" style="background:#1E2128;ring-color:#7E8FA5">
+                    <div class="w-full h-6 rounded-lg mb-1" style="background: linear-gradient(135deg, #7E8FA5, #6B7A8A)"></div>
+                    <span class="text-xs" style="color:#D0D4DA">数字迷雾</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="rounded-2xl overflow-hidden" style="background:#2C313A">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#353B48">
+                  <i class="fas fa-play text-sm" style="color:#7E8FA5"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#D0D4DA">播放</span>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#6B7280"></i>
+            </div>
+          </div>
+          <div class="rounded-2xl overflow-hidden" style="background:#2C313A">
+            <div class="flex items-center justify-between p-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#353B48">
+                  <i class="fas fa-circle-info text-sm" style="color:#7E8FA5"></i>
+                </div>
+                <span class="text-sm font-medium" style="color:#D0D4DA">关于</span>
+              </div>
+              <i class="fas fa-chevron-right text-xs" style="color:#6B7280"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 底部色彩汇总 -->
+<section class="mb-16">
+  <h2 class="text-2xl font-bold text-neutral-800 mb-8">Color Token Reference -- iOS 开发色值参考</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b-2 border-neutral-300">
+          <th class="text-left py-3 px-4 font-semibold text-neutral-600">Token</th>
+          <th class="text-center py-3 px-4 font-semibold" style="color:#6B4F5F">玫瑰梦境</th>
+          <th class="text-center py-3 px-4 font-semibold" style="color:#3D4A4F">霜色风雅</th>
+          <th class="text-center py-3 px-4 font-semibold" style="color:#4A4540">素简之境</th>
+          <th class="text-center py-3 px-4 font-semibold" style="color:#5C4B3C">暖阳拾光</th>
+          <th class="text-center py-3 px-4 font-semibold" style="color:#D0D4DA">数字迷雾</th>
+        </tr>
+      </thead>
+      <tbody class="text-xs">
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">background</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#FDF0ED"></span><br>#FDF0ED</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#EFF2F1"></span><br>#EFF2F1</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#F5F3F0"></span><br>#F5F3F0</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#F8F0E8"></span><br>#F8F0E8</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#1E2128;border:1px solid #3A4050"></span><br>#1E2128</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">backgroundSecondary</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#F9E4DF"></span><br>#F9E4DF</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#E4EAE8"></span><br>#E4EAE8</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#EDEAE6"></span><br>#EDEAE6</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#F0E6DA"></span><br>#F0E6DA</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#262A32;border:1px solid #3A4050"></span><br>#262A32</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">card</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#FFFFFF"></span><br>#FFFFFF</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#FAFBFB"></span><br>#FAFBFB</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#FAFAF8"></span><br>#FAFAF8</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#FDFAF6"></span><br>#FDFAF6</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#2C313A;border:1px solid #3A4050"></span><br>#2C313A</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">primary</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#D4A5A5"></span><br>#D4A5A5</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#8BA5A0"></span><br>#8BA5A0</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#A09890"></span><br>#A09890</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#C4A882"></span><br>#C4A882</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#7E8FA5"></span><br>#7E8FA5</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">primaryDark</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#C08E8E"></span><br>#C08E8E</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#728F89"></span><br>#728F89</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#8A827A"></span><br>#8A827A</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#AD926C"></span><br>#AD926C</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#6A7B91"></span><br>#6A7B91</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">secondary</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#C9B1BD"></span><br>#C9B1BD</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#A3AEB5"></span><br>#A3AEB5</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#B5AEA4"></span><br>#B5AEA4</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#D4A28E"></span><br>#D4A28E</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#6B7A8A"></span><br>#6B7A8A</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">accent</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#E2BAA8"></span><br>#E2BAA8</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#9BB0A5"></span><br>#9BB0A5</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#A8A098"></span><br>#A8A098</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#C8AD90"></span><br>#C8AD90</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#8A97A8"></span><br>#8A97A8</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">textPrimary</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#6B4F5F"></span><br>#6B4F5F</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#3D4A4F"></span><br>#3D4A4F</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#4A4540"></span><br>#4A4540</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#5C4B3C"></span><br>#5C4B3C</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#D0D4DA"></span><br>#D0D4DA</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">textSecondary</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#9A7E8A"></span><br>#9A7E8A</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#6B7D82"></span><br>#6B7D82</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#7A746E"></span><br>#7A746E</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#8A7462"></span><br>#8A7462</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#9AA0AC"></span><br>#9AA0AC</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">textTertiary</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#BFA3AF"></span><br>#BFA3AF</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#95A5AA"></span><br>#95A5AA</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#A09A94"></span><br>#A09A94</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#AC9A88"></span><br>#AC9A88</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#6B7280"></span><br>#6B7280</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">border</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#EEDAD5"></span><br>#EEDAD5</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#D5DEDD"></span><br>#D5DEDD</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#DDD9D4"></span><br>#DDD9D4</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#E6D8C8"></span><br>#E6D8C8</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#3A4050;border:1px solid #4A5060"></span><br>#3A4050</td>
+        </tr>
+        <tr class="border-b border-neutral-200">
+          <td class="py-3 px-4 font-medium text-neutral-700">gradientFrom</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#D4A5A5"></span><br>#D4A5A5</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#8BA5A0"></span><br>#8BA5A0</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#A09890"></span><br>#A09890</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#C4A882"></span><br>#C4A882</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#7E8FA5"></span><br>#7E8FA5</td>
+        </tr>
+        <tr>
+          <td class="py-3 px-4 font-medium text-neutral-700">gradientTo</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#C9B1BD"></span><br>#C9B1BD</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#A3AEB5"></span><br>#A3AEB5</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#B5AEA4"></span><br>#B5AEA4</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#D4A28E"></span><br>#D4A28E</td>
+          <td class="text-center py-3 px-4"><span class="inline-block w-5 h-5 rounded" style="background:#6B7A8A"></span><br>#6B7A8A</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+
+</body>
+</html>

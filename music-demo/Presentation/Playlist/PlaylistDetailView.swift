@@ -4,12 +4,14 @@ struct PlaylistDetailView: View {
     let playlistId: UUID
 
     @EnvironmentObject private var playlistService: PlaylistService
+    @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var router: AppRouter
     @ObservedObject private var playback = PlaybackService.shared
     @Environment(\.themePalette) private var palette
 
     @State private var detail: PlaylistDetail?
     @State private var showDeleteConfirm = false
+    @State private var showBatchAdd = false
 
     var body: some View {
         Group {
@@ -36,12 +38,18 @@ struct PlaylistDetailView: View {
                                 SongRow(
                                     song: song,
                                     isPlaying: playback.currentSong?.id == song.id,
-                                    onTap: { Task { await playback.play(song: song, in: .playlist(id: playlistId)) } },
-                                    onFavorite: {
-                                        Task {
-                                            let lib = MusicLibraryService()
-                                            try? await lib.toggleFavorite(songId: song.id)
+                                    onTap: {
+                                        if playback.currentSong?.id == song.id {
+                                            router.openPlayer()
+                                        } else {
+                                            Task {
+                                                await playback.play(song: song, in: .playlist(id: playlistId))
+                                                router.openPlayer()
+                                            }
                                         }
+                                    },
+                                    onFavorite: {
+                                        Task { try? await libraryService.toggleFavorite(songId: song.id) }
                                     },
                                     onDelete: detail.playlist.isSystem ? nil : {
                                         Task { try? await playlistService.removeSongs([song.id], from: playlistId) }
@@ -60,20 +68,29 @@ struct PlaylistDetailView: View {
                 .toolbar {
                     if !detail.playlist.isSystem {
                         ToolbarItem(placement: .navigationBarTrailing) {
-                            Menu {
-                                Button { router.present(.editPlaylist(id: playlistId)) } label: {
-                                    Label("编辑歌单", systemImage: "pencil")
+                            HStack(spacing: 16) {
+                                Button { showBatchAdd = true } label: {
+                                    Image(systemName: "plus")
+                                        .foregroundColor(palette.primary)
                                 }
-                                Button { router.present(.playlistCoverPicker(id: playlistId)) } label: {
-                                    Label("更换封面", systemImage: "photo")
+                                Menu {
+                                    Button { router.present(.editPlaylist(id: playlistId)) } label: {
+                                        Label("编辑歌单", systemImage: "pencil")
+                                    }
+                                    Button { router.present(.playlistCoverPicker(id: playlistId)) } label: {
+                                        Label("更换封面", systemImage: "photo")
+                                    }
+                                    Button { showBatchAdd = true } label: {
+                                        Label("批量添加歌曲", systemImage: "text.badge.plus")
+                                    }
+                                    Divider()
+                                    Button(role: .destructive) { showDeleteConfirm = true } label: {
+                                        Label("删除歌单", systemImage: "trash")
+                                    }
+                                } label: {
+                                    Image(systemName: "ellipsis.circle")
+                                        .foregroundColor(palette.primary)
                                 }
-                                Divider()
-                                Button(role: .destructive) { showDeleteConfirm = true } label: {
-                                    Label("删除歌单", systemImage: "trash")
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis.circle")
-                                    .foregroundColor(palette.primary)
                             }
                         }
                     }
@@ -82,7 +99,7 @@ struct PlaylistDetailView: View {
                     Button("删除", role: .destructive) {
                         Task {
                             try? await playlistService.deletePlaylist(id: playlistId)
-                            router.popToRoot(in: .playlist)
+                            router.popToRoot(in: .library)
                         }
                     }
                 } message: {
@@ -95,6 +112,11 @@ struct PlaylistDetailView: View {
         .task { detail = await playlistService.fetchDetail(playlistId: playlistId) }
         .onReceive(playlistService.$playlists) { _ in
             Task { detail = await playlistService.fetchDetail(playlistId: playlistId) }
+        }
+        .sheet(isPresented: $showBatchAdd) {
+            BatchAddSongsView(playlistId: playlistId)
+                .environment(\.themePalette, palette)
+                .environmentObject(playlistService)
         }
     }
 }

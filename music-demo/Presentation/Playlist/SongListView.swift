@@ -6,6 +6,7 @@ struct SongListView: View {
 
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var playlistService: PlaylistService
+    @EnvironmentObject private var router: AppRouter
     @ObservedObject private var playback = PlaybackService.shared
     @Environment(\.themePalette) private var palette
 
@@ -30,7 +31,16 @@ struct SongListView: View {
                         SongRow(
                             song: song,
                             isPlaying: playback.currentSong?.id == song.id,
-                            onTap: { Task { await playContext(song: song) } }
+                            onTap: {
+                                if playback.currentSong?.id == song.id {
+                                    router.openPlayer()
+                                } else {
+                                    Task {
+                                        await playContext(song: song)
+                                        router.openPlayer()
+                                    }
+                                }
+                            }
                         )
                         .listRowBackground(palette.surface)
                     }

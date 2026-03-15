@@ -2,21 +2,26 @@ import SwiftUI
 
 struct LibraryTabView: View {
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var playlistService: PlaylistService
     @Environment(\.themePalette) private var palette
+
+    @StateObject private var groupService = PlaylistGroupService()
 
     var body: some View {
         NavigationStack(path: $router.libraryPath) {
             LibraryMainView()
+                .environmentObject(groupService)
                 .navigationDestination(for: AppDestination.self) { destination in
                     destinationView(destination)
+                        .environmentObject(groupService)
                         .environment(\.themePalette, palette)
                 }
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button {
-                            router.present(.importFromFiles)
+                            router.navigate(to: .settings, in: .library)
                         } label: {
-                            Image(systemName: "square.and.arrow.down")
+                            Image(systemName: "gearshape")
                                 .foregroundColor(palette.primary)
                         }
                     }
