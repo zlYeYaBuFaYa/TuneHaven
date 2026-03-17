@@ -312,9 +312,9 @@ struct AudioFormatTests {
         #expect(AudioFormat.all.rawValue == "all")
     }
 
-    @Test("LibraryTab 包含 4 个选项")
+    @Test("LibraryTab 包含 3 个选项")
     func testLibraryTabCount() {
-        #expect(LibraryTab.allCases.count == 4)
+        #expect(LibraryTab.allCases.count == 3)
     }
 }
 

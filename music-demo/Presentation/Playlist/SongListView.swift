@@ -32,13 +32,9 @@ struct SongListView: View {
                             song: song,
                             isPlaying: playback.currentSong?.id == song.id,
                             onTap: {
-                                if playback.currentSong?.id == song.id {
+                                Task {
+                                    await prepareContext(song: song)
                                     router.openPlayer()
-                                } else {
-                                    Task {
-                                        await playContext(song: song)
-                                        router.openPlayer()
-                                    }
                                 }
                             }
                         )
@@ -52,6 +48,7 @@ struct SongListView: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(palette.surface, for: .navigationBar)
         .task { await load() }
     }
 
@@ -70,7 +67,7 @@ struct SongListView: View {
         isLoading = false
     }
 
-    private func playContext(song: Song) async {
+    private func prepareContext(song: Song) async {
         let ctx: PlayContext
         switch context {
         case .allSongs: ctx = .allSongs(sortBy: .title)
@@ -80,7 +77,7 @@ struct SongListView: View {
         case .album(let name, let artist): ctx = .album(name: name, artist: artist)
         case .playlist(let id): ctx = .playlist(id: id)
         }
-        await playback.play(song: song, in: ctx)
+        await playback.prepare(song: song, in: ctx)
     }
 }
 

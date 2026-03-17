@@ -105,9 +105,9 @@ struct ThemeRegistryTests {
         #expect(registry.theme(for: "meadow_breeze") != nil)
         #expect(registry.theme(for: "rose_dream") != nil)
         #expect(registry.theme(for: "frost_elegance") != nil)
-        #expect(registry.theme(for: "minimal_pure") != nil)
-        #expect(registry.theme(for: "warm_sunlight") != nil)
-        #expect(registry.theme(for: "digital_mist") != nil)
+        #expect(registry.theme(for: "crimson_tech") != nil)
+        #expect(registry.theme(for: "comic_pop") != nil)
+        #expect(registry.theme(for: "ink_wash") != nil)
     }
 
     @Test("查找不存在的 id 返回 nil")
@@ -144,26 +144,26 @@ struct ThemeStyleTests {
         #expect(ThemeStyle.frostElegance.id == "frost_elegance")
     }
 
-    @Test("minimalPure 的 id 为 minimal_pure")
-    func testMinimalPureId() {
-        #expect(ThemeStyle.minimalPure.id == "minimal_pure")
+    @Test("crimsonTech 的 id 为 crimson_tech")
+    func testCrimsonTechId() {
+        #expect(ThemeStyle.crimsonTech.id == "crimson_tech")
     }
 
-    @Test("warmSunlight 的 id 为 warm_sunlight")
-    func testWarmSunlightId() {
-        #expect(ThemeStyle.warmSunlight.id == "warm_sunlight")
+    @Test("comicPop 的 id 为 comic_pop")
+    func testComicPopId() {
+        #expect(ThemeStyle.comicPop.id == "comic_pop")
     }
 
-    @Test("digitalMist 的 id 为 digital_mist")
-    func testDigitalMistId() {
-        #expect(ThemeStyle.digitalMist.id == "digital_mist")
+    @Test("inkWash 的 id 为 ink_wash")
+    func testInkWashId() {
+        #expect(ThemeStyle.inkWash.id == "ink_wash")
     }
 
     @Test("ThemeStyle 实现 Identifiable，id 不为空")
     func testIdentifiable() {
         let themes: [ThemeStyle] = [
             .meadowBreeze, .roseDream, .frostElegance,
-            .minimalPure, .warmSunlight, .digitalMist
+            .crimsonTech, .comicPop, .inkWash
         ]
         for style in themes {
             #expect(!style.id.isEmpty)
@@ -307,7 +307,7 @@ struct ThemeColorPaletteTests {
     func testEachStyleHasBothPalettes() {
         let themes: [ThemeStyle] = [
             .meadowBreeze, .roseDream, .frostElegance,
-            .minimalPure, .warmSunlight, .digitalMist
+            .crimsonTech, .comicPop, .inkWash
         ]
         for style in themes {
             _ = style.lightPalette

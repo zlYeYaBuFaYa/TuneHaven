@@ -18,13 +18,9 @@ struct SearchResultView: View {
                             song: song,
                             isPlaying: playback.currentSong?.id == song.id,
                             onTap: {
-                                if playback.currentSong?.id == song.id {
+                                Task {
+                                    await playback.prepare(song: song, in: .allSongs(sortBy: .title))
                                     router.openPlayer()
-                                } else {
-                                    Task {
-                                        await playback.play(song: song, in: .allSongs(sortBy: .title))
-                                        router.openPlayer()
-                                    }
                                 }
                             }
                         )

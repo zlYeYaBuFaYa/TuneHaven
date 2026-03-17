@@ -25,14 +25,16 @@ struct PlayerView: View {
                 .ignoresSafeArea()
 
             if showQueue {
-                PlayQueueView(onClose: { withAnimation { showQueue = false } })
-                    .transition(.move(edge: .bottom))
+                PlayQueueView(onClose: { withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { showQueue = false } })
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             } else {
                 mainPlayerContent
+                    .transition(.opacity)
             }
         }
-        .environment(\.themePalette, palette)
         .offset(y: dragOffset)
+        .environment(\.themePalette, palette)
+        .onAppear { dragOffset = 0 }
         .sheet(item: $playerSheet) { destination in
             playerSheetView(for: destination)
                 .environment(\.themePalette, palette)
@@ -54,48 +56,63 @@ struct PlayerView: View {
         .task { await loadLyrics() }
     }
 
+    private var playerDismissGesture: some Gesture {
+        DragGesture(minimumDistance: 20, coordinateSpace: .global)
+            .onChanged { value in
+                guard !showQueue else { return }
+                let dy = value.translation.height
+                if dy > 0 {
+                    dragOffset = dy * 0.7
+                } else {
+                    dragOffset = dy * 0.1
+                }
+            }
+            .onEnded { value in
+                guard !showQueue else { return }
+                let velocity = value.predictedEndTranslation.height
+                if value.translation.height > 100 || velocity > 400 {
+                    router.closePlayer()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                        dragOffset = 0
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        dragOffset = 0
+                    }
+                }
+            }
+    }
+
     // MARK: - Main Content
 
     private var mainPlayerContent: some View {
         VStack(spacing: 0) {
-            dragDismissZone
-            Spacer(minLength: 20)
-            coverSection
-            Spacer(minLength: 28)
-            songInfo
+            VStack(spacing: 0) {
+                dragIndicator
+                header
+                    .padding(.bottom, 4)
+                Spacer(minLength: 20)
+                coverSection
+                Spacer(minLength: 28)
+                songInfo
+            }
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(playerDismissGesture)
+
             progressBar
             controls
         }
         .padding(.horizontal, 24)
-        .padding(.top, 16)
+        .padding(.top, 12)
         .padding(.bottom, 36)
     }
 
-    /// 仅此区域响应下拉关闭手势，不影响下方 Slider 等交互控件
-    private var dragDismissZone: some View {
-        header
-            .padding(.bottom, 4)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 15)
-                    .onChanged { value in
-                        let dy = value.translation.height
-                        if dy > 0 {
-                            dragOffset = dy * 0.5
-                        }
-                    }
-                    .onEnded { value in
-                        if value.translation.height > 100
-                            || value.predictedEndTranslation.height > 350 {
-                            dragOffset = 0
-                            router.closePlayer()
-                        } else {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                dragOffset = 0
-                            }
-                        }
-                    }
-            )
+    private var dragIndicator: some View {
+        Capsule()
+            .fill(palette.textTertiary.opacity(0.4))
+            .frame(width: 36, height: 5)
+            .padding(.bottom, 8)
     }
 
     private var header: some View {
@@ -335,7 +352,7 @@ struct PlayerView: View {
             }
             .frame(maxWidth: .infinity)
 
-            Button { withAnimation { showQueue = true } } label: {
+            Button { withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { showQueue = true } } label: {
                 Image(systemName: "list.bullet")
                     .font(.title3)
                     .foregroundColor(palette.textSecondary)

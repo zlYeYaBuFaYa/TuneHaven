@@ -45,6 +45,7 @@ struct SongInfoEditView: View {
             }
             .navigationTitle("歌曲信息")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(palette.surface, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }

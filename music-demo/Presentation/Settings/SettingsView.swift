@@ -9,7 +9,6 @@ struct SettingsView: View {
     @Environment(\.themePalette) private var palette
     @Environment(\.colorScheme) private var colorScheme
 
-    @AppStorage("color_mode")              private var colorModeRaw: Int = 0
     @AppStorage("recent_play_range")       private var recentPlayRange: Int = 7
     @AppStorage("speed_memory_mode")       private var speedMemoryMode: Int = 0
     @AppStorage("wifi_password_enabled")   private var wifiPasswordEnabled: Bool = false
@@ -46,6 +45,7 @@ struct SettingsView: View {
         .background(palette.background)
         .navigationTitle("设置")
         .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(palette.surface, for: .navigationBar)
         .task {
             await calculateCacheSize()
             await checkNotificationPermission()

@@ -25,6 +25,7 @@ struct ArtistDetailView: View {
         .background(palette.background)
         .navigationTitle(artistName)
         .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(palette.surface, for: .navigationBar)
         .task { await load() }
     }
 
@@ -86,13 +87,9 @@ struct ArtistDetailView: View {
                         song: song,
                         isPlaying: playback.currentSong?.id == song.id,
                         onTap: {
-                            if playback.currentSong?.id == song.id {
+                            Task {
+                                await playback.prepare(song: song, in: .artist(name: artistName))
                                 router.openPlayer()
-                            } else {
-                                Task {
-                                    await playback.play(song: song, in: .artist(name: artistName))
-                                    router.openPlayer()
-                                }
                             }
                         },
                         onFavorite: { Task { try? await libraryService.toggleFavorite(songId: song.id) } },

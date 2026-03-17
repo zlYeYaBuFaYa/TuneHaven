@@ -10,22 +10,18 @@ struct LibraryTabView: View {
     var body: some View {
         NavigationStack(path: $router.libraryPath) {
             LibraryMainView()
+                .fixNavigationControllerBackground(palette.background)
                 .environmentObject(groupService)
                 .navigationDestination(for: AppDestination.self) { destination in
                     destinationView(destination)
                         .environmentObject(groupService)
                         .environment(\.themePalette, palette)
                 }
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button {
-                            router.navigate(to: .settings, in: .library)
-                        } label: {
-                            Image(systemName: "gearshape")
-                                .foregroundColor(palette.primary)
-                        }
-                    }
-                }
+        }
+        .background(palette.background.ignoresSafeArea())
+        .toolbarBackground(palette.surface, for: .navigationBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            MiniPlayerBar()
         }
     }
 

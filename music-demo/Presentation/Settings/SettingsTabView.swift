@@ -7,10 +7,16 @@ struct SettingsTabView: View {
     var body: some View {
         NavigationStack(path: $router.settingsPath) {
             SettingsView()
+                .fixNavigationControllerBackground(palette.background)
                 .navigationDestination(for: AppDestination.self) { destination in
                     destinationView(destination)
                         .environment(\.themePalette, palette)
                 }
+        }
+        .background(palette.background.ignoresSafeArea())
+        .toolbarBackground(palette.surface, for: .navigationBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            MiniPlayerBar()
         }
     }
 

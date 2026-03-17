@@ -32,10 +32,16 @@ struct BatchAddSongsView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            VStack(spacing: 0) {
+                fixedHeader
+                Divider().background(palette.separator)
+
                 if isLoading {
+                    Spacer()
                     ProgressView()
+                    Spacer()
                 } else if allSongs.isEmpty {
+                    Spacer()
                     VStack(spacing: 12) {
                         Image(systemName: "music.note")
                             .font(.system(size: 48))
@@ -43,6 +49,7 @@ struct BatchAddSongsView: View {
                         Text("音乐库中暂无歌曲")
                             .foregroundColor(palette.textSecondary)
                     }
+                    Spacer()
                 } else {
                     songList
                 }
@@ -69,9 +76,32 @@ struct BatchAddSongsView: View {
                     .disabled(selectedIds.isEmpty || isSaving)
                 }
             }
-            .searchable(text: $searchText, prompt: "搜索歌曲、艺术家、专辑")
         }
         .task { await loadData() }
+    }
+
+    private var fixedHeader: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(palette.textTertiary)
+            TextField("搜索歌曲、艺术家、专辑", text: $searchText)
+                .textFieldStyle(.plain)
+                .foregroundColor(palette.textPrimary)
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(palette.textTertiary)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(palette.surfaceSecondary)
+        .clipShape(Capsule())
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 
     private var songList: some View {

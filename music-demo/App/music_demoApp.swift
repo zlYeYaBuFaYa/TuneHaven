@@ -13,17 +13,27 @@ struct music_demoApp: App {
     @StateObject private var router = AppRouter()
     @StateObject private var snackbar = SnackbarState()
 
-    @Environment(\.colorScheme) private var systemColorScheme
-
     private let playbackService = PlaybackService.shared
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var isReady = false
     @State private var initError: String?
+    @State private var paletteScheme: ColorScheme = {
+        let mode = ColorMode(rawValue: UserDefaults.standard.integer(forKey: "color_mode")) ?? .system
+        switch mode {
+        case .light: return .light
+        case .dark: return .dark
+        case .system:
+            return UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
+        }
+    }()
 
     var body: some Scene {
         WindowGroup {
-            Group {
+            ZStack {
+                resolvedPalette.background
+                    .ignoresSafeArea()
+
                 if isReady {
                     RootTabView()
                         .environmentObject(themeManager)
@@ -55,10 +65,25 @@ struct music_demoApp: App {
             }
             .preferredColorScheme(themeManager.resolvedColorScheme)
             .task { await initialize() }
+            .onAppear {
+                print("[App] onAppear — applying window theme")
+                themeManager.applyToWindows()
+                refreshPaletteScheme()
+            }
+            .onChange(of: themeManager.colorMode) { _, newMode in
+                print("[App] colorMode changed → \(newMode)")
+                themeManager.applyToWindows()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    refreshPaletteScheme()
+                }
+            }
             .onChange(of: scenePhase) { _, phase in
+                print("[App] scenePhase → \(phase)")
                 switch phase {
                 case .active:
                     playbackService.checkSleepTimerOnForeground()
+                    themeManager.applyToWindows()
+                    refreshPaletteScheme()
                 case .background:
                     AudioSessionManager.shared.ensureActive()
                 default:
@@ -69,11 +94,28 @@ struct music_demoApp: App {
     }
 
     private var resolvedPalette: ThemeColorPalette {
-        themeManager.resolvedPalette(for: systemColorScheme)
+        themeManager.resolvedPalette(for: paletteScheme)
+    }
+
+    private func refreshPaletteScheme() {
+        let scheme: ColorScheme
+        switch themeManager.colorMode {
+        case .light:
+            scheme = .light
+        case .dark:
+            scheme = .dark
+        case .system:
+            let systemDark = UIScreen.main.traitCollection.userInterfaceStyle == .dark
+            scheme = systemDark ? .dark : .light
+        }
+        if paletteScheme != scheme {
+            paletteScheme = scheme
+        }
     }
 
     private func initialize() async {
         do {
+            print("[App] initialize start")
             MigrationManager.shared.runVersionUpgradeTasks()
             try await CoreDataStack.shared.load()
             SandboxPathManager.createAllDirectories()
@@ -82,8 +124,13 @@ struct music_demoApp: App {
             await libraryService.cleanupOnLaunch()
             playbackService.checkSleepTimerOnForeground()
             isReady = true
+            print("[App] initialize done — isReady=true, scheduling UIKit background refresh")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                themeManager.applyToWindows()
+            }
         } catch {
             initError = error.localizedDescription
+            print("[App] initialize FAILED: \(error)")
         }
     }
 }

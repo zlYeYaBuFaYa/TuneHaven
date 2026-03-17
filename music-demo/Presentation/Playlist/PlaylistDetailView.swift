@@ -12,6 +12,7 @@ struct PlaylistDetailView: View {
     @State private var detail: PlaylistDetail?
     @State private var showDeleteConfirm = false
     @State private var showBatchAdd = false
+    @State private var isDeleted = false
 
     var body: some View {
         Group {
@@ -39,13 +40,9 @@ struct PlaylistDetailView: View {
                                     song: song,
                                     isPlaying: playback.currentSong?.id == song.id,
                                     onTap: {
-                                        if playback.currentSong?.id == song.id {
+                                        Task {
+                                            await playback.prepare(song: song, in: .playlist(id: playlistId))
                                             router.openPlayer()
-                                        } else {
-                                            Task {
-                                                await playback.play(song: song, in: .playlist(id: playlistId))
-                                                router.openPlayer()
-                                            }
                                         }
                                     },
                                     onFavorite: {
@@ -65,6 +62,7 @@ struct PlaylistDetailView: View {
                 .background(palette.background)
                 .navigationTitle(detail.playlist.name)
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(palette.surface, for: .navigationBar)
                 .toolbar {
                     if !detail.playlist.isSystem {
                         ToolbarItem(placement: .navigationBarTrailing) {
@@ -98,8 +96,9 @@ struct PlaylistDetailView: View {
                 .confirmationDialog("删除歌单", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
                     Button("删除", role: .destructive) {
                         Task {
+                            isDeleted = true
                             try? await playlistService.deletePlaylist(id: playlistId)
-                            router.popToRoot(in: .library)
+                            router.popToRoot()
                         }
                     }
                 } message: {
@@ -111,6 +110,7 @@ struct PlaylistDetailView: View {
         }
         .task { detail = await playlistService.fetchDetail(playlistId: playlistId) }
         .onReceive(playlistService.$playlists) { _ in
+            guard !isDeleted else { return }
             Task { detail = await playlistService.fetchDetail(playlistId: playlistId) }
         }
         .sheet(isPresented: $showBatchAdd) {

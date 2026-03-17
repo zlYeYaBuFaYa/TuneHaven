@@ -27,7 +27,10 @@ final class ThemeManager: ObservableObject {
     private static let legacyThemeMapping: [String: String] = [
         "morandi_green": "meadow_breeze",
         "classic_indigo": "meadow_breeze",
-        "sakura_pink": "meadow_breeze"
+        "sakura_pink": "meadow_breeze",
+        "minimal_pure": "meadow_breeze",
+        "warm_sunlight": "meadow_breeze",
+        "digital_mist": "meadow_breeze"
     ]
 
     init() {
@@ -48,11 +51,57 @@ final class ThemeManager: ObservableObject {
     func setColorMode(_ mode: ColorMode) {
         colorMode = mode
         storedColorMode = mode.rawValue
+        applyToWindows()
+    }
+
+    func applyToWindows() {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+            print("[ThemeManager] applyToWindows — no windowScene yet")
+            return
+        }
+        let style = colorMode.uiInterfaceStyle
+        let effectiveScheme: ColorScheme
+        switch colorMode {
+        case .light: effectiveScheme = .light
+        case .dark: effectiveScheme = .dark
+        case .system:
+            effectiveScheme = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
+        }
+        let palette = effectiveScheme == .dark ? currentStyle.darkPalette : currentStyle.lightPalette
+        let bgColor = UIColor(palette.background)
+        let surfaceColor = UIColor(palette.surface)
+
+        print("[ThemeManager] applyToWindows — mode=\(colorMode) scheme=\(effectiveScheme) bgColor=\(bgColor)")
+
+        AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
+        UIWindow.appearance().backgroundColor = bgColor
+        UIWindow.appearance().overrideUserInterfaceStyle = style
+
+        windowScene.windows.forEach { window in
+            window.overrideUserInterfaceStyle = style
+            window.backgroundColor = bgColor
+            Self.setNavigationControllerBackgrounds(on: window.rootViewController, color: bgColor)
+        }
+    }
+
+    private static func setNavigationControllerBackgrounds(on vc: UIViewController?, color: UIColor) {
+        guard let vc = vc else { return }
+        if let nav = vc as? UINavigationController {
+            nav.view.backgroundColor = color
+            print("[ThemeManager] set UINavigationController.view.bg = \(color)")
+        }
+        for child in vc.children {
+            setNavigationControllerBackgrounds(on: child, color: color)
+        }
+        if let presented = vc.presentedViewController {
+            setNavigationControllerBackgrounds(on: presented, color: color)
+        }
     }
 
     func setTheme(_ style: ThemeStyle) {
         currentStyle = style
         storedThemeStyle = style.id
+        applyToWindows()
     }
 
     func resolvedPalette(for systemColorScheme: ColorScheme) -> ThemeColorPalette {

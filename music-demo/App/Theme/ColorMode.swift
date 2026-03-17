@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum ColorMode: Int, CaseIterable, Identifiable {
     case system = 0
@@ -26,6 +27,14 @@ enum ColorMode: Int, CaseIterable, Identifiable {
     var colorScheme: ColorScheme? {
         switch self {
         case .system: return nil
+        case .light:  return .light
+        case .dark:   return .dark
+        }
+    }
+
+    var uiInterfaceStyle: UIUserInterfaceStyle {
+        switch self {
+        case .system: return .unspecified
         case .light:  return .light
         case .dark:   return .dark
         }

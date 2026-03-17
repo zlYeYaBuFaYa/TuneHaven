@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlaylistMainView: View {
     @EnvironmentObject private var playlistService: PlaylistService
+    @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var groupService: PlaylistGroupService
     @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
@@ -22,11 +23,11 @@ struct PlaylistMainView: View {
                     SystemPlaylistRow(playlist: playlist) {
                         switch playlist.systemType {
                         case .favorites:
-                            router.navigate(to: .songList(title: "我喜欢", context: .favorites), in: .library)
+                            router.navigate(to: .songList(title: "我喜欢", context: .favorites), in: .playlist)
                         case .recentlyPlayed:
-                            router.navigate(to: .songList(title: "最近播放", context: .recentlyPlayed), in: .library)
+                            router.navigate(to: .songList(title: "最近播放", context: .recentlyPlayed), in: .playlist)
                         default:
-                            router.navigate(to: .playlistDetail(id: playlist.id), in: .library)
+                            router.navigate(to: .playlistDetail(id: playlist.id), in: .playlist)
                         }
                     }
                     .listRowBackground(palette.surface)
@@ -41,7 +42,7 @@ struct PlaylistMainView: View {
                 } else {
                     ForEach(userPlaylists) { playlist in
                         Button {
-                            router.navigate(to: .playlistDetail(id: playlist.id), in: .library)
+                            router.navigate(to: .playlistDetail(id: playlist.id), in: .playlist)
                         } label: {
                             PlaylistRow(playlist: playlist)
                         }
@@ -74,6 +75,7 @@ struct PlaylistMainView: View {
         .background(palette.background)
         .navigationTitle("歌单")
         .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(palette.surface, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -93,6 +95,14 @@ struct PlaylistMainView: View {
             }
         }
         .task { await playlistService.loadPlaylists() }
+        .onChange(of: router.selectedTab) { _, newTab in
+            if newTab == .playlist {
+                Task { await playlistService.loadPlaylists() }
+            }
+        }
+        .onReceive(libraryService.$songs) { _ in
+            Task { await playlistService.loadPlaylists() }
+        }
         .sheet(isPresented: $showGroupManage) {
             NavigationStack {
                 PlaylistGroupView()

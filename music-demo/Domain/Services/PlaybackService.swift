@@ -26,10 +26,21 @@ final class PlaybackService: ObservableObject {
         UserDefaults.standard.dictionary(forKey: "song_dislikes") as? [String: Int] ?? [:]
     }
 
+    private static let lastPlayedSongIdKey = "last_played_song_id"
+
     private init() {
         self.queueService = PlayQueueService()
         self.libraryService = MusicLibraryService()
         setupBindings()
+        Task { await restoreLastPlayedSong() }
+    }
+
+    private func restoreLastPlayedSong() async {
+        guard let idString = UserDefaults.standard.string(forKey: Self.lastPlayedSongIdKey),
+              let songId = UUID(uuidString: idString) else { return }
+        guard let song = await songRepo.fetchSong(id: songId) else { return }
+        currentSong = song
+        queueService.replaceQueue(with: [song], startAt: 0)
     }
 
     var queue: PlayQueueService { queueService }
@@ -38,35 +49,42 @@ final class PlaybackService: ObservableObject {
     var duration: TimeInterval { engine.duration }
 
     func play(song: Song, in context: PlayContext) async {
-        var songs: [Song]
-        var startIndex = 0
+        if song.id == currentSong?.id {
+            if case .playing = engine.state { return }
+            if case .paused = engine.state {
+                AudioSessionManager.shared.ensureActive()
+                engine.play()
+                isPlaying = true
+                return
+            }
+        }
 
-        switch context {
-        case .allSongs(let sortBy):
-            songs = await songRepo.fetchAll(sortBy: sortBy, ascending: true)
-            startIndex = songs.firstIndex(of: song) ?? 0
-        case .album(let name, let artist):
-            let detail = await libraryService.fetchAlbumDetail(album: name, artist: artist)
-            songs = detail.songs
-            startIndex = songs.firstIndex(of: song) ?? 0
-        case .artist(let name):
-            let detail = await libraryService.fetchArtistDetail(artist: name)
-            songs = detail.allSongs
-            startIndex = songs.firstIndex(of: song) ?? 0
-        case .playlist(let id):
-            songs = [song]
-            startIndex = 0
-            _ = id
-        case .queue:
+        if case .queue = context {
             await loadAndPlay(song: song)
             return
         }
 
-        queueService.replaceQueue(with: songs, startAt: startIndex)
+        await buildQueue(for: song, in: context)
         await loadAndPlay(song: song)
     }
 
+    func prepare(song: Song, in context: PlayContext) async {
+        if song.id == currentSong?.id { return }
+
+        if case .queue = context {
+            await loadAndPlay(song: song, autoPlay: false)
+            return
+        }
+
+        await buildQueue(for: song, in: context)
+        await loadAndPlay(song: song, autoPlay: false)
+    }
+
     func togglePlayPause() {
+        if let song = currentSong, case .idle = engine.state {
+            Task { await loadAndPlay(song: song) }
+            return
+        }
         engine.togglePlayPause()
     }
 
@@ -103,9 +121,15 @@ final class PlaybackService: ObservableObject {
     func stop() {
         engine.stop()
         isPlaying = false
-        currentSong = nil
-        currentCover = nil
-        NowPlayingManager.shared.clear()
+        if let song = currentSong {
+            NowPlayingManager.shared.update(
+                song: song,
+                currentTime: 0,
+                duration: duration,
+                speed: 0,
+                cover: currentCover
+            )
+        }
     }
 
     func toggleCurrentSongFavorite() {
@@ -187,8 +211,36 @@ final class PlaybackService: ObservableObject {
 
     // MARK: - Private
 
-    private func loadAndPlay(song: Song) async {
+    private func buildQueue(for song: Song, in context: PlayContext) async {
+        var songs: [Song]
+        var startIndex = 0
+
+        switch context {
+        case .allSongs(let sortBy):
+            songs = await songRepo.fetchAll(sortBy: sortBy, ascending: true)
+            startIndex = songs.firstIndex(of: song) ?? 0
+        case .album(let name, let artist):
+            let detail = await libraryService.fetchAlbumDetail(album: name, artist: artist)
+            songs = detail.songs
+            startIndex = songs.firstIndex(of: song) ?? 0
+        case .artist(let name):
+            let detail = await libraryService.fetchArtistDetail(artist: name)
+            songs = detail.allSongs
+            startIndex = songs.firstIndex(of: song) ?? 0
+        case .playlist(let id):
+            songs = [song]
+            startIndex = 0
+            _ = id
+        case .queue:
+            return
+        }
+
+        queueService.replaceQueue(with: songs, startAt: startIndex)
+    }
+
+    private func loadAndPlay(song: Song, autoPlay: Bool = true) async {
         currentSong = song
+        UserDefaults.standard.set(song.id.uuidString, forKey: Self.lastPlayedSongIdKey)
         let fileURL = SandboxPathManager.musicFileURL(relativePath: song.fileRelativePath)
         guard FileStorageService.shared.fileExists(relativePath: song.fileRelativePath) else {
             ErrorLogger.shared.log(.playbackFileNotFound(song.id), context: "PlaybackService.loadAndPlay")
@@ -200,16 +252,19 @@ final class PlaybackService: ObservableObject {
         await engine.load(url: fileURL)
         applySpeedForSong(song)
         engine.setSpeed(playbackSpeed)
-        engine.play()
-        isPlaying = true
-        try? await libraryService.recordPlay(songId: song.id)
+
+        if autoPlay {
+            engine.play()
+            isPlaying = true
+            try? await libraryService.recordPlay(songId: song.id)
+        }
 
         currentCover = loadCoverSync(for: song)
         NowPlayingManager.shared.update(
             song: song,
             currentTime: 0,
             duration: engine.duration,
-            speed: playbackSpeed,
+            speed: autoPlay ? playbackSpeed : 0,
             cover: currentCover
         )
     }

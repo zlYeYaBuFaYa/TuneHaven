@@ -8,6 +8,7 @@ final class CoreDataPlaylistRepository {
     func fetchAll() async -> [Playlist] {
         await withCheckedContinuation { continuation in
             stack.viewContext.perform {
+                self.stack.viewContext.refreshAllObjects()
                 let request = PlaylistEntity.fetchRequest()
                 request.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
                 request.fetchBatchSize = 50

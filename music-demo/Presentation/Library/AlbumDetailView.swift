@@ -26,6 +26,7 @@ struct AlbumDetailView: View {
         .background(palette.background)
         .navigationTitle(albumName)
         .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(palette.surface, for: .navigationBar)
         .task { await load() }
     }
 
@@ -114,13 +115,9 @@ struct AlbumDetailView: View {
                     }
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        if playback.currentSong?.id == song.id {
+                        Task {
+                            await playback.prepare(song: song, in: .album(name: albumName, artist: artistName))
                             router.openPlayer()
-                        } else {
-                            Task {
-                                await playback.play(song: song, in: .album(name: albumName, artist: artistName))
-                                router.openPlayer()
-                            }
                         }
                     }
                     .swipeActions(edge: .trailing) {

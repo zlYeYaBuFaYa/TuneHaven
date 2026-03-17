@@ -14,9 +14,9 @@ final class ThemeRegistry {
         register(.meadowBreeze)
         register(.roseDream)
         register(.frostElegance)
-        register(.minimalPure)
-        register(.warmSunlight)
-        register(.digitalMist)
+        register(.crimsonTech)
+        register(.comicPop)
+        register(.inkWash)
     }
 
     var allThemes: [ThemeStyle] { themes }

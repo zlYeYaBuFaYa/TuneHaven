@@ -127,6 +127,7 @@ struct ImportFilesView: View {
             .background(palette.background)
             .navigationTitle("导入音乐")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(palette.surface, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { dismiss() }

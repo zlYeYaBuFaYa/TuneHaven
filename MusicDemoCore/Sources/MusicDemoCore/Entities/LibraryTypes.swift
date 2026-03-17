@@ -76,16 +76,12 @@ enum LibraryTab: String, CaseIterable {
     case all = "all"
     case artist = "artist"
     case album = "album"
-    case playlist = "playlist"
-    case favorites = "favorites"
 
     var displayName: String {
         switch self {
         case .all: return "全部"
         case .artist: return "艺术家"
         case .album: return "专辑"
-        case .playlist: return "歌单"
-        case .favorites: return "收藏"
         }
     }
 }

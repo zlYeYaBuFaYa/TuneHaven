@@ -36,6 +36,16 @@ final class AppRouter: ObservableObject {
 
     func present(_ sheet: SheetDestination) { self.sheet = sheet }
     func dismissSheet() { sheet = nil }
-    func openPlayer()  { isPlayerPresented = true }
-    func closePlayer() { isPlayerPresented = false }
+
+    func openPlayer() {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+            isPlayerPresented = true
+        }
+    }
+
+    func closePlayer() {
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) {
+            isPlayerPresented = false
+        }
+    }
 }
