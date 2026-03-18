@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import music_demo
 
 // MARK: - MusicLibraryService Logic Tests
@@ -291,8 +292,8 @@ struct SongSortOptionTests {
 
 // MARK: - AudioFormat Tests
 
-@Suite("AudioFormat Tests")
-struct AudioFormatTests {
+@Suite("AudioFormat Integration Tests")
+struct AudioFormatIntegrationTests {
 
     @Test("AudioFormat displayName 不为空")
     func testDisplayNames() {
