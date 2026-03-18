@@ -7,6 +7,26 @@ enum PlaybackState {
     case error(Error)
 }
 
+enum AudioEngineError: Error, LocalizedError {
+    case fileNotFound(URL)
+    case unsupportedFormat(String)
+    case assetNotPlayable(URL)
+    case loadFailed(underlying: Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .fileNotFound(let url):
+            return "文件不存在：\(url.lastPathComponent)"
+        case .unsupportedFormat(let ext):
+            return "不支持的音频格式：\(ext)"
+        case .assetNotPlayable(let url):
+            return "无法播放：\(url.lastPathComponent)"
+        case .loadFailed(let error):
+            return "加载失败：\(error.localizedDescription)"
+        }
+    }
+}
+
 @MainActor
 final class AudioEngine: ObservableObject {
     static let shared = AudioEngine()
@@ -31,6 +51,10 @@ final class AudioEngine: ObservableObject {
     private var interruptionObserver: Any?
     private var routeChangeObserver: Any?
 
+    private static let playableExtensions: Set<String> = [
+        "mp3", "m4a", "aac", "alac", "wav", "flac", "aiff", "aif", "caf"
+    ]
+
     private init() {
         self.player = AVPlayer()
         player.automaticallyWaitsToMinimizeStalling = false
@@ -38,11 +62,44 @@ final class AudioEngine: ObservableObject {
         setupNotifications()
     }
 
+    deinit {
+        if let obs = timeObserver {
+            player.removeTimeObserver(obs)
+        }
+        NotificationCenter.default.removeObserver(self)
+        if let o = interruptionObserver { NotificationCenter.default.removeObserver(o) }
+        if let o = routeChangeObserver { NotificationCenter.default.removeObserver(o) }
+    }
+
     func load(url: URL) async {
         state = .loading
+
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            state = .error(AudioEngineError.fileNotFound(url))
+            return
+        }
+
+        let ext = url.pathExtension.lowercased()
+        guard Self.playableExtensions.contains(ext) else {
+            state = .error(AudioEngineError.unsupportedFormat(ext))
+            return
+        }
+
         AudioSessionManager.shared.ensureActive()
 
         let asset = AVURLAsset(url: url)
+
+        do {
+            let isPlayable = try await asset.load(.isPlayable)
+            guard isPlayable else {
+                state = .error(AudioEngineError.assetNotPlayable(url))
+                return
+            }
+        } catch {
+            state = .error(AudioEngineError.loadFailed(underlying: error))
+            return
+        }
+
         let item = AVPlayerItem(asset: asset)
         playerItem = item
 
@@ -53,7 +110,7 @@ final class AudioEngine: ObservableObject {
                     self?.isBuffering = false
                 case .failed:
                     if let err = item.error {
-                        self?.state = .error(err)
+                        self?.state = .error(AudioEngineError.loadFailed(underlying: err))
                     }
                 default: break
                 }
@@ -108,6 +165,11 @@ final class AudioEngine: ObservableObject {
         player.pause()
         player.replaceCurrentItem(with: nil)
         removeTimeObserver()
+        statusObservation?.invalidate()
+        statusObservation = nil
+        itemObservation?.invalidate()
+        itemObservation = nil
+        playerItem = nil
         state = .idle
         currentTime = 0
         duration = 0

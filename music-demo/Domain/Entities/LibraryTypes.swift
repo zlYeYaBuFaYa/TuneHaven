@@ -58,6 +58,8 @@ enum AudioFormat: String, CaseIterable {
     case alac = "alac"
     case wav = "wav"
     case flac = "flac"
+    case aiff = "aiff"
+    case caf = "caf"
 
     var displayName: String {
         switch self {
@@ -67,7 +69,16 @@ enum AudioFormat: String, CaseIterable {
         case .aac: return "AAC"
         case .alac: return "ALAC（无损）"
         case .wav: return "WAV"
-        case .flac: return "FLAC（暂不支持播放）"
+        case .flac: return "FLAC（无损）"
+        case .aiff: return "AIFF（无损）"
+        case .caf: return "CAF"
+        }
+    }
+
+    var isLossless: Bool {
+        switch self {
+        case .alac, .wav, .flac, .aiff, .caf: return true
+        default: return false
         }
     }
 }

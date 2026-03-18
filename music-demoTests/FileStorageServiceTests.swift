@@ -11,9 +11,9 @@ struct FileStorageServiceTests {
 
     // MARK: - 支持的文件格式
 
-    @Test("支持的格式集合包含所有 P0 格式")
-    func testSupportedExtensionsContainsP0Formats() {
-        let required = ["mp3", "m4a", "aac", "alac", "wav"]
+    @Test("支持的格式集合包含所有核心格式")
+    func testSupportedExtensionsContainsCoreFormats() {
+        let required = ["mp3", "m4a", "aac", "alac", "wav", "flac", "aiff", "aif", "caf"]
         for ext in required {
             #expect(FileStorageService.supportedExtensions.contains(ext), "格式 \(ext) 应被支持")
         }
@@ -21,9 +21,17 @@ struct FileStorageServiceTests {
 
     @Test("不支持的格式不在集合中")
     func testUnsupportedExtensions() {
-        let unsupported = ["mp4", "mov", "avi", "mkv", "txt", "pdf", "jpg", "flac"]
+        let unsupported = ["mp4", "mov", "avi", "mkv", "txt", "pdf", "jpg", "ogg", "wma", "ape"]
         for ext in unsupported {
             #expect(!FileStorageService.supportedExtensions.contains(ext), "格式 \(ext) 不应被支持")
+        }
+    }
+
+    @Test("无损格式均被支持")
+    func testLosslessFormatsSupported() {
+        let lossless = ["flac", "alac", "wav", "aiff", "aif", "caf"]
+        for ext in lossless {
+            #expect(FileStorageService.supportedExtensions.contains(ext), "无损格式 \(ext) 应被支持")
         }
     }
 
