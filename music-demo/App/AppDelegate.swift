@@ -1,7 +1,6 @@
 import UIKit
 import SwiftUI
 import AVFoundation
-import CarPlay
 
 class AppDelegate: NSObject, UIApplicationDelegate {
 
@@ -14,26 +13,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         configureEarlyAppearance()
         application.beginReceivingRemoteControlEvents()
         return true
-    }
-
-    func application(
-        _ application: UIApplication,
-        configurationForConnecting connectingSceneSession: UISceneSession,
-        options: UIScene.ConnectionOptions
-    ) -> UISceneConfiguration {
-        if connectingSceneSession.role == .carTemplateApplication {
-            let config = UISceneConfiguration(
-                name: "CarPlay",
-                sessionRole: connectingSceneSession.role
-            )
-            config.delegateClass = CarPlaySceneDelegate.self
-            return config
-        }
-        let config = UISceneConfiguration(
-            name: "Default",
-            sessionRole: connectingSceneSession.role
-        )
-        return config
     }
 
     /// 在窗口创建之前通过 UIAppearance 设置默认背景色 — 这是最早的时机
