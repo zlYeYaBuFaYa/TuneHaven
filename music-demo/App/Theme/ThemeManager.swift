@@ -109,12 +109,12 @@ final class ThemeManager: ObservableObject {
     }
 
     private static var foregroundWindowScene: UIWindowScene? {
-        UIApplication.shared.connectedScenes
+        let allScenes: [UIWindowScene] = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive }
-        ?? UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first
+        let foreground = allScenes.first {
+            $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive
+        }
+        return foreground ?? allScenes.first
     }
 
     private static func setNavigationControllerBackgrounds(on vc: UIViewController?, color: UIColor) {
