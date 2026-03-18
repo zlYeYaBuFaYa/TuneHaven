@@ -44,7 +44,9 @@ struct RootTabView: View {
         .sheet(item: $router.sheet) { destination in
             sheetView(for: destination)
                 .environment(\.themePalette, resolvedPalette)
+                .environmentObject(themeManager)
                 .environmentObject(router)
+                .environmentObject(libraryService)
                 .environmentObject(playlistService)
                 .environmentObject(snackbar)
         }

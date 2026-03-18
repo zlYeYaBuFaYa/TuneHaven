@@ -82,6 +82,7 @@ final class PlayQueueService: ObservableObject {
             return currentItem
         case .repeatAll:
             if let item = nextUnplayed(from: (currentIndex ?? -1) + 1) { return item }
+            guard !queue.isEmpty else { return nil }
             resetAllPlayedMarks()
             return queue.first
         case .shuffle:

@@ -54,7 +54,9 @@ final class SearchService: ObservableObject {
         }
         albums = albumData.map { AlbumGroup(name: String($0.key.split(separator: "/").last ?? ""), artist: $0.value.artist, year: $0.value.year, songCount: $0.value.count, coverImagePath: $0.value.cover) }.sorted { $0.name < $1.name }
 
-        return SearchResult(songs: matched, artists: artists, albums: albums, totalSongCount: matched.count, totalArtistCount: artists.count, totalAlbumCount: albums.count)
+        let searchResult = SearchResult(songs: matched, artists: artists, albums: albums, totalSongCount: matched.count, totalArtistCount: artists.count, totalAlbumCount: albums.count)
+        self.result = searchResult
+        return searchResult
     }
 
     func fetchHistory(tab: LibraryTab) async {

@@ -1,13 +1,14 @@
 import AVFoundation
 import Foundation
 
+@MainActor
 final class AudioSessionManager {
     static let shared = AudioSessionManager()
     private(set) var isConfigured = false
+    private let log = AppLogger.shared
 
     private init() {}
 
-    /// Must be called as early as possible — ideally in AppDelegate.didFinishLaunchingWithOptions
     @discardableResult
     func configure() -> Bool {
         let session = AVAudioSession.sharedInstance()
@@ -17,21 +18,23 @@ final class AudioSessionManager {
             isConfigured = true
             return true
         } catch {
-            AppLogger.shared.error("[AudioSessionManager] configure failed: \(error)")
-            // Category might have been set even if setActive failed; retry activation
+            log.error("[AudioSessionManager] configure failed: \(error)")
             do {
-                try session.setCategory(.playback, mode: .default, options: [])
+                try session.setActive(true, options: [])
+                isConfigured = true
+                return true
             } catch {
-                AppLogger.shared.error("[AudioSessionManager] setCategory retry failed: \(error)")
+                log.error("[AudioSessionManager] setActive retry failed: \(error)")
             }
             return false
         }
     }
 
-    func ensureActive() {
+    @discardableResult
+    func ensureActive() -> Bool {
         let session = AVAudioSession.sharedInstance()
         if !isConfigured {
-            configure()
+            return configure()
         }
         do {
             if session.category != .playback {
@@ -39,8 +42,10 @@ final class AudioSessionManager {
             }
             try session.setActive(true, options: [])
             isConfigured = true
+            return true
         } catch {
-            AppLogger.shared.error("[AudioSessionManager] ensureActive failed: \(error)")
+            log.error("[AudioSessionManager] ensureActive failed: \(error)")
+            return false
         }
     }
 }

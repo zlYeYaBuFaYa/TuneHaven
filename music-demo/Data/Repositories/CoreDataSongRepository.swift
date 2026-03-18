@@ -33,6 +33,19 @@ final class CoreDataSongRepository {
         }
     }
 
+    func fetchSongs(byIds ids: [UUID]) async -> [Song] {
+        guard !ids.isEmpty else { return [] }
+        return await withCheckedContinuation { continuation in
+            stack.viewContext.perform {
+                let request = SongEntity.fetchRequest()
+                request.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", ids as NSArray)
+                request.fetchBatchSize = 50
+                let results = (try? self.stack.viewContext.fetch(request)) ?? []
+                continuation.resume(returning: results.compactMap { SongMapper.toDomain($0) })
+            }
+        }
+    }
+
     func fetchByHash(_ hash: String) async -> Song? {
         await withCheckedContinuation { continuation in
             stack.viewContext.perform {
@@ -87,8 +100,12 @@ final class CoreDataSongRepository {
         }
 
         for file in filesToMove {
-            if let tmpPath = try? FileStorageService.shared.moveToPendingDelete(relativePath: file.relativePath) {
+            do {
+                let tmpPath = try FileStorageService.shared.moveToPendingDelete(relativePath: file.relativePath)
                 movedFiles.append(UndoToken.MovedFile(tempPath: tmpPath, originalRelativePath: file.relativePath))
+            } catch {
+                AppLogger.shared.error("softDelete: 文件移动失败 \(file.relativePath): \(error)")
+                movedFiles.append(UndoToken.MovedFile(tempPath: "", originalRelativePath: file.relativePath))
             }
         }
 
@@ -105,8 +122,17 @@ final class CoreDataSongRepository {
                 entity.deletedAt = nil
             }
         }
+        let fm = FileManager.default
         for file in token.movedFiles {
-            try? FileStorageService.shared.restoreFromPendingDelete(fileName: file.tempPath, originalRelativePath: file.originalRelativePath)
+            let originalURL = SandboxPathManager.musicFileURL(relativePath: file.originalRelativePath)
+            if fm.fileExists(atPath: originalURL.path) {
+                continue
+            }
+            if !file.tempPath.isEmpty {
+                try? FileStorageService.shared.restoreFromPendingDelete(fileName: file.tempPath, originalRelativePath: file.originalRelativePath)
+            } else {
+                AppLogger.shared.error("undoDelete: 文件既不在待删除目录也不在原始位置: \(file.originalRelativePath)")
+            }
         }
     }
 
@@ -187,29 +213,46 @@ final class CoreDataSongRepository {
     func fetchRecentlyPlayed(days: Int, page: Int, pageSize: Int) async -> PagedResult<Song> {
         await withCheckedContinuation { continuation in
             stack.viewContext.perform {
-                let request = PlayRecordEntity.fetchRequest()
+                var datePredicate: NSPredicate? = nil
                 if days > 0 {
                     let cutoff = Date().addingTimeInterval(-Double(days) * 86400)
-                    request.predicate = NSPredicate(format: "playedAt >= %@", cutoff as CVarArg)
-                }
-                request.sortDescriptors = [NSSortDescriptor(key: "playedAt", ascending: false)]
-
-                let allRecords = (try? self.stack.viewContext.fetch(request)) ?? []
-                var seen = Set<UUID>()
-                var uniqueIds: [UUID] = []
-                for record in allRecords {
-                    guard let sid = record.songId, !seen.contains(sid) else { continue }
-                    seen.insert(sid)
-                    uniqueIds.append(sid)
+                    datePredicate = NSPredicate(format: "playedAt >= %@", cutoff as CVarArg)
                 }
 
-                let totalCount = uniqueIds.count
+                let countReq: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "PlayRecordEntity")
+                countReq.resultType = .dictionaryResultType
+                countReq.propertiesToFetch = ["songId"]
+                countReq.returnsDistinctResults = true
+                countReq.predicate = datePredicate
+                let totalCount = ((try? self.stack.viewContext.fetch(countReq)) ?? []).count
+
                 let startIndex = page * pageSize
                 guard startIndex < totalCount else {
                     continuation.resume(returning: PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false))
                     return
                 }
-                let pageIds = Array(uniqueIds[startIndex..<min(startIndex + pageSize, totalCount)])
+
+                let request = PlayRecordEntity.fetchRequest()
+                request.predicate = datePredicate
+                request.sortDescriptors = [NSSortDescriptor(key: "playedAt", ascending: false)]
+                request.fetchLimit = (startIndex + pageSize) * 5
+
+                let records = (try? self.stack.viewContext.fetch(request)) ?? []
+                var seen = Set<UUID>()
+                var uniqueIds: [UUID] = []
+                for record in records {
+                    guard let sid = record.songId, !seen.contains(sid) else { continue }
+                    seen.insert(sid)
+                    uniqueIds.append(sid)
+                    if uniqueIds.count >= startIndex + pageSize { break }
+                }
+
+                let endIndex = min(startIndex + pageSize, uniqueIds.count)
+                guard startIndex < endIndex else {
+                    continuation.resume(returning: PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false))
+                    return
+                }
+                let pageIds = Array(uniqueIds[startIndex..<endIndex])
 
                 let songReq = SongEntity.fetchRequest()
                 songReq.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", pageIds as NSArray)

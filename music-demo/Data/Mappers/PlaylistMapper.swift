@@ -64,6 +64,12 @@ enum PlaylistMapper {
         entity.sortOrder = Int32(playlist.sortOrder)
         entity.createdAt = playlist.createdAt
         entity.updatedAt = playlist.updatedAt
+        entity.autoCoverHash = playlist.autoCoverHash
+        if playlist.autoCoverHash != nil {
+            entity.autoCoverPath = playlist.coverImagePath
+        } else {
+            entity.customCoverPath = playlist.coverImagePath
+        }
         return entity
     }
 }

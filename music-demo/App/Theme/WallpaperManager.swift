@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 
+@MainActor
 final class WallpaperManager: ObservableObject {
     static let shared = WallpaperManager()
 

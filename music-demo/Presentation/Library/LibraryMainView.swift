@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 @MainActor
-private final class SearchDebouncer: ObservableObject {
+final class SearchDebouncer: ObservableObject {
     @Published var debouncedQuery = ""
     private let subject = PassthroughSubject<String, Never>()
     private var cancellable: AnyCancellable?

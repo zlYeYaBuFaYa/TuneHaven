@@ -54,7 +54,9 @@ final class PlaylistService: ObservableObject {
     }
 
     func setCustomCover(playlistId: UUID, imageData: Data) async throws {
-        guard let image = UIImage(data: imageData) else { return }
+        guard let image = UIImage(data: imageData) else {
+            throw AppError.importFileCorrupted("无效的图片数据")
+        }
         let thumb = ThumbnailGenerator.resize(image, to: .large)
         let url = SandboxPathManager.playlistCoverURL(playlistId: playlistId)
         if let jpegData = thumb.jpegData(compressionQuality: 0.9) {
@@ -85,10 +87,9 @@ final class PlaylistService: ObservableObject {
 
     func fetchFavorites() async -> [Song] {
         let ids = await repo.fetchFavoritesSongIds()
-        let all = await songRepo.fetchAll(sortBy: .title, ascending: true)
-        let idSet = Set(ids)
-        return all.filter { idSet.contains($0.id) }
-                  .sorted { ($0.favoriteDate ?? Date.distantPast) > ($1.favoriteDate ?? Date.distantPast) }
+        guard !ids.isEmpty else { return [] }
+        let songs = await songRepo.fetchSongs(byIds: ids)
+        return songs.sorted { ($0.favoriteDate ?? Date.distantPast) > ($1.favoriteDate ?? Date.distantPast) }
     }
 
     func reorderPlaylists(orderedIds: [UUID]) async throws {

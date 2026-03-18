@@ -15,6 +15,7 @@ extension EnvironmentValues {
 
 // MARK: - ThemeManager
 
+@MainActor
 final class ThemeManager: ObservableObject {
     @Published private(set) var colorMode: ColorMode
     @Published private(set) var currentStyle: ThemeStyle

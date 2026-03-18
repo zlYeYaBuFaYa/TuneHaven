@@ -39,6 +39,7 @@ final class ImportService: ObservableObject {
                 percentage: Double(i) / Double(total),
                 estimatedRemainingSeconds: estimateRemaining(start: start, done: i, total: total)
             )
+            self.progress = currentProgress
             onProgress(currentProgress)
 
             let result = await processFile(url: url)
@@ -89,8 +90,8 @@ final class ImportService: ObservableObject {
             return SingleImportResult(fileName: fileName, status: .skippedUnsupportedFormat, song: nil, errorMessage: "格式不支持：\(ext)")
         }
 
-        _ = url.startAccessingSecurityScopedResource()
-        defer { url.stopAccessingSecurityScopedResource() }
+        let hasAccess = url.startAccessingSecurityScopedResource()
+        defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
 
         let fileSize = fileService.fileSize(at: url)
         guard fileSize <= FileStorageService.maxFileSizeBytes else {

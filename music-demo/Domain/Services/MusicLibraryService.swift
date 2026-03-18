@@ -36,16 +36,21 @@ final class MusicLibraryService: ObservableObject {
                      .sorted { $0.name < $1.name }
     }
 
+    private struct AlbumKey: Hashable {
+        let artist: String
+        let album: String
+    }
+
     func fetchSongsByAlbum() async -> [AlbumGroup] {
         let all = await songRepo.fetchAll(sortBy: .album, ascending: true)
-        var groups: [String: (artist: String, year: Int?, count: Int, cover: String?)] = [:]
+        var groups: [AlbumKey: (year: Int?, count: Int, cover: String?)] = [:]
         for song in all {
-            let key = "\(song.artist)/\(song.album)"
-            var g = groups[key] ?? (song.artist, song.metadata.year, 0, song.coverImagePath)
+            let key = AlbumKey(artist: song.artist, album: song.album)
+            var g = groups[key] ?? (song.metadata.year, 0, song.coverImagePath)
             g.count += 1
             groups[key] = g
         }
-        return groups.map { AlbumGroup(name: String($0.key.split(separator: "/").last ?? ""), artist: $0.value.artist, year: $0.value.year, songCount: $0.value.count, coverImagePath: $0.value.cover) }
+        return groups.map { AlbumGroup(name: $0.key.album, artist: $0.key.artist, year: $0.value.year, songCount: $0.value.count, coverImagePath: $0.value.cover) }
                      .sorted { $0.name < $1.name }
     }
 

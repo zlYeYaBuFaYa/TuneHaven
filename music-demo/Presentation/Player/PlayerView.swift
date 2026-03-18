@@ -9,10 +9,25 @@ struct PlayerView: View {
     @ObservedObject private var engine = AudioEngine.shared
     @Environment(\.colorScheme) private var colorScheme
 
+    private enum ActiveSheet: Identifiable {
+        case moreActions
+        case sleepTimer
+        case speedPicker
+        case addToPlaylist(songIds: [UUID])
+
+        var id: String {
+            switch self {
+            case .moreActions: return "moreActions"
+            case .sleepTimer: return "sleepTimer"
+            case .speedPicker: return "speedPicker"
+            case .addToPlaylist(let ids): return "addToPlaylist_\(ids.first?.uuidString ?? "")"
+            }
+        }
+    }
+
     @State private var lyricsData: LyricsData?
     @State private var showQueue = false
-    @State private var playerSheet: SheetDestination? = nil
-    @State private var showMoreSheet = false
+    @State private var activeSheet: ActiveSheet?
     @State private var dragOffset: CGFloat = 0
 
     private var palette: ThemeColorPalette {
@@ -35,17 +50,23 @@ struct PlayerView: View {
         .offset(y: dragOffset)
         .environment(\.themePalette, palette)
         .onAppear { dragOffset = 0 }
-        .sheet(item: $playerSheet) { destination in
-            playerSheetView(for: destination)
-                .environment(\.themePalette, palette)
-                .environmentObject(playlistService)
-        }
-        .sheet(isPresented: $showMoreSheet) {
-            moreActionSheet
-                .environment(\.themePalette, palette)
-                .environmentObject(playlistService)
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
+        .sheet(item: $activeSheet) { sheet in
+            Group {
+                switch sheet {
+                case .moreActions:
+                    moreActionSheet
+                        .presentationDetents([.medium])
+                        .presentationDragIndicator(.visible)
+                case .sleepTimer:
+                    SleepTimerSheet()
+                case .speedPicker:
+                    PlaybackSpeedSheet()
+                case .addToPlaylist(let ids):
+                    AddToPlaylistSheet(songIds: ids)
+                }
+            }
+            .environment(\.themePalette, palette)
+            .environmentObject(playlistService)
         }
         .onChange(of: playback.currentSong?.id) { _, newValue in
             if newValue == nil {
@@ -129,7 +150,7 @@ struct PlayerView: View {
                     .foregroundColor(palette.textSecondary)
             }
             Spacer()
-            Button { showMoreSheet = true } label: {
+            Button { activeSheet = .moreActions } label: {
                 Image(systemName: "ellipsis")
                     .font(.title3)
                     .foregroundColor(palette.textPrimary)
@@ -147,9 +168,9 @@ struct PlayerView: View {
             List {
                 Section {
                     Button {
-                        showMoreSheet = false
+                        activeSheet = nil
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            playerSheet = .setSleepTimer
+                            activeSheet = .sleepTimer
                         }
                     } label: {
                         HStack(spacing: 12) {
@@ -176,9 +197,9 @@ struct PlayerView: View {
                     .listRowBackground(palette.surface)
 
                     Button {
-                        showMoreSheet = false
+                        activeSheet = nil
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            playerSheet = .playbackSpeedPicker
+                            activeSheet = .speedPicker
                         }
                     } label: {
                         HStack(spacing: 12) {
@@ -206,9 +227,9 @@ struct PlayerView: View {
                 if let songId = playback.currentSong?.id {
                     Section {
                         Button {
-                            showMoreSheet = false
+                            activeSheet = nil
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                playerSheet = .addToPlaylist(songIds: [songId])
+                                activeSheet = .addToPlaylist(songIds: [songId])
                             }
                         } label: {
                             HStack(spacing: 12) {
@@ -236,7 +257,7 @@ struct PlayerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { showMoreSheet = false }
+                    Button("完成") { activeSheet = nil }
                         .font(.subheadline)
                         .foregroundColor(palette.primary)
                 }
@@ -247,21 +268,26 @@ struct PlayerView: View {
     // MARK: - Cover / Info / Progress / Controls
 
     private var coverSection: some View {
-        Group {
-            if let song = playback.currentSong {
-                if let lData = lyricsData, !lData.lines.isEmpty {
-                    LyricsView(lyricsData: lData, currentTime: engine.currentTime)
-                        .frame(height: UIScreen.main.bounds.width - 48)
+        GeometryReader { geo in
+            let coverSize = geo.size.width
+            Group {
+                if let song = playback.currentSong {
+                    if let lData = lyricsData, !lData.lines.isEmpty {
+                        LyricsView(lyricsData: lData, currentTime: engine.currentTime)
+                            .frame(width: coverSize, height: coverSize)
+                    } else {
+                        CoverImageView(path: song.coverImagePath,
+                                       size: coverSize,
+                                       cornerRadius: 16)
+                            .shadow(color: .black.opacity(0.3), radius: 20, y: 8)
+                    }
                 } else {
-                    CoverImageView(path: song.coverImagePath,
-                                   size: UIScreen.main.bounds.width - 48,
-                                   cornerRadius: 16)
-                        .shadow(color: .black.opacity(0.3), radius: 20, y: 8)
+                    PlaceholderCoverView(size: coverSize)
                 }
-            } else {
-                PlaceholderCoverView(size: UIScreen.main.bounds.width - 48)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .aspectRatio(1, contentMode: .fit)
     }
 
     private var songInfo: some View {
@@ -357,22 +383,6 @@ struct PlayerView: View {
             .frame(maxWidth: .infinity)
         }
         .padding(.vertical, 12)
-    }
-
-    // MARK: - Player Sheet Router
-
-    @ViewBuilder
-    private func playerSheetView(for destination: SheetDestination) -> some View {
-        switch destination {
-        case .setSleepTimer:
-            SleepTimerSheet()
-        case .playbackSpeedPicker:
-            PlaybackSpeedSheet()
-        case .addToPlaylist(let ids):
-            AddToPlaylistSheet(songIds: ids)
-        default:
-            EmptyView()
-        }
     }
 
     private func loadLyrics() async {
