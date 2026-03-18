@@ -2,9 +2,20 @@ import AVFoundation
 import Combine
 import Foundation
 
-enum PlaybackState {
+enum PlaybackState: Equatable {
     case idle, loading, playing, paused
     case error(Error)
+
+    static func == (lhs: PlaybackState, rhs: PlaybackState) -> Bool {
+        switch (lhs, rhs) {
+        case (.idle, .idle), (.loading, .loading), (.playing, .playing), (.paused, .paused):
+            return true
+        case (.error(let a), .error(let b)):
+            return a.localizedDescription == b.localizedDescription
+        default:
+            return false
+        }
+    }
 }
 
 enum AudioEngineError: Error, LocalizedError {
@@ -63,13 +74,10 @@ final class AudioEngine: ObservableObject {
         setupNotifications()
     }
 
-    deinit {
-        if let obs = timeObserver {
-            player.removeTimeObserver(obs)
-        }
-        NotificationCenter.default.removeObserver(self)
-        if let o = interruptionObserver { NotificationCenter.default.removeObserver(o) }
-        if let o = routeChangeObserver { NotificationCenter.default.removeObserver(o) }
+    func cleanup() {
+        stop()
+        if let o = interruptionObserver { NotificationCenter.default.removeObserver(o); interruptionObserver = nil }
+        if let o = routeChangeObserver { NotificationCenter.default.removeObserver(o); routeChangeObserver = nil }
     }
 
     func load(url: URL) async {

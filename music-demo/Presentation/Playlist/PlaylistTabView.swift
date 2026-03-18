@@ -41,6 +41,7 @@ struct PlaylistTabView: View {
         case .songInfoEdit(let id):
             SongInfoEditView(songId: id)
         default:
+            let _ = assertionFailure("Unhandled destination in PlaylistTabView: \(destination)")
             EmptyView()
         }
     }

@@ -57,7 +57,7 @@ struct RootTabView: View {
                 .environmentObject(snackbar)
         }
         .onAppear {
-            print("[RootTabView] onAppear — palette.background=\(palette.background)")
+            AppLogger.shared.debug("[RootTabView] onAppear — palette.background=\(palette.background)")
         }
     }
 
@@ -87,7 +87,7 @@ struct RootTabView: View {
 
     private func tabButton(_ tab: AppTab, icon: String, label: String) -> some View {
         Button {
-            print("[RootTabView] tab switch: \(router.selectedTab) → \(tab)")
+            AppLogger.shared.debug("[RootTabView] tab switch: \(router.selectedTab) → \(tab)")
             router.selectedTab = tab
         } label: {
             VStack(spacing: 3) {

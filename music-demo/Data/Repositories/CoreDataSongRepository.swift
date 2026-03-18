@@ -142,8 +142,12 @@ final class CoreDataSongRepository {
             songRequest.predicate = NSPredicate(format: "id IN %@", token.songIds as NSArray)
             let songs = try ctx.fetch(songRequest)
             for song in songs {
+                guard let songId = song.id else {
+                    ctx.delete(song)
+                    continue
+                }
                 let psRequest = PlaylistSongEntity.fetchRequest()
-                psRequest.predicate = NSPredicate(format: "songId == %@", song.id! as CVarArg)
+                psRequest.predicate = NSPredicate(format: "songId == %@", songId as CVarArg)
                 let links = try ctx.fetch(psRequest)
                 links.forEach { ctx.delete($0) }
                 ctx.delete(song)
