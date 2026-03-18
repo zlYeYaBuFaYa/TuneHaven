@@ -72,7 +72,7 @@ struct PlaylistMainView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(palette.background)
+        .adaptiveBackground()
         .navigationTitle("歌单")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(palette.surface, for: .navigationBar)

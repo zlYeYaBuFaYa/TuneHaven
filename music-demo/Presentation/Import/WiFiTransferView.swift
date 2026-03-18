@@ -26,7 +26,7 @@ struct WiFiTransferView: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("WiFi 传输")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

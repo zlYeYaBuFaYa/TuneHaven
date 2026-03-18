@@ -84,6 +84,6 @@ struct SearchResultView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(palette.background)
+        .adaptiveBackground()
     }
 }

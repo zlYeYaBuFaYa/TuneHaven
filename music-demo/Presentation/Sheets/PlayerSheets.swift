@@ -39,7 +39,7 @@ struct SleepTimerSheet: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("定时停止播放")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -87,7 +87,7 @@ struct PlaybackSpeedSheet: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("播放速度")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -132,7 +132,7 @@ struct PlaylistCoverPickerSheet: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("更换封面")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

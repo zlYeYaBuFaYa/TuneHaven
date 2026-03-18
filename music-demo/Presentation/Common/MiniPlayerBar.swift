@@ -71,14 +71,6 @@ struct MiniPlayerBar: View {
                     .frame(height: 2)
                 }
                 .background(palette.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(palette.separator, lineWidth: 0.5)
-                )
-                .shadow(color: palette.primary.opacity(0.08), radius: 6, y: 2)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     router.openPlayer()

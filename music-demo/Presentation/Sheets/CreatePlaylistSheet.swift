@@ -150,7 +150,7 @@ struct AddToPlaylistSheet: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("添加到歌单")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

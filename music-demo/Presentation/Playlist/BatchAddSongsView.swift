@@ -54,7 +54,7 @@ struct BatchAddSongsView: View {
                     songList
                 }
             }
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("添加歌曲")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -144,27 +144,44 @@ struct BatchAddSongsView: View {
 
     private var selectAllSection: some View {
         Section {
-            Button {
-                let allIds = Set(filteredSongs.map(\.id))
-                if allIds.isSubset(of: selectedIds) {
-                    selectedIds.subtract(allIds)
-                } else {
-                    selectedIds.formUnion(allIds)
-                }
-            } label: {
-                HStack {
+            HStack(spacing: 0) {
+                Button {
                     let allIds = Set(filteredSongs.map(\.id))
-                    let allSelected = allIds.isSubset(of: selectedIds)
-                    Image(systemName: allSelected ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(allSelected ? palette.primary : palette.textTertiary)
-                        .font(.title3)
-                    Text(allSelected ? "取消全选" : "全选 (\(filteredSongs.count) 首)")
-                        .foregroundColor(palette.textPrimary)
-                    Spacer()
-                    Text("已选 \(selectedIds.count) 首")
-                        .font(.caption)
-                        .foregroundColor(palette.textSecondary)
+                    if allIds.isSubset(of: selectedIds) {
+                        selectedIds.subtract(allIds)
+                    } else {
+                        selectedIds.formUnion(allIds)
+                    }
+                } label: {
+                    HStack {
+                        let allIds = Set(filteredSongs.map(\.id))
+                        let allSelected = allIds.isSubset(of: selectedIds)
+                        Image(systemName: allSelected ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(allSelected ? palette.primary : palette.textTertiary)
+                            .font(.title3)
+                        Text(allSelected ? "取消全选" : "全选 (\(filteredSongs.count) 首)")
+                            .foregroundColor(palette.textPrimary)
+                    }
                 }
+                .buttonStyle(.borderless)
+
+                Spacer()
+
+                Button {
+                    let allIds = Set(filteredSongs.map(\.id))
+                    selectedIds.formSymmetricDifference(allIds)
+                } label: {
+                    Text("反选")
+                        .font(.subheadline)
+                        .foregroundColor(palette.primary)
+                }
+                .buttonStyle(.borderless)
+
+                Spacer().frame(width: 16)
+
+                Text("已选 \(selectedIds.count) 首")
+                    .font(.caption)
+                    .foregroundColor(palette.textSecondary)
             }
             .listRowBackground(palette.surface)
         }

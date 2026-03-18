@@ -1,5 +1,56 @@
 import SwiftUI
 
+// MARK: - 自适应背景环境键
+
+private struct HasCustomBackgroundKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    var hasCustomBackground: Bool {
+        get { self[HasCustomBackgroundKey.self] }
+        set { self[HasCustomBackgroundKey.self] = newValue }
+    }
+}
+
+struct AdaptiveBackgroundModifier: ViewModifier {
+    @Environment(\.hasCustomBackground) private var hasCustomBg
+    @Environment(\.themePalette) private var palette
+
+    func body(content: Content) -> some View {
+        content.background(hasCustomBg ? Color.clear : palette.background)
+    }
+}
+
+extension View {
+    func adaptiveBackground() -> some View {
+        modifier(AdaptiveBackgroundModifier())
+    }
+
+    func themeContainerBackground() -> some View {
+        modifier(ThemeContainerBackgroundModifier())
+    }
+}
+
+struct ThemeContainerBackgroundModifier: ViewModifier {
+    @Environment(\.hasCustomBackground) private var hasCustomBg
+    @Environment(\.themePalette) private var palette
+
+    func body(content: Content) -> some View {
+        content.background {
+            if hasCustomBg {
+                ThemeBackgroundView()
+                    .ignoresSafeArea()
+            } else {
+                palette.background
+                    .ignoresSafeArea()
+            }
+        }
+    }
+}
+
+// MARK: - 主题背景视图
+
 struct ThemeBackgroundView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var wallpaperManager: WallpaperManager

@@ -95,7 +95,7 @@ struct AllSongsView: View {
             }
         }
         .listStyle(.plain)
-        .background(palette.background)
+        .adaptiveBackground()
         .scrollContentBackground(.hidden)
     }
 

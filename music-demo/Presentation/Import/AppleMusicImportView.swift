@@ -39,7 +39,7 @@ struct AppleMusicImportView: View {
                     ProgressView("正在请求权限...")
                 }
             }
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("Apple Music 资料库")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

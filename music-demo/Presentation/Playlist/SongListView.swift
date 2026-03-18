@@ -43,7 +43,7 @@ struct SongListView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(palette.background)
+                .adaptiveBackground()
             }
         }
         .navigationTitle(title)

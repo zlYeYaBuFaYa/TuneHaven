@@ -144,7 +144,7 @@ struct ImportFilesView: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("导入音乐")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(palette.surface, for: .navigationBar)

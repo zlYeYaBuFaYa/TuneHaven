@@ -22,7 +22,7 @@ struct ArtistDetailView: View {
                 EmptyStateView(icon: "person.crop.circle", title: "未找到艺术家")
             }
         }
-        .background(palette.background)
+        .adaptiveBackground()
         .navigationTitle(artistName)
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(palette.surface, for: .navigationBar)
@@ -111,7 +111,7 @@ struct ArtistDetailView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(palette.background)
+        .adaptiveBackground()
     }
 
     private func load() async {

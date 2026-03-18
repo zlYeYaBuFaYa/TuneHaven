@@ -13,9 +13,11 @@ struct LibraryTabView: View {
         let hasCustomBg = themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
         NavigationStack(path: $router.libraryPath) {
             LibraryMainView()
+                .themeContainerBackground()
                 .fixNavigationControllerBackground(hasCustomBg ? Color.clear : palette.background)
                 .navigationDestination(for: AppDestination.self) { destination in
                     destinationView(destination)
+                        .themeContainerBackground()
                         .environment(\.themePalette, palette)
                 }
         }

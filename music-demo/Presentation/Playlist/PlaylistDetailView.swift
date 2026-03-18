@@ -15,97 +15,97 @@ struct PlaylistDetailView: View {
     @State private var isDeleted = false
 
     var body: some View {
-        Group {
+        List {
             if let detail {
-                List {
-                    Section {
-                        PlaylistHeaderSection(playlist: detail.playlist, songs: detail.songs) {
-                            if let first = detail.songs.first {
-                                Task { await playback.play(song: first, in: .playlist(id: playlistId)) }
-                            }
+                Section {
+                    PlaylistHeaderSection(playlist: detail.playlist, songs: detail.songs) {
+                        if let first = detail.songs.first {
+                            Task { await playback.play(song: first, in: .playlist(id: playlistId)) }
                         }
                     }
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
 
-                    Section {
-                        if detail.songs.isEmpty {
-                            Text("暂无歌曲，长按歌曲可添加到此歌单")
-                                .font(.subheadline)
-                                .foregroundColor(palette.textTertiary)
-                                .listRowBackground(Color.clear)
-                        } else {
-                            ForEach(detail.songs) { song in
-                                SongRow(
-                                    song: song,
-                                    isPlaying: playback.currentSong?.id == song.id,
-                                    onTap: {
-                                        Task {
-                                            await playback.prepare(song: song, in: .playlist(id: playlistId))
-                                            router.openPlayer()
-                                        }
-                                    },
-                                    onFavorite: {
-                                        Task { try? await libraryService.toggleFavorite(songId: song.id) }
-                                    },
-                                    onDelete: detail.playlist.isSystem ? nil : {
-                                        Task { try? await playlistService.removeSongs([song.id], from: playlistId) }
+                Section {
+                    if detail.songs.isEmpty {
+                        Text("暂无歌曲，长按歌曲可添加到此歌单")
+                            .font(.subheadline)
+                            .foregroundColor(palette.textTertiary)
+                            .listRowBackground(Color.clear)
+                    } else {
+                        ForEach(detail.songs) { song in
+                            SongRow(
+                                song: song,
+                                isPlaying: playback.currentSong?.id == song.id,
+                                onTap: {
+                                    Task {
+                                        await playback.prepare(song: song, in: .playlist(id: playlistId))
+                                        router.openPlayer()
                                     }
-                                )
-                                .listRowBackground(palette.surface)
-                            }
-                        }
-                    }
-                }
-                .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
-                .background(palette.background)
-                .navigationTitle(detail.playlist.name)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbarBackground(palette.surface, for: .navigationBar)
-                .toolbar {
-                    if !detail.playlist.isSystem {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            HStack(spacing: 16) {
-                                Button { showBatchAdd = true } label: {
-                                    Image(systemName: "plus")
-                                        .foregroundColor(palette.primary)
+                                },
+                                onFavorite: {
+                                    Task { try? await libraryService.toggleFavorite(songId: song.id) }
+                                },
+                                onDelete: detail.playlist.isSystem ? nil : {
+                                    Task { try? await playlistService.removeSongs([song.id], from: playlistId) }
                                 }
-                                Menu {
-                                    Button { router.present(.editPlaylist(id: playlistId)) } label: {
-                                        Label("编辑歌单", systemImage: "pencil")
-                                    }
-                                    Button { router.present(.playlistCoverPicker(id: playlistId)) } label: {
-                                        Label("更换封面", systemImage: "photo")
-                                    }
-                                    Button { showBatchAdd = true } label: {
-                                        Label("批量添加歌曲", systemImage: "text.badge.plus")
-                                    }
-                                    Divider()
-                                    Button(role: .destructive) { showDeleteConfirm = true } label: {
-                                        Label("删除歌单", systemImage: "trash")
-                                    }
-                                } label: {
-                                    Image(systemName: "ellipsis.circle")
-                                        .foregroundColor(palette.primary)
-                                }
-                            }
+                            )
+                            .listRowBackground(palette.surface)
                         }
                     }
                 }
-                .confirmationDialog("删除歌单", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
-                    Button("删除", role: .destructive) {
-                        Task {
-                            isDeleted = true
-                            try? await playlistService.deletePlaylist(id: playlistId)
-                            router.popToRoot()
-                        }
-                    }
-                } message: {
-                    Text("确定要删除「\(detail.playlist.name)」吗？此操作不可撤销。")
-                }
-            } else {
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .overlay {
+            if detail == nil {
                 ProgressView()
+            }
+        }
+        .adaptiveBackground()
+        .navigationTitle(detail?.playlist.name ?? "")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(palette.surface, for: .navigationBar)
+        .toolbar {
+            if detail?.playlist.isSystem != true {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 16) {
+                        Button { showBatchAdd = true } label: {
+                            Image(systemName: "plus")
+                                .foregroundColor(palette.primary)
+                        }
+                        Menu {
+                            Button { router.present(.editPlaylist(id: playlistId)) } label: {
+                                Label("编辑歌单", systemImage: "pencil")
+                            }
+                            Button { showBatchAdd = true } label: {
+                                Label("批量添加歌曲", systemImage: "text.badge.plus")
+                            }
+                            Divider()
+                            Button(role: .destructive) { showDeleteConfirm = true } label: {
+                                Label("删除歌单", systemImage: "trash")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                                .foregroundColor(palette.primary)
+                        }
+                    }
+                }
+            }
+        }
+        .confirmationDialog("删除歌单", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("删除", role: .destructive) {
+                Task {
+                    isDeleted = true
+                    try? await playlistService.deletePlaylist(id: playlistId)
+                    router.popToRoot()
+                }
+            }
+        } message: {
+            if let detail {
+                Text("确定要删除「\(detail.playlist.name)」吗？此操作不可撤销。")
             }
         }
         .task { detail = await playlistService.fetchDetail(playlistId: playlistId) }

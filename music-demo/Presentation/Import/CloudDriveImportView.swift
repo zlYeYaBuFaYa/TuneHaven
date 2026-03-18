@@ -29,7 +29,7 @@ struct CloudDriveImportView: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("云盘导入")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(palette.surface, for: .navigationBar)

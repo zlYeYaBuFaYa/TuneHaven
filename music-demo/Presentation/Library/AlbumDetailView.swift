@@ -23,7 +23,7 @@ struct AlbumDetailView: View {
                 EmptyStateView(icon: "square.stack", title: "未找到专辑")
             }
         }
-        .background(palette.background)
+        .adaptiveBackground()
         .navigationTitle(albumName)
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(palette.surface, for: .navigationBar)
@@ -144,7 +144,7 @@ struct AlbumDetailView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(palette.background)
+        .adaptiveBackground()
     }
 
     private func playButton(icon: String, title: String, action: @escaping () -> Void) -> some View {

@@ -38,7 +38,7 @@ struct SongInfoEditView: View {
                         .listRowBackground(palette.surface)
                     }
                     .scrollContentBackground(.hidden)
-                    .background(palette.background)
+                    .adaptiveBackground()
                 } else {
                     ProgressView()
                 }

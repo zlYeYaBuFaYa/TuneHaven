@@ -49,7 +49,7 @@ struct PlaylistGroupView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(palette.background)
+        .adaptiveBackground()
         .navigationTitle("管理分组")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -243,7 +243,7 @@ struct MoveToGroupSheet: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("移入分组")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

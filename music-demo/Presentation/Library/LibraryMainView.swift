@@ -26,6 +26,7 @@ struct LibraryMainView: View {
     @EnvironmentObject private var searchService: SearchService
     @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
+    @Environment(\.hasCustomBackground) private var hasCustomBg
 
     @StateObject private var searchDebouncer = SearchDebouncer()
     @State private var selectedTab: LibraryTab = .all
@@ -49,10 +50,10 @@ struct LibraryMainView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .background(palette.background)
+        .adaptiveBackground()
         .navigationTitle("音乐库")
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(palette.surface, for: .navigationBar)
+        .toolbarBackground(hasCustomBg ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(palette.surface), for: .navigationBar)
         .onChange(of: searchDebouncer.debouncedQuery) { _, query in
             performSearch(query: query)
         }
@@ -91,39 +92,37 @@ struct LibraryMainView: View {
     }
 
     private var tabBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(LibraryTab.allCases, id: \.self) { tab in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedTab = tab
-                        }
-                    } label: {
-                        Text(tab.displayName)
-                            .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
-                            .foregroundColor(selectedTab == tab ? .white : palette.textSecondary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(
-                                Group {
-                                    if selectedTab == tab {
-                                        LinearGradient(
-                                            colors: [palette.gradientStart, palette.gradientEnd],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
-                                        )
-                                    } else {
-                                        palette.surfaceSecondary
-                                    }
-                                }
-                            )
-                            .clipShape(Capsule())
+        HStack(spacing: 8) {
+            ForEach(LibraryTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        selectedTab = tab
                     }
+                } label: {
+                    Text(tab.displayName)
+                        .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
+                        .foregroundColor(selectedTab == tab ? .white : palette.textSecondary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            Group {
+                                if selectedTab == tab {
+                                    LinearGradient(
+                                        colors: [palette.gradientStart, palette.gradientEnd],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                } else {
+                                    palette.surfaceSecondary
+                                }
+                            }
+                        )
+                        .clipShape(Capsule())
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder

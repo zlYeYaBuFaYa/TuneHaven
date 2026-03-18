@@ -10,6 +10,10 @@ struct RootTabView: View {
     @Environment(\.themePalette) private var palette
     @Environment(\.colorScheme) private var colorScheme
 
+    private var hasCustomBg: Bool {
+        themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
+    }
+
     var body: some View {
         ZStack {
             ThemeBackgroundView()
@@ -26,6 +30,7 @@ struct RootTabView: View {
                 .opacity(router.selectedTab == .settings ? 1 : 0)
                 .allowsHitTesting(router.selectedTab == .settings)
         }
+        .environment(\.hasCustomBackground, hasCustomBg)
         .animation(nil, value: router.selectedTab)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             customTabBar
@@ -59,8 +64,7 @@ struct RootTabView: View {
     // MARK: - Custom Tab Bar
 
     private var customTabBar: some View {
-        let hasCustomBg = themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
-        return VStack(spacing: 0) {
+        VStack(spacing: 0) {
             Divider()
                 .overlay(palette.separator)
 

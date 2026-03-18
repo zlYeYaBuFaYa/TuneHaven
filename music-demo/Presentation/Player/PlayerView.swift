@@ -256,7 +256,7 @@ struct PlayerView: View {
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
-            .background(palette.background)
+            .adaptiveBackground()
             .navigationTitle("更多操作")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

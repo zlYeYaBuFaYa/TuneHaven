@@ -31,7 +31,7 @@ struct AlbumGridView: View {
                 }
             }
         }
-        .background(palette.background)
+        .adaptiveBackground()
         .task { await load() }
     }
 
