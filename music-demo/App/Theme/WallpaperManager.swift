@@ -3,7 +3,6 @@ import PhotosUI
 
 @MainActor
 final class WallpaperManager: ObservableObject {
-    static let shared = WallpaperManager()
 
     @Published var currentWallpaper: UIImage?
     @Published var useCustomWallpaper: Bool

@@ -5,8 +5,8 @@ struct PlayerView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var playlistService: PlaylistService
-    @ObservedObject private var playback = PlaybackService.shared
-    @ObservedObject private var engine = AudioEngine.shared
+    @EnvironmentObject private var playback: PlaybackService
+    @EnvironmentObject private var engine: AudioEngine
     @Environment(\.colorScheme) private var colorScheme
 
     private enum ActiveSheet: Identifiable {

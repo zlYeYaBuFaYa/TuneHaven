@@ -2,8 +2,7 @@ import SwiftUI
 
 struct PlayQueueView: View {
     let onClose: () -> Void
-    @ObservedObject private var playback = PlaybackService.shared
-    @ObservedObject private var queueService = PlaybackService.shared.queue
+    @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var playlistService: PlaylistService
     @Environment(\.themePalette) private var palette
 
@@ -62,7 +61,7 @@ struct PlayQueueView: View {
                         .contentShape(Rectangle())
                         .onTapGesture {
                             playback.queue.setCurrentIndex(to: idx)
-                            Task { await PlaybackService.shared.play(song: item.song, in: .queue) }
+                            Task { await playback.play(song: item.song, in: .queue) }
                         }
                         .listRowBackground(Color.clear)
                         .listRowSeparatorTint(palette.progressBackground)
@@ -107,7 +106,7 @@ struct PlayQueueView: View {
             }
             Button("取消", role: .cancel) { savePlaylistName = "" }
         } message: {
-            Text("将当前队列中的 \(queueService.queue.count) 首歌曲保存为新歌单")
+            Text("将当前队列中的 \(playback.queue.queue.count) 首歌曲保存为新歌单")
         }
     }
 }

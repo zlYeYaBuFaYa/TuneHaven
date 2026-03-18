@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SleepTimerSheet: View {
-    @ObservedObject private var playback = PlaybackService.shared
+    @EnvironmentObject private var playback: PlaybackService
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -53,7 +53,7 @@ struct SleepTimerSheet: View {
 }
 
 struct PlaybackSpeedSheet: View {
-    @ObservedObject private var playback = PlaybackService.shared
+    @EnvironmentObject private var playback: PlaybackService
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 

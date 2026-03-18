@@ -7,6 +7,8 @@ struct RootTabView: View {
     @EnvironmentObject private var snackbar: SnackbarState
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var wallpaperManager: WallpaperManager
+    @EnvironmentObject private var playback: PlaybackService
+    @EnvironmentObject private var engine: AudioEngine
     @Environment(\.themePalette) private var palette
     @Environment(\.colorScheme) private var colorScheme
 
@@ -46,6 +48,8 @@ struct RootTabView: View {
                 .environmentObject(libraryService)
                 .environmentObject(playlistService)
                 .environmentObject(snackbar)
+                .environmentObject(playback)
+                .environmentObject(engine)
         }
         .sheet(item: $router.sheet) { destination in
             sheetView(for: destination)
@@ -55,6 +59,8 @@ struct RootTabView: View {
                 .environmentObject(libraryService)
                 .environmentObject(playlistService)
                 .environmentObject(snackbar)
+                .environmentObject(playback)
+                .environmentObject(engine)
         }
         .onAppear {
             AppLogger.shared.debug("[RootTabView] onAppear — palette.background=\(palette.background)")

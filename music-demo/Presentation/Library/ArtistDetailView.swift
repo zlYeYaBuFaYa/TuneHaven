@@ -8,7 +8,7 @@ struct ArtistDetailView: View {
     @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
 
-    @ObservedObject private var playback = PlaybackService.shared
+    @EnvironmentObject private var playback: PlaybackService
     @State private var detail: ArtistDetail? = nil
     @State private var isLoading = true
 

@@ -6,7 +6,7 @@ struct PlaylistDetailView: View {
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var router: AppRouter
-    @ObservedObject private var playback = PlaybackService.shared
+    @EnvironmentObject private var playback: PlaybackService
     @Environment(\.themePalette) private var palette
 
     @State private var detail: PlaylistDetail?

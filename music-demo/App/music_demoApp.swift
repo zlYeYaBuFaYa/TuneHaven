@@ -47,6 +47,8 @@ struct music_demoApp: App {
                         .environmentObject(snackbar)
                         .environmentObject(wallpaperManager)
                         .environmentObject(groupService)
+                        .environmentObject(playbackService)
+                        .environmentObject(AudioEngine.shared)
                         .environment(\.themePalette, resolvedPalette)
                         .snackbar(snackbar)
                 } else if let error = initError {

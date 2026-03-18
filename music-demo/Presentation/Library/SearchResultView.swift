@@ -6,7 +6,7 @@ struct SearchResultView: View {
     let tab: LibraryTab
 
     @EnvironmentObject private var router: AppRouter
-    @ObservedObject private var playback = PlaybackService.shared
+    @EnvironmentObject private var playback: PlaybackService
     @Environment(\.themePalette) private var palette
 
     var body: some View {
