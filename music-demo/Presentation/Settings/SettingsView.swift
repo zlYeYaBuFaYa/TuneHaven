@@ -107,7 +107,7 @@ struct SettingsView: View {
                             .foregroundColor(palette.primary)
                     }
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
 
                 Button {
                     showAppleMusicImport = true
@@ -126,7 +126,7 @@ struct SettingsView: View {
                             .foregroundColor(palette.primary)
                     }
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
 
                 Button {
                     showWifiTransfer = true
@@ -145,7 +145,7 @@ struct SettingsView: View {
                             .foregroundColor(palette.primary)
                     }
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
             } label: {
                 Label {
                     Text("导入音乐")
@@ -156,7 +156,7 @@ struct SettingsView: View {
                 }
             }
             .tint(palette.textSecondary)
-            .listRowBackground(palette.surface)
+            .listRowBackground(listRowBg)
         }
     }
 
@@ -205,7 +205,7 @@ struct SettingsView: View {
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
 
                 VStack(alignment: .leading, spacing: 10) {
                     Text("主题风格")
@@ -227,7 +227,9 @@ struct SettingsView: View {
                     }
                 }
                 .padding(.vertical, 4)
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
+
+                wallpaperSection
             } label: {
                 Label {
                     Text("外观")
@@ -238,8 +240,84 @@ struct SettingsView: View {
                 }
             }
             .tint(palette.textSecondary)
-            .listRowBackground(palette.surface)
+            .listRowBackground(listRowBg)
         }
+    }
+
+    // MARK: - Wallpaper Section
+
+    private var wallpaperSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("壁纸")
+                .font(.caption)
+                .foregroundColor(palette.textSecondary)
+
+            HStack(spacing: 12) {
+                if let image = wallpaperManager.currentWallpaper {
+                    ZStack(alignment: .topTrailing) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 80, height: 120)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(palette.primary, lineWidth: 2)
+                            )
+
+                        Button {
+                            wallpaperManager.removeWallpaper()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(.white, Color.red)
+                        }
+                        .offset(x: 6, y: -6)
+                    }
+                }
+
+                PhotosPicker(
+                    selection: $selectedPhotoItem,
+                    matching: .images,
+                    photoLibrary: .shared()
+                ) {
+                    VStack(spacing: 6) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.title2)
+                            .foregroundColor(palette.primary)
+                        Text(wallpaperManager.currentWallpaper == nil ? "选择壁纸" : "更换壁纸")
+                            .font(.caption)
+                            .foregroundColor(palette.textSecondary)
+                    }
+                    .frame(width: 80, height: 120)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(palette.separator, style: StrokeStyle(lineWidth: 1.5, dash: [6]))
+                    )
+                }
+                .buttonStyle(.borderless)
+                .onChange(of: selectedPhotoItem) { _, newItem in
+                    guard let newItem else { return }
+                    Task {
+                        if let data = try? await newItem.loadTransferable(type: Data.self),
+                           let uiImage = UIImage(data: data) {
+                            wallpaperManager.setWallpaper(uiImage)
+                        }
+                        selectedPhotoItem = nil
+                    }
+                }
+
+                Spacer()
+            }
+
+            if wallpaperManager.currentWallpaper != nil {
+                Text("壁纸将覆盖在主题背景之上，半透明效果让背景融入整体风格")
+                    .font(.caption2)
+                    .foregroundColor(palette.textTertiary)
+            }
+        }
+        .padding(.vertical, 4)
+        .listRowBackground(listRowBg)
     }
 
     // MARK: - Playback Section
@@ -271,7 +349,7 @@ struct SettingsView: View {
                             .foregroundColor(palette.primary)
                     }
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
 
                 HStack {
                     Label("速度记忆模式", systemImage: "speedometer")
@@ -285,7 +363,7 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                     .frame(width: 120)
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
 
                 Toggle(isOn: $sleepTimerNotification) {
                     Label {
@@ -303,7 +381,7 @@ struct SettingsView: View {
                     }
                 }
                 .tint(palette.primary)
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
                 .onChange(of: sleepTimerNotification) { _, enabled in
                     if enabled { requestNotificationPermission() }
                 }
@@ -343,7 +421,7 @@ struct SettingsView: View {
                     }
                 }
                 .tint(palette.primary)
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
             } label: {
                 Label {
                     Text("播放")
@@ -354,7 +432,7 @@ struct SettingsView: View {
                 }
             }
             .tint(palette.textSecondary)
-            .listRowBackground(palette.surface)
+            .listRowBackground(listRowBg)
         }
     }
 
@@ -372,7 +450,7 @@ struct SettingsView: View {
                         .font(.subheadline)
                         .foregroundColor(palette.textSecondary)
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
@@ -393,7 +471,7 @@ struct SettingsView: View {
                     ), in: 50...300, step: 50)
                     .tint(palette.primary)
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
 
                 Button {
                     showClearCacheConfirm = true
@@ -402,7 +480,7 @@ struct SettingsView: View {
                         .font(.subheadline)
                         .foregroundColor(SemanticColor.danger)
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
                 .confirmationDialog("清理缓存", isPresented: $showClearCacheConfirm) {
                     Button("清理", role: .destructive) {
                         Task {
@@ -421,7 +499,7 @@ struct SettingsView: View {
                         .font(.subheadline)
                         .foregroundColor(SemanticColor.danger)
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(listRowBg)
                 .confirmationDialog("清除搜索记录", isPresented: $showClearHistoryConfirm) {
                     Button("清除", role: .destructive) {
                         Task { await searchService.clearHistory() }
@@ -439,7 +517,7 @@ struct SettingsView: View {
                 }
             }
             .tint(palette.textSecondary)
-            .listRowBackground(palette.surface)
+            .listRowBackground(listRowBg)
         }
     }
 
@@ -462,7 +540,7 @@ struct SettingsView: View {
                 }
             }
             .tint(palette.textSecondary)
-            .listRowBackground(palette.surface)
+            .listRowBackground(listRowBg)
         }
     }
 
@@ -477,7 +555,7 @@ struct SettingsView: View {
                 .foregroundColor(palette.textSecondary)
                 .multilineTextAlignment(.trailing)
         }
-        .listRowBackground(palette.surface)
+        .listRowBackground(listRowBg)
     }
 
     // MARK: - Theme Card
