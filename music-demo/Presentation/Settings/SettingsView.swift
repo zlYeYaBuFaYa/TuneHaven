@@ -4,13 +4,10 @@ import PhotosUI
 
 struct SettingsView: View {
     @EnvironmentObject private var themeManager: ThemeManager
-    @EnvironmentObject private var searchService: SearchService
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var wallpaperManager: WallpaperManager
-    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
-    @Environment(\.colorScheme) private var colorScheme
 
     @AppStorage("recent_play_range")       private var recentPlayRange: Int = 7
     @AppStorage("speed_memory_mode")       private var speedMemoryMode: Int = 0
@@ -35,26 +32,49 @@ struct SettingsView: View {
     @State private var showCloudDriveImport = false
     @State private var selectedPhotoItem: PhotosPickerItem?
 
-    @EnvironmentObject private var router: AppRouter
-
     private var hasCustomBg: Bool {
         themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
     }
 
     private var listRowBg: Color {
-        hasCustomBg
-            ? palette.surface.opacity(0.75)
-            : palette.surface
+        hasCustomBg ? palette.surface.opacity(0.75) : palette.surface
     }
 
     var body: some View {
         List {
-            importSection
-            appearanceSection
-            playbackSection
-            storageSection
-            aboutSection
+            SettingsImportSection(
+                isExpanded: $expandedImport,
+                showDocumentPicker: $showDocumentPicker,
+                showAppleMusicImport: $showAppleMusicImport,
+                showCloudDriveImport: $showCloudDriveImport,
+                showWifiTransfer: $showWifiTransfer
+            )
+
+            SettingsAppearanceSection(
+                isExpanded: $expandedAppearance,
+                selectedPhotoItem: $selectedPhotoItem
+            )
+
+            SettingsPlaybackSection(
+                isExpanded: $expandedPlayback,
+                recentPlayRange: $recentPlayRange,
+                speedMemoryMode: $speedMemoryMode,
+                sleepTimerNotification: $sleepTimerNotification,
+                wifiPasswordEnabled: $wifiPasswordEnabled,
+                notificationPermissionStatus: $notificationPermissionStatus
+            )
+
+            SettingsStorageSection(
+                isExpanded: $expandedStorage,
+                cacheLimitMB: $cacheLimitMB,
+                currentCacheSize: $currentCacheSize,
+                showClearCacheConfirm: $showClearCacheConfirm,
+                showClearHistoryConfirm: $showClearHistoryConfirm
+            )
+
+            SettingsAboutSection(isExpanded: $expandedAbout)
         }
+        .environment(\.settingsListRowBg, listRowBg)
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(hasCustomBg ? Color.clear : palette.background)
@@ -97,546 +117,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Import Section
-
-    private var importSection: some View {
-        Section {
-            DisclosureGroup(isExpanded: $expandedImport) {
-                Button {
-                    showDocumentPicker = true
-                } label: {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("文件导入")
-                                .font(.subheadline)
-                                .foregroundColor(palette.textPrimary)
-                            Text("从 Files 导入 MP3, M4A 等格式")
-                                .font(.caption)
-                                .foregroundColor(palette.textSecondary)
-                        }
-                    } icon: {
-                        Image(systemName: "folder")
-                            .foregroundColor(palette.primary)
-                    }
-                }
-                .listRowBackground(listRowBg)
-
-                Button {
-                    showAppleMusicImport = true
-                } label: {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("从 Apple Music 资料库导入")
-                                .font(.subheadline)
-                                .foregroundColor(palette.textPrimary)
-                            Text("扫描设备上已下载的本地音乐")
-                                .font(.caption)
-                                .foregroundColor(palette.textSecondary)
-                        }
-                    } icon: {
-                        Image(systemName: "music.note.house")
-                            .foregroundColor(palette.primary)
-                    }
-                }
-                .listRowBackground(listRowBg)
-
-                Button {
-                    showCloudDriveImport = true
-                } label: {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("云盘导入")
-                                .font(.subheadline)
-                                .foregroundColor(palette.textPrimary)
-                            Text("从百度网盘等云盘导入音乐")
-                                .font(.caption)
-                                .foregroundColor(palette.textSecondary)
-                        }
-                    } icon: {
-                        Image(systemName: "cloud")
-                            .foregroundColor(palette.primary)
-                    }
-                }
-                .listRowBackground(listRowBg)
-
-                Button {
-                    showWifiTransfer = true
-                } label: {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("WiFi 传输")
-                                .font(.subheadline)
-                                .foregroundColor(palette.textPrimary)
-                            Text("通过浏览器从电脑无线传输音乐")
-                                .font(.caption)
-                                .foregroundColor(palette.textSecondary)
-                        }
-                    } icon: {
-                        Image(systemName: "wifi")
-                            .foregroundColor(palette.primary)
-                    }
-                }
-                .listRowBackground(listRowBg)
-            } label: {
-                Label {
-                    Text("导入音乐")
-                        .foregroundColor(palette.textPrimary)
-                } icon: {
-                    sectionIcon("square.and.arrow.down")
-                }
-            }
-            .tint(palette.textSecondary)
-            .listRowBackground(listRowBg)
-        }
-    }
-
-    // MARK: - Appearance Section
-
-    private var appearanceSection: some View {
-        Section {
-            DisclosureGroup(isExpanded: $expandedAppearance) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("颜色模式")
-                        .font(.caption)
-                        .foregroundColor(palette.textSecondary)
-                    HStack(spacing: 0) {
-                        ForEach(ColorMode.allCases) { mode in
-                            Button {
-                                themeManager.setColorMode(mode)
-                            } label: {
-                                VStack(spacing: 4) {
-                                    Image(systemName: mode.iconName)
-                                        .font(.subheadline)
-                                    Text(mode.displayName)
-                                        .font(.caption2)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(
-                                    themeManager.colorMode == mode
-                                        ? palette.primary.opacity(0.15)
-                                        : Color.clear
-                                )
-                                .foregroundColor(
-                                    themeManager.colorMode == mode
-                                        ? palette.primary
-                                        : palette.textSecondary
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(
-                                            themeManager.colorMode == mode ? palette.primary : Color.clear,
-                                            lineWidth: 1.5
-                                        )
-                                )
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .listRowBackground(listRowBg)
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("主题风格")
-                        .font(.caption)
-                        .foregroundColor(palette.textSecondary)
-                    LazyVGrid(columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ], spacing: 10) {
-                        ForEach(ThemeRegistry.shared.allThemes) { style in
-                            Button {
-                                themeManager.setTheme(style)
-                            } label: {
-                                themeCard(style: style)
-                            }
-                            .buttonStyle(.borderless)
-                        }
-                    }
-                }
-                .padding(.vertical, 4)
-                .listRowBackground(listRowBg)
-
-                wallpaperSection
-            } label: {
-                Label {
-                    Text("外观")
-                        .foregroundColor(palette.textPrimary)
-                } icon: {
-                    sectionIcon("paintbrush")
-                }
-            }
-            .tint(palette.textSecondary)
-            .listRowBackground(listRowBg)
-        }
-    }
-
-    // MARK: - Wallpaper Section
-
-    private var wallpaperSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("壁纸")
-                .font(.caption)
-                .foregroundColor(palette.textSecondary)
-
-            HStack(spacing: 12) {
-                if let image = wallpaperManager.currentWallpaper {
-                    ZStack(alignment: .topTrailing) {
-                        Image(uiImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 80, height: 120)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(palette.primary, lineWidth: 2)
-                            )
-
-                        Button {
-                            wallpaperManager.removeWallpaper()
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 18))
-                                .foregroundStyle(.white, Color.red)
-                        }
-                        .offset(x: 6, y: -6)
-                    }
-                }
-
-                PhotosPicker(
-                    selection: $selectedPhotoItem,
-                    matching: .images,
-                    photoLibrary: .shared()
-                ) {
-                    VStack(spacing: 6) {
-                        Image(systemName: "photo.on.rectangle.angled")
-                            .font(.title2)
-                            .foregroundColor(palette.primary)
-                        Text(wallpaperManager.currentWallpaper == nil ? "选择壁纸" : "更换壁纸")
-                            .font(.caption)
-                            .foregroundColor(palette.textSecondary)
-                    }
-                    .frame(width: 80, height: 120)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(palette.separator, style: StrokeStyle(lineWidth: 1.5, dash: [6]))
-                    )
-                }
-                .buttonStyle(.borderless)
-                .onChange(of: selectedPhotoItem) { _, newItem in
-                    guard let newItem else { return }
-                    Task {
-                        if let data = try? await newItem.loadTransferable(type: Data.self),
-                           let uiImage = UIImage(data: data) {
-                            wallpaperManager.setWallpaper(uiImage)
-                            snackbar.show(message: "壁纸已应用")
-                        }
-                        selectedPhotoItem = nil
-                    }
-                }
-
-                Spacer()
-            }
-
-            if wallpaperManager.currentWallpaper != nil {
-                Text("壁纸将覆盖在主题背景之上，半透明效果让背景融入整体风格")
-                    .font(.caption2)
-                    .foregroundColor(palette.textTertiary)
-            }
-        }
-        .padding(.vertical, 4)
-        .listRowBackground(listRowBg)
-    }
-
-    // MARK: - Playback Section
-
-    private var playbackSection: some View {
-        Section {
-            DisclosureGroup(isExpanded: $expandedPlayback) {
-                HStack {
-                    Label("最近播放范围", systemImage: "clock")
-                        .font(.subheadline)
-                        .foregroundColor(palette.textPrimary)
-                    Spacer()
-                    Menu {
-                        ForEach(RecentPlayRange.allCases) { range in
-                            Button {
-                                recentPlayRange = range.days
-                            } label: {
-                                HStack {
-                                    Text(range.displayName)
-                                    if recentPlayRange == range.days {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        Text(RecentPlayRange(days: recentPlayRange)?.displayName ?? "\(recentPlayRange)天")
-                            .font(.subheadline)
-                            .foregroundColor(palette.primary)
-                    }
-                }
-                .listRowBackground(listRowBg)
-
-                HStack {
-                    Label("速度记忆模式", systemImage: "speedometer")
-                        .font(.subheadline)
-                        .foregroundColor(palette.textPrimary)
-                    Spacer()
-                    Picker("", selection: $speedMemoryMode) {
-                        Text("全局").tag(0)
-                        Text("单曲").tag(1)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 120)
-                }
-                .listRowBackground(listRowBg)
-
-                Toggle(isOn: $sleepTimerNotification) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("定时停止提醒")
-                                .font(.subheadline)
-                                .foregroundColor(palette.textPrimary)
-                            Text("定时结束前发送通知")
-                                .font(.caption)
-                                .foregroundColor(palette.textSecondary)
-                        }
-                    } icon: {
-                        Image(systemName: "moon.zzz")
-                            .foregroundColor(palette.primary)
-                    }
-                }
-                .tint(palette.primary)
-                .listRowBackground(listRowBg)
-                .onChange(of: sleepTimerNotification) { _, enabled in
-                    if enabled { requestNotificationPermission() }
-                }
-
-                if notificationPermissionStatus == .denied && sleepTimerNotification {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(SemanticColor.warning)
-                        Text("通知权限已关闭，请在系统设置中开启")
-                            .font(.caption)
-                            .foregroundColor(palette.textSecondary)
-                        Spacer()
-                        Button("去开启") {
-                            if let url = URL(string: UIApplication.openSettingsURLString) {
-                                UIApplication.shared.open(url)
-                            }
-                        }
-                        .font(.caption)
-                        .foregroundColor(palette.primary)
-                    }
-                    .listRowBackground(palette.surfaceSecondary)
-                }
-
-                Toggle(isOn: $wifiPasswordEnabled) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("WiFi 传输密码保护")
-                                .font(.subheadline)
-                                .foregroundColor(palette.textPrimary)
-                            Text("开启后上传文件需要密码")
-                                .font(.caption)
-                                .foregroundColor(palette.textSecondary)
-                        }
-                    } icon: {
-                        Image(systemName: "lock.shield")
-                            .foregroundColor(palette.primary)
-                    }
-                }
-                .tint(palette.primary)
-                .listRowBackground(listRowBg)
-            } label: {
-                Label {
-                    Text("播放")
-                        .foregroundColor(palette.textPrimary)
-                } icon: {
-                    sectionIcon("play.circle")
-                }
-            }
-            .tint(palette.textSecondary)
-            .listRowBackground(listRowBg)
-        }
-    }
-
-    // MARK: - Storage Section
-
-    private var storageSection: some View {
-        Section {
-            DisclosureGroup(isExpanded: $expandedStorage) {
-                HStack {
-                    Label("封面缓存占用", systemImage: "photo.stack")
-                        .font(.subheadline)
-                        .foregroundColor(palette.textPrimary)
-                    Spacer()
-                    Text(currentCacheSize)
-                        .font(.subheadline)
-                        .foregroundColor(palette.textSecondary)
-                }
-                .listRowBackground(listRowBg)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("最大缓存限制")
-                            .font(.subheadline)
-                            .foregroundColor(palette.textPrimary)
-                        Spacer()
-                        Text("\(cacheLimitMB) MB")
-                            .font(.subheadline.monospacedDigit())
-                            .foregroundColor(palette.textSecondary)
-                    }
-                    Slider(value: Binding(
-                        get: { Double(cacheLimitMB) },
-                        set: {
-                            cacheLimitMB = Int($0)
-                            ImageCacheManager.shared.setCacheLimit(cacheLimitMB)
-                        }
-                    ), in: 50...300, step: 50)
-                    .tint(palette.primary)
-                }
-                .listRowBackground(listRowBg)
-
-                Button {
-                    showClearCacheConfirm = true
-                } label: {
-                    Label("清理封面缓存", systemImage: "trash")
-                        .font(.subheadline)
-                        .foregroundColor(SemanticColor.danger)
-                }
-                .listRowBackground(listRowBg)
-                .confirmationDialog("清理缓存", isPresented: $showClearCacheConfirm) {
-                    Button("清理", role: .destructive) {
-                        Task {
-                            await ImageCacheManager.shared.clearAll()
-                            await calculateCacheSize()
-                        }
-                    }
-                } message: {
-                    Text("将清除所有封面图片缓存，下次加载时会重新生成")
-                }
-
-                Button {
-                    showClearHistoryConfirm = true
-                } label: {
-                    Label("清除搜索记录", systemImage: "magnifyingglass")
-                        .font(.subheadline)
-                        .foregroundColor(SemanticColor.danger)
-                }
-                .listRowBackground(listRowBg)
-                .confirmationDialog("清除搜索记录", isPresented: $showClearHistoryConfirm) {
-                    Button("清除", role: .destructive) {
-                        Task { await searchService.clearHistory() }
-                    }
-                } message: {
-                    Text("将清除所有搜索历史记录")
-                }
-            } label: {
-                Label {
-                    Text("存储与隐私")
-                        .foregroundColor(palette.textPrimary)
-                } icon: {
-                    sectionIcon("externaldrive")
-                }
-            }
-            .tint(palette.textSecondary)
-            .listRowBackground(listRowBg)
-        }
-    }
-
-    // MARK: - About Section
-
-    private var aboutSection: some View {
-        Section {
-            DisclosureGroup(isExpanded: $expandedAbout) {
-                infoRow("版本", Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
-                infoRow("支持格式", "MP3 / M4A / AAC / WAV / ALAC")
-                infoRow("最大文件", "500 MB / 首")
-                infoRow("数据存储", "iTunes 文件共享 / iCloud 备份")
-            } label: {
-                Label {
-                    Text("关于")
-                        .foregroundColor(palette.textPrimary)
-                } icon: {
-                    sectionIcon("info.circle")
-                }
-            }
-            .tint(palette.textSecondary)
-            .listRowBackground(listRowBg)
-        }
-    }
-
-    private func infoRow(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.subheadline)
-                .foregroundColor(palette.textPrimary)
-            Spacer()
-            Text(value)
-                .font(.subheadline)
-                .foregroundColor(palette.textSecondary)
-                .multilineTextAlignment(.trailing)
-        }
-        .listRowBackground(listRowBg)
-    }
-
-    // MARK: - Section Icon
-
-    private func sectionIcon(_ systemName: String) -> some View {
-        Image(systemName: systemName)
-            .font(.subheadline)
-            .foregroundColor(palette.primaryDark)
-            .frame(width: 30, height: 30)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(palette.highlight)
-            )
-    }
-
-    // MARK: - Theme Card
-
-    private func themeCard(style: ThemeStyle) -> some View {
-        let isSelected = themeManager.currentStyle.id == style.id
-        return VStack(spacing: 6) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(
-                        LinearGradient(
-                            colors: [style.lightPalette.gradientStart, style.lightPalette.gradientEnd],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(height: 44)
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.caption.bold())
-                        .foregroundColor(.white)
-                        .padding(4)
-                        .background(Circle().fill(Color.white.opacity(0.3)))
-                }
-            }
-            Text(style.displayName)
-                .font(.caption2)
-                .foregroundColor(isSelected ? palette.primary : palette.textSecondary)
-                .lineLimit(1)
-        }
-        .padding(6)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? palette.primary.opacity(0.08) : Color.clear)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(isSelected ? palette.primary : Color.clear, lineWidth: 1.5)
-        )
-    }
-
     // MARK: - Helpers
 
     private func calculateCacheSize() async {
@@ -650,12 +130,6 @@ struct SettingsView: View {
     private func checkNotificationPermission() async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         notificationPermissionStatus = settings.authorizationStatus
-    }
-
-    private func requestNotificationPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in
-            Task { await checkNotificationPermission() }
-        }
     }
 }
 
