@@ -42,17 +42,7 @@ struct FrostEleganceBackground: View {
     // MARK: - 极光光带
 
     private func auroraBands(size: CGSize) -> some View {
-        let bands: [(yFrac: CGFloat, height: CGFloat, colors: [Color], opacity: Double)] = colorScheme == .dark
-            ? [
-                (0.15, 120, [Color(hex: "#4AEADC").opacity(0.12), Color(hex: "#8BA5A0").opacity(0.05), .clear], 1.0),
-                (0.30, 90,  [.clear, Color(hex: "#A0BDB8").opacity(0.08), Color(hex: "#6CC4B0").opacity(0.10), .clear], 1.0),
-                (0.50, 100, [Color(hex: "#4AEADC").opacity(0.06), .clear, Color(hex: "#8BA5A0").opacity(0.08)], 1.0),
-            ]
-            : [
-                (0.12, 100, [Color(hex: "#8BA5A0").opacity(0.08), Color(hex: "#A0C4BC").opacity(0.05), .clear], 1.0),
-                (0.28, 80,  [.clear, Color(hex: "#9BB8B0").opacity(0.06), .clear], 1.0),
-                (0.48, 90,  [Color(hex: "#8BA5A0").opacity(0.04), .clear, Color(hex: "#B0D0C8").opacity(0.06)], 1.0),
-            ]
+        let bands: [(yFrac: CGFloat, height: CGFloat, colors: [Color], opacity: Double)] = buildAuroraBands()
 
         return ZStack {
             ForEach(0..<bands.count, id: \.self) { i in
@@ -67,6 +57,20 @@ struct FrostEleganceBackground: View {
                 .offset(y: size.height * band.yFrac - size.height / 2)
                 .opacity(band.opacity)
             }
+        }
+    }
+
+    private func buildAuroraBands() -> [(yFrac: CGFloat, height: CGFloat, colors: [Color], opacity: Double)] {
+        if colorScheme == .dark {
+            let c1: [Color] = [Color(hex: "#4AEADC").opacity(0.12), Color(hex: "#8BA5A0").opacity(0.05), .clear]
+            let c2: [Color] = [.clear, Color(hex: "#A0BDB8").opacity(0.08), Color(hex: "#6CC4B0").opacity(0.10), .clear]
+            let c3: [Color] = [Color(hex: "#4AEADC").opacity(0.06), .clear, Color(hex: "#8BA5A0").opacity(0.08)]
+            return [(0.15, 120, c1, 1.0), (0.30, 90, c2, 1.0), (0.50, 100, c3, 1.0)]
+        } else {
+            let c1: [Color] = [Color(hex: "#8BA5A0").opacity(0.08), Color(hex: "#A0C4BC").opacity(0.05), .clear]
+            let c2: [Color] = [.clear, Color(hex: "#9BB8B0").opacity(0.06), .clear]
+            let c3: [Color] = [Color(hex: "#8BA5A0").opacity(0.04), .clear, Color(hex: "#B0D0C8").opacity(0.06)]
+            return [(0.12, 100, c1, 1.0), (0.28, 80, c2, 1.0), (0.48, 90, c3, 1.0)]
         }
     }
 
