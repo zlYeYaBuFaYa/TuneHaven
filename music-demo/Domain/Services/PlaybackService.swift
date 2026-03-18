@@ -321,17 +321,22 @@ final class PlaybackService: ObservableObject {
             }
         }.store(in: &cancellables)
 
-        engine.onPlaybackEnded = { [weak self] in
-            Task { @MainActor [weak self] in self?.playNext() }
-        }
-
-        // Periodically update NowPlayingInfo so iOS knows we're still actively playing
-        engine.onTimeUpdate = { [weak self] currentTime, duration in
-            Task { @MainActor [weak self] in
-                guard let self, self.isPlaying, let song = self.currentSong else { return }
-                NowPlayingManager.shared.updateElapsedTime(currentTime: currentTime, duration: duration, speed: self.playbackSpeed)
+        engine.playbackEndedSubject
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                Task { @MainActor [weak self] in self?.playNext() }
             }
-        }
+            .store(in: &cancellables)
+
+        engine.timeUpdateSubject
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] currentTime, duration in
+                Task { @MainActor [weak self] in
+                    guard let self, self.isPlaying, self.currentSong != nil else { return }
+                    NowPlayingManager.shared.updateElapsedTime(currentTime: currentTime, duration: duration, speed: self.playbackSpeed)
+                }
+            }
+            .store(in: &cancellables)
 
         NowPlayingManager.shared.setupRemoteCommands(
             onPlay: { [weak self] in

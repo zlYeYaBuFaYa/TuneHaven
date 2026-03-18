@@ -201,8 +201,8 @@ final class AudioEngine: ObservableObject {
         }
     }
 
-    var onPlaybackEnded: (() -> Void)?
-    var onTimeUpdate: ((TimeInterval, TimeInterval) -> Void)?
+    let playbackEndedSubject = PassthroughSubject<Void, Never>()
+    let timeUpdateSubject = PassthroughSubject<(currentTime: TimeInterval, duration: TimeInterval), Never>()
 
     private func addTimeObserver() {
         removeTimeObserver()
@@ -212,7 +212,7 @@ final class AudioEngine: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.currentTime = seconds
-                self.onTimeUpdate?(seconds, self.duration)
+                self.timeUpdateSubject.send((currentTime: seconds, duration: self.duration))
             }
         }
         NotificationCenter.default.addObserver(self,
@@ -235,7 +235,7 @@ final class AudioEngine: ObservableObject {
             self.state = .paused
             self.log.info("当前曲目播放结束")
             self.currentTime = self.duration
-            self.onPlaybackEnded?()
+            self.playbackEndedSubject.send()
         }
     }
 
