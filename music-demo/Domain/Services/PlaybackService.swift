@@ -6,6 +6,7 @@ import UIKit
 @MainActor
 final class PlaybackService: ObservableObject {
     static let shared = PlaybackService()
+    private let log = AppLogger.shared
 
     @Published private(set) var currentSong: Song?
     @Published private(set) var isPlaying = false
@@ -49,6 +50,7 @@ final class PlaybackService: ObservableObject {
     var duration: TimeInterval { engine.duration }
 
     func play(song: Song, in context: PlayContext) async {
+        log.info("播放: \(song.title) - \(song.artist)")
         if song.id == currentSong?.id {
             if case .playing = engine.state { return }
             if case .paused = engine.state {
@@ -91,9 +93,11 @@ final class PlaybackService: ObservableObject {
     func playNext() {
         queueService.markCurrentAsPlayed()
         guard let nextItem = queueService.nextSong(for: playMode, dislikes: dislikes) else {
+            log.info("队列播放结束，无下一首")
             stop()
             return
         }
+        log.debug("播放下一首: \(nextItem.song.title)")
         queueService.advanceToCurrent(nextItem)
         Task { await loadAndPlay(song: nextItem.song) }
     }
@@ -101,6 +105,7 @@ final class PlaybackService: ObservableObject {
     func playPrevious() {
         let threshold: TimeInterval = 3
         if engine.currentTime > threshold {
+            log.debug("播放进度 > 3s，回到歌曲开头")
             engine.seek(to: 0)
             return
         }
@@ -119,6 +124,7 @@ final class PlaybackService: ObservableObject {
     }
 
     func stop() {
+        log.info("停止播放")
         engine.stop()
         isPlaying = false
         if let song = currentSong {
@@ -142,12 +148,14 @@ final class PlaybackService: ObservableObject {
         let modes = PlayMode.allCases
         let current = modes.firstIndex(of: playMode) ?? 0
         playMode = modes[(current + 1) % modes.count]
+        log.info("切换播放模式: \(playMode.rawValue)")
         UserDefaults.standard.set(playMode.rawValue, forKey: "play_mode")
     }
 
     // MARK: - Speed
 
     func setSpeed(_ speed: Float) {
+        log.debug("设置播放速度: \(speed)x")
         playbackSpeed = speed
         engine.setSpeed(speed)
 
@@ -181,6 +189,7 @@ final class PlaybackService: ObservableObject {
     // MARK: - Sleep Timer
 
     func setSleepTimer(minutes: Int?) {
+        log.info("设置睡眠定时: \(minutes ?? 0) 分钟")
         sleepTimerTimer?.invalidate()
         sleepTimerTimer = nil
         sleepTimerEndDate = nil
@@ -244,6 +253,7 @@ final class PlaybackService: ObservableObject {
         let fileURL = SandboxPathManager.musicFileURL(relativePath: song.fileRelativePath)
         guard FileStorageService.shared.fileExists(relativePath: song.fileRelativePath) else {
             ErrorLogger.shared.log(.playbackFileNotFound(song.id), context: "PlaybackService.loadAndPlay")
+            log.error("播放文件不存在: \(song.fileRelativePath)")
             return
         }
 
@@ -346,6 +356,7 @@ final class PlaybackService: ObservableObject {
     }
 
     private func executeSleepTimerStop() {
+        log.info("睡眠定时到期，暂停播放")
         sleepTimerTimer?.invalidate()
         sleepTimerTimer = nil
         sleepTimerEndDate = nil

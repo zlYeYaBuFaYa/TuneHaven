@@ -3,6 +3,8 @@ import Combine
 
 @MainActor
 final class PlayQueueService: ObservableObject {
+    private let log = AppLogger.shared
+
     @Published private(set) var queue: [QueueItem] = []
     @Published private(set) var currentIndex: Int? = nil
 
@@ -14,12 +16,14 @@ final class PlayQueueService: ObservableObject {
     var count: Int { queue.count }
 
     func replaceQueue(with songs: [Song], startAt index: Int) {
+        log.info("替换播放队列: \(songs.count) 首，起始索引=\(index)")
         queue = songs.map { QueueItem(song: $0) }
         currentIndex = queue.indices.contains(index) ? index : (queue.isEmpty ? nil : 0)
     }
 
     func appendToQueue(_ songs: [Song]) -> QueueAddResult {
         guard queue.count + songs.count <= PlayQueueConstants.maxCount else {
+            log.info("播放队列已满，当前 \(queue.count) 首")
             return .queueFull(currentCount: queue.count)
         }
         queue.append(contentsOf: songs.map { QueueItem(song: $0) })
@@ -52,6 +56,7 @@ final class PlayQueueService: ObservableObject {
     }
 
     func clearQueue() {
+        log.info("清空播放队列")
         queue = []
         currentIndex = nil
     }

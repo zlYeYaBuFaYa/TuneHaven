@@ -368,6 +368,7 @@ struct AppleMusicImportView: View {
                 try FileManager.default.copyItem(at: assetURL, to: copyURL)
                 return copyURL
             } catch {
+                AppLogger.shared.error(error, context: "Apple Music 文件复制失败")
                 return nil
             }
         }

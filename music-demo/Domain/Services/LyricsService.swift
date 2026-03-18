@@ -3,9 +3,11 @@ import Foundation
 
 final class LyricsService {
     static let shared = LyricsService()
+    private let log = AppLogger.shared
     private init() {}
 
     func loadLyrics(for song: Song) async -> LyricsData? {
+        log.debug("加载歌词: \(song.title)")
         if let source = song.lyricsSource {
             switch source {
             case .embedded:
@@ -19,6 +21,7 @@ final class LyricsService {
         }
         if let embedded = await loadEmbedded(song: song) { return embedded }
         if let file = loadExternalLRC(songTitle: song.title) { return file }
+        log.debug("歌词未找到: \(song.title)")
         return nil
     }
 

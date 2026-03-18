@@ -7,6 +7,7 @@ final class ImageCacheManager {
     private let memoryCache = NSCache<NSString, UIImage>()
     private let fileManager = FileManager.default
     private var cacheLimitMB: Int = 100
+    private let log = AppLogger.shared
 
     private init() {
         memoryCache.totalCostLimit = 50 * 1024 * 1024
@@ -46,6 +47,7 @@ final class ImageCacheManager {
     }
 
     func clearAll() async {
+        log.info("清理图片缓存")
         memoryCache.removeAllObjects()
         let url = SandboxPathManager.coverImagesURL
         guard let files = try? fileManager.contentsOfDirectory(atPath: url.path) else { return }

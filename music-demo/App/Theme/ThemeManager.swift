@@ -56,7 +56,7 @@ final class ThemeManager: ObservableObject {
 
     func applyToWindows() {
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
-            print("[ThemeManager] applyToWindows — no windowScene yet")
+            AppLogger.shared.debug("[ThemeManager] applyToWindows — no windowScene yet")
             return
         }
         let style = colorMode.uiInterfaceStyle
@@ -71,7 +71,7 @@ final class ThemeManager: ObservableObject {
         let bgColor = UIColor(palette.background)
         let surfaceColor = UIColor(palette.surface)
 
-        print("[ThemeManager] applyToWindows — mode=\(colorMode) scheme=\(effectiveScheme) bgColor=\(bgColor)")
+        AppLogger.shared.debug("[ThemeManager] applyToWindows — mode=\(colorMode) scheme=\(effectiveScheme) bgColor=\(bgColor)")
 
         AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
         UIWindow.appearance().backgroundColor = bgColor
@@ -88,7 +88,7 @@ final class ThemeManager: ObservableObject {
         guard let vc = vc else { return }
         if let nav = vc as? UINavigationController {
             nav.view.backgroundColor = color
-            print("[ThemeManager] set UINavigationController.view.bg = \(color)")
+            AppLogger.shared.debug("[ThemeManager] set UINavigationController.view.bg = \(color)")
         }
         for child in vc.children {
             setNavigationControllerBackgrounds(on: child, color: color)

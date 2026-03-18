@@ -10,6 +10,7 @@ final class WiFiTransferServer: ObservableObject {
     @Published private(set) var connectionState: WiFiConnectionState = .idle
     @Published private(set) var transferProgress: WiFiTransferProgress?
     @Published private(set) var securityAlert: WiFiSecurityAlert?
+    private let log = AppLogger.shared
 
     var onFileReceived: ((String, URL) -> Void)?
 
@@ -22,6 +23,7 @@ final class WiFiTransferServer: ObservableObject {
 
     func start(passwordEnabled: Bool) throws {
         guard !isRunning else { return }
+        log.info("WiFi 传输服务启动")
         self.passwordEnabled = passwordEnabled
         if passwordEnabled && password == nil { password = generateRandomPassword() }
 
@@ -53,6 +55,7 @@ final class WiFiTransferServer: ObservableObject {
     }
 
     func stop() {
+        log.info("WiFi 传输服务停止")
         listener?.cancel()
         listener = nil
         activeConnection?.cancel()

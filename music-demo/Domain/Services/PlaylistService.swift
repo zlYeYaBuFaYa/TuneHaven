@@ -3,6 +3,8 @@ import UIKit
 
 @MainActor
 final class PlaylistService: ObservableObject {
+    private let log = AppLogger.shared
+
     @Published private(set) var playlists: [Playlist] = []
 
     private let repo = CoreDataPlaylistRepository()
@@ -22,6 +24,7 @@ final class PlaylistService: ObservableObject {
         guard !trimmed.isEmpty else { throw AppError.playlistNameEmpty }
         let reserved = ["我喜欢", "最近播放"]
         guard !reserved.contains(trimmed) else { throw AppError.playlistNameDuplicate }
+        log.info("创建歌单: \(trimmed)")
         let playlist = try await repo.create(name: trimmed, description: description)
         await loadPlaylists()
         return playlist
@@ -33,16 +36,19 @@ final class PlaylistService: ObservableObject {
     }
 
     func deletePlaylist(id: UUID) async throws {
+        log.info("删除歌单: \(id)")
         try await repo.delete(id: id)
         await loadPlaylists()
     }
 
     func addSongs(_ songIds: [UUID], to playlistId: UUID) async throws {
+        log.info("添加 \(songIds.count) 首歌到歌单 \(playlistId)")
         try await repo.addSongs(songIds, to: playlistId)
         await loadPlaylists()
     }
 
     func removeSongs(_ songIds: [UUID], from playlistId: UUID) async throws {
+        log.info("从歌单 \(playlistId) 移除 \(songIds.count) 首歌")
         try await repo.removeSongs(songIds, from: playlistId)
         await loadPlaylists()
     }
@@ -96,6 +102,7 @@ final class PlaylistService: ObservableObject {
     }
 
     func initializeSystemPlaylists() async throws {
+        log.info("初始化系统歌单")
         try await repo.createSystemPlaylists()
         await loadPlaylists()
     }

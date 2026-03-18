@@ -124,3 +124,81 @@ final class ErrorLogger {
         ISO8601DateFormatter().string(from: Date())
     }
 }
+
+// MARK: - AppLogger
+
+enum LogLevel: String {
+    case debug = "DEBUG"
+    case info  = "INFO"
+    case error = "ERROR"
+}
+
+final class AppLogger {
+    static let shared = AppLogger()
+    private let maxFileSize: Int64 = 5 * 1024 * 1024
+
+    private static let dateFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private var logFileURL: URL {
+        SandboxPathManager.documentsURL.appendingPathComponent("app.log")
+    }
+
+    private init() {}
+
+    func debug(_ message: String, file: String = #file, function: String = #function) {
+        writeLog(level: .debug, message: message, file: file, function: function)
+    }
+
+    func info(_ message: String, file: String = #file, function: String = #function) {
+        writeLog(level: .info, message: message, file: file, function: function)
+    }
+
+    func error(_ message: String, file: String = #file, function: String = #function) {
+        writeLog(level: .error, message: message, file: file, function: function)
+    }
+
+    func error(_ err: Error, context: String, file: String = #file, function: String = #function) {
+        let msg = "\(context) - \(err.localizedDescription)"
+        writeLog(level: .error, message: msg, file: file, function: function)
+    }
+
+    func error(_ err: AppError, context: String, file: String = #file, function: String = #function) {
+        let msg = "[\(err.errorCode)] \(context) - \(err.localizedDescription)"
+        writeLog(level: .error, message: msg, file: file, function: function)
+        ErrorLogger.shared.log(err, context: context, file: file)
+    }
+
+    private func writeLog(level: LogLevel, message: String, file: String, function: String) {
+        let shortFile = (file as NSString).lastPathComponent.replacingOccurrences(of: ".swift", with: "")
+        let entry = "[\(Self.dateFormatter.string(from: Date()))] [\(level.rawValue)] [\(shortFile).\(function)] \(message)\n"
+        #if DEBUG
+        print(entry, terminator: "")
+        #endif
+        appendToFile(entry)
+    }
+
+    private func appendToFile(_ entry: String) {
+        guard let data = entry.data(using: .utf8) else { return }
+        rotateIfNeeded()
+        if let handle = try? FileHandle(forWritingTo: logFileURL) {
+            handle.seekToEndOfFile()
+            handle.write(data)
+            try? handle.close()
+        } else {
+            try? data.write(to: logFileURL)
+        }
+    }
+
+    private func rotateIfNeeded() {
+        let size = (try? FileManager.default.attributesOfItem(atPath: logFileURL.path)[.size] as? Int64) ?? 0
+        if size > maxFileSize {
+            let backupURL = logFileURL.deletingLastPathComponent().appendingPathComponent("app.log.old")
+            try? FileManager.default.removeItem(at: backupURL)
+            try? FileManager.default.moveItem(at: logFileURL, to: backupURL)
+        }
+    }
+}

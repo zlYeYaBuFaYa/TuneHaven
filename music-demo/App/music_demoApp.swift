@@ -68,19 +68,19 @@ struct music_demoApp: App {
             .preferredColorScheme(themeManager.resolvedColorScheme)
             .task { await initialize() }
             .onAppear {
-                print("[App] onAppear — applying window theme")
+                AppLogger.shared.debug("[App] onAppear — applying window theme")
                 themeManager.applyToWindows()
                 refreshPaletteScheme()
             }
             .onChange(of: themeManager.colorMode) { _, newMode in
-                print("[App] colorMode changed → \(newMode)")
+                AppLogger.shared.debug("[App] colorMode changed → \(newMode)")
                 themeManager.applyToWindows()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     refreshPaletteScheme()
                 }
             }
             .onChange(of: scenePhase) { _, phase in
-                print("[App] scenePhase → \(phase)")
+                AppLogger.shared.debug("[App] scenePhase → \(phase)")
                 switch phase {
                 case .active:
                     playbackService.checkSleepTimerOnForeground()
@@ -117,7 +117,7 @@ struct music_demoApp: App {
 
     private func initialize() async {
         do {
-            print("[App] initialize start")
+            AppLogger.shared.info("[App] initialize start")
             MigrationManager.shared.runVersionUpgradeTasks()
             try await CoreDataStack.shared.load()
             SandboxPathManager.createAllDirectories()
@@ -126,13 +126,13 @@ struct music_demoApp: App {
             await libraryService.cleanupOnLaunch()
             playbackService.checkSleepTimerOnForeground()
             isReady = true
-            print("[App] initialize done — isReady=true, scheduling UIKit background refresh")
+            AppLogger.shared.info("[App] initialize done — isReady=true, scheduling UIKit background refresh")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 themeManager.applyToWindows()
             }
         } catch {
             initError = error.localizedDescription
-            print("[App] initialize FAILED: \(error)")
+            AppLogger.shared.error("[App] initialize FAILED: \(error)")
         }
     }
 }

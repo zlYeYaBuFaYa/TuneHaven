@@ -56,7 +56,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         UIWindow.appearance().overrideUserInterfaceStyle = mode.uiInterfaceStyle
 
         Self.applyNavigationBarAppearance(surfaceColor: surfaceColor)
-        print("[AppDelegate] configureEarlyAppearance — isDark=\(isDark) bg=\(bgColor)")
+        AppLogger.shared.info("[AppDelegate] configureEarlyAppearance — isDark=\(isDark) bg=\(bgColor)")
     }
 
     static func applyNavigationBarAppearance(surfaceColor: UIColor) {
@@ -74,22 +74,22 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         do {
             try session.setCategory(.playback, mode: .default, options: [])
             try session.setActive(true, options: [])
-            print("[AppDelegate] Audio session OK — category=\(session.category.rawValue)")
+            AppLogger.shared.info("[AppDelegate] Audio session OK — category=\(session.category.rawValue)")
         } catch {
-            print("[AppDelegate] Audio session FAILED: \(error)")
+            AppLogger.shared.info("[AppDelegate] Audio session FAILED: \(error)")
         }
         AudioSessionManager.shared.configure()
     }
 
     private func verifyBackgroundAudioEntitlement() {
         guard let modes = Bundle.main.infoDictionary?["UIBackgroundModes"] as? [String] else {
-            print("[AppDelegate] UIBackgroundModes NOT FOUND in Info.plist")
+            AppLogger.shared.info("[AppDelegate] UIBackgroundModes NOT FOUND in Info.plist")
             return
         }
         if modes.contains("audio") {
-            print("[AppDelegate] UIBackgroundModes contains 'audio'")
+            AppLogger.shared.info("[AppDelegate] UIBackgroundModes contains 'audio'")
         } else {
-            print("[AppDelegate] UIBackgroundModes missing 'audio': \(modes)")
+            AppLogger.shared.info("[AppDelegate] UIBackgroundModes missing 'audio': \(modes)")
         }
     }
 }

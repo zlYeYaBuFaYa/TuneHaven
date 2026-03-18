@@ -30,6 +30,7 @@ enum AudioEngineError: Error, LocalizedError {
 @MainActor
 final class AudioEngine: ObservableObject {
     static let shared = AudioEngine()
+    private let log = AppLogger.shared
 
     @Published var state: PlaybackState = .idle
     @Published var currentTime: TimeInterval = 0
@@ -73,15 +74,18 @@ final class AudioEngine: ObservableObject {
 
     func load(url: URL) async {
         state = .loading
+        log.info("加载音频: \(url.lastPathComponent)")
 
         guard FileManager.default.fileExists(atPath: url.path) else {
             state = .error(AudioEngineError.fileNotFound(url))
+            log.error("音频文件不存在: \(url.path)")
             return
         }
 
         let ext = url.pathExtension.lowercased()
         guard Self.playableExtensions.contains(ext) else {
             state = .error(AudioEngineError.unsupportedFormat(ext))
+            log.error("不支持的音频格式: \(ext)")
             return
         }
 
@@ -93,10 +97,12 @@ final class AudioEngine: ObservableObject {
             let isPlayable = try await asset.load(.isPlayable)
             guard isPlayable else {
                 state = .error(AudioEngineError.assetNotPlayable(url))
+                log.error("音频资源不可播放: \(url.lastPathComponent)")
                 return
             }
         } catch {
             state = .error(AudioEngineError.loadFailed(underlying: error))
+            log.error(error, context: "音频资源加载失败: \(url.lastPathComponent)")
             return
         }
 
@@ -140,6 +146,7 @@ final class AudioEngine: ObservableObject {
             player.rate = playbackSpeed
         }
         state = .playing
+        log.debug("开始播放")
     }
 
     func pause() {
@@ -171,6 +178,7 @@ final class AudioEngine: ObservableObject {
         itemObservation = nil
         playerItem = nil
         state = .idle
+        log.debug("停止播放引擎")
         currentTime = 0
         duration = 0
     }
@@ -209,6 +217,7 @@ final class AudioEngine: ObservableObject {
 
     @objc private func playerItemDidFinish() {
         state = .paused
+        log.info("当前曲目播放结束")
         currentTime = duration
         onPlaybackEnded?()
     }
@@ -237,6 +246,7 @@ final class AudioEngine: ObservableObject {
         switch type {
         case .began:
             state = .paused
+            log.info("音频中断开始")
         case .ended:
             if let optValue = info[AVAudioSessionInterruptionOptionKey] as? UInt {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optValue)
@@ -247,6 +257,7 @@ final class AudioEngine: ObservableObject {
                         player.rate = playbackSpeed
                     }
                     state = .playing
+                    log.info("音频中断结束，恢复播放")
                 }
             }
         @unknown default: break
@@ -260,6 +271,7 @@ final class AudioEngine: ObservableObject {
         if reason == .oldDeviceUnavailable {
             player.pause()
             state = .paused
+            log.info("音频路由变更（设备断开），暂停播放")
         }
     }
 }

@@ -3,6 +3,8 @@ import Combine
 
 @MainActor
 final class MusicLibraryService: ObservableObject {
+    private let log = AppLogger.shared
+
     @Published private(set) var songs: [Song] = []
     @Published private(set) var isLoading = false
 
@@ -15,6 +17,7 @@ final class MusicLibraryService: ObservableObject {
     }
 
     func loadSongs(sortBy: SongSortOption = .title, ascending: Bool = true) async {
+        log.info("加载音乐库，排序: \(sortBy)")
         isLoading = true
         songs = await songRepo.fetchAll(sortBy: sortBy, ascending: ascending)
         isLoading = false
@@ -63,6 +66,7 @@ final class MusicLibraryService: ObservableObject {
     }
 
     func softDelete(songIds: [UUID]) async throws -> UndoToken {
+        log.info("软删除歌曲: \(songIds.count) 首")
         let token = try await songRepo.softDelete(ids: songIds)
         pendingUndoTokens.append(token)
         await loadSongs()
@@ -71,6 +75,7 @@ final class MusicLibraryService: ObservableObject {
     }
 
     func undoDelete(token: UndoToken) async throws {
+        log.info("撤销删除")
         invalidateTimer(for: token)
         try await songRepo.undoDelete(token: token)
         pendingUndoTokens.removeAll { $0.songIds == token.songIds }
@@ -78,6 +83,7 @@ final class MusicLibraryService: ObservableObject {
     }
 
     func toggleFavorite(songId: UUID) async throws {
+        log.info("切换收藏状态: \(songId)")
         try await songRepo.toggleFavorite(id: songId)
         await loadSongs()
     }
@@ -91,6 +97,7 @@ final class MusicLibraryService: ObservableObject {
     }
 
     func cleanupOnLaunch() async {
+        log.info("启动清理：清除待删除歌曲")
         await songRepo.cleanupPendingDeletes()
     }
 

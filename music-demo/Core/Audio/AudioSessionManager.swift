@@ -17,12 +17,12 @@ final class AudioSessionManager {
             isConfigured = true
             return true
         } catch {
-            print("[AudioSessionManager] configure failed: \(error)")
+            AppLogger.shared.error("[AudioSessionManager] configure failed: \(error)")
             // Category might have been set even if setActive failed; retry activation
             do {
                 try session.setCategory(.playback, mode: .default, options: [])
             } catch {
-                print("[AudioSessionManager] setCategory retry failed: \(error)")
+                AppLogger.shared.error("[AudioSessionManager] setCategory retry failed: \(error)")
             }
             return false
         }
@@ -40,7 +40,7 @@ final class AudioSessionManager {
             try session.setActive(true, options: [])
             isConfigured = true
         } catch {
-            print("[AudioSessionManager] ensureActive failed: \(error)")
+            AppLogger.shared.error("[AudioSessionManager] ensureActive failed: \(error)")
         }
     }
 }

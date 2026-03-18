@@ -3,6 +3,8 @@ import Foundation
 /// 歌单分组服务（TDD Section 3.4）
 @MainActor
 final class PlaylistGroupService: ObservableObject {
+    private let log = AppLogger.shared
+
     @Published private(set) var groupDetails: [PlaylistGroupDetail] = []
 
     private let repo = CoreDataPlaylistGroupRepository()
@@ -15,6 +17,7 @@ final class PlaylistGroupService: ObservableObject {
     func createGroup(name: String) async throws -> PlaylistGroup {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { throw AppError.playlistNameEmpty }
+        log.info("创建歌单分组: \(trimmed)")
         let group = try await repo.create(name: trimmed)
         await loadGroups()
         return group
@@ -30,6 +33,7 @@ final class PlaylistGroupService: ObservableObject {
 
     /// 删除分组（歌单 groupId 置 nil，不删除歌单）
     func deleteGroup(id: UUID) async throws {
+        log.info("删除歌单分组: \(id)")
         try await repo.delete(id: id)
         await loadGroups()
     }

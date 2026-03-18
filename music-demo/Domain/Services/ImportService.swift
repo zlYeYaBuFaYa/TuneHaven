@@ -3,6 +3,9 @@ import UIKit
 
 @MainActor
 final class ImportService: ObservableObject {
+    private let log = AppLogger.shared
+    private let log = AppLogger.shared
+
     @Published private(set) var isImporting = false
     @Published private(set) var progress: ImportProgress?
 
@@ -11,6 +14,8 @@ final class ImportService: ObservableObject {
     private var isCancelled = false
 
     func importFromFiles(urls: [URL], onProgress: @escaping @MainActor (ImportProgress) -> Void) async -> ImportResult {
+        log.info("开始导入 \(urls.count) 个文件")
+        log.info("开始导入 \(urls.count) 个文件")
         isImporting = true
         isCancelled = false
         var results: [SingleImportResult] = []
@@ -52,6 +57,7 @@ final class ImportService: ObservableObject {
 
         isImporting = false
         progress = nil
+        log.info("导入完成: 成功=\(successCount), 重复=\(skippedDuplicateCount), 格式不支持=\(skippedFormatCount), 超限=\(skippedOversizeCount), 失败=\(failedCount)")
         return ImportResult(
             successCount: successCount,
             skippedDuplicateCount: skippedDuplicateCount,
@@ -63,7 +69,10 @@ final class ImportService: ObservableObject {
         )
     }
 
-    func cancelImport() { isCancelled = true }
+    func cancelImport() {
+        log.info("用户取消导入")
+        isCancelled = true
+    }
 
     func processWiFiFile(tempURL: URL, originalFilename: String) async -> SingleImportResult {
         return await processFile(url: tempURL, overrideName: originalFilename)
@@ -91,6 +100,7 @@ final class ImportService: ObservableObject {
 
         let hash: String
         do { hash = try fileService.sha256(of: url) } catch {
+            log.error(error, context: "文件哈希计算失败: \(fileName)")
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "文件读取失败")
         }
 
@@ -108,6 +118,7 @@ final class ImportService: ObservableObject {
 
         let relPath: String
         do { relPath = try fileService.copyToMusic(from: url, fileHash: hash, originalFileName: fileName) } catch {
+            log.error(error, context: "文件复制失败: \(fileName)")
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "文件复制失败")
         }
 
@@ -156,6 +167,7 @@ final class ImportService: ObservableObject {
             try await songRepo.insert(song: song)
             return SingleImportResult(fileName: fileName, status: isIncomplete ? .successIncompleteMetadata : .success, song: song, errorMessage: nil)
         } catch {
+            log.error(error, context: "歌曲入库失败: \(fileName)")
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: error.localizedDescription)
         }
     }

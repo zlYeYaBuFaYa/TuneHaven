@@ -51,6 +51,7 @@ struct CreatePlaylistSheet: View {
                 _ = try await playlistService.createPlaylist(name: name, description: description.isEmpty ? nil : description)
                 dismiss()
             } catch {
+                AppLogger.shared.error(error, context: "创建歌单失败")
                 errorMessage = error.localizedDescription
             }
             isLoading = false

@@ -4,6 +4,7 @@ import CryptoKit
 final class FileStorageService {
     static let shared = FileStorageService()
     private init() {}
+    private let log = AppLogger.shared
 
     static let maxFileSizeBytes: Int64 = 500 * 1024 * 1024
     static let supportedExtensions: Set<String> = ["mp3", "m4a", "aac", "alac", "wav", "flac", "aiff", "aif", "caf"]
@@ -15,6 +16,7 @@ final class FileStorageService {
     }
 
     func copyToMusic(from sourceURL: URL, fileHash: String, originalFileName: String) throws -> String {
+        log.info("复制文件到音乐目录: \(originalFileName)")
         let ext = (originalFileName as NSString).pathExtension.lowercased()
         let shortHash = String(fileHash.prefix(8))
         let safeName = sanitizeFileName(originalFileName)
@@ -31,6 +33,7 @@ final class FileStorageService {
     func moveToPendingDelete(relativePath: String) throws -> String {
         let srcURL = SandboxPathManager.musicFileURL(relativePath: relativePath)
         guard FileManager.default.fileExists(atPath: srcURL.path) else { return relativePath }
+        log.info("移动到待删除目录: \(relativePath)")
         let destURL = SandboxPathManager.pendingDeleteURL.appendingPathComponent((relativePath as NSString).lastPathComponent)
         try? FileManager.default.removeItem(at: destURL)
         try FileManager.default.moveItem(at: srcURL, to: destURL)
@@ -50,6 +53,7 @@ final class FileStorageService {
     }
 
     func cleanupPendingDeleteDirectory() {
+        log.info("清理待删除目录")
         let url = SandboxPathManager.pendingDeleteURL
         guard let files = try? FileManager.default.contentsOfDirectory(atPath: url.path) else { return }
         for file in files {
