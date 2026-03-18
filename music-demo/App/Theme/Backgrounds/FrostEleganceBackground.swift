@@ -92,18 +92,16 @@ struct FrostEleganceBackground: View {
             ]
 
             for shard in shards {
-                let startX = canvasSize.width * shard.x
-                let startY = shard.y == 0 ? 0 : canvasSize.height
-                let rad = shard.angle * .pi / 180
-                let endX = startX + CGFloat(sin(rad)) * shard.h
-                let endY = startY + (shard.y == 0 ? 1 : -1) * CGFloat(cos(Double(0)..<Double(1) ~= shard.y ? 1 : -1)) * shard.h
+                let startX: CGFloat = canvasSize.width * shard.x
+                let startY: CGFloat = shard.y == 0 ? 0 : canvasSize.height
+                let rad: Double = shard.angle * .pi / 180
+                let direction: CGFloat = shard.y < 0.5 ? 1 : -1
+                let tipX: CGFloat = startX + CGFloat(Foundation.sin(rad)) * shard.h
+                let tipY: CGFloat = startY + direction * shard.h * CGFloat(Foundation.cos(rad))
 
                 var path = Path()
                 path.move(to: CGPoint(x: startX - shard.w, y: startY))
-                path.addLine(to: CGPoint(
-                    x: startX + CGFloat(sin(rad)) * shard.h,
-                    y: startY + (shard.y < 0.5 ? shard.h : -shard.h) * CGFloat(cos(rad))
-                ))
+                path.addLine(to: CGPoint(x: tipX, y: tipY))
                 path.addLine(to: CGPoint(x: startX + shard.w, y: startY))
                 path.closeSubpath()
 
@@ -137,33 +135,34 @@ struct FrostEleganceBackground: View {
         return Canvas { context, canvasSize in
             for pos in positions {
                 let center = CGPoint(x: canvasSize.width * pos.x, y: canvasSize.height * pos.y)
-                let r = pos.r
+                let r: CGFloat = pos.r
                 for branch in 0..<6 {
-                    let angle = Double(branch) * .pi / 3
+                    let angle: Double = Double(branch) * .pi / 3
+                    let cosA = CGFloat(Foundation.cos(angle))
+                    let sinA = CGFloat(Foundation.sin(angle))
+
                     var path = Path()
                     path.move(to: center)
-                    let endX = center.x + CGFloat(cos(angle)) * r
-                    let endY = center.y + CGFloat(sin(angle)) * r
-                    path.addLine(to: CGPoint(x: endX, y: endY))
+                    path.addLine(to: CGPoint(x: center.x + cosA * r, y: center.y + sinA * r))
 
-                    let midR = r * 0.5
-                    let branchAngle1 = angle + .pi / 6
-                    let branchAngle2 = angle - .pi / 6
-                    let midPoint = CGPoint(
-                        x: center.x + CGFloat(cos(angle)) * midR,
-                        y: center.y + CGFloat(sin(angle)) * midR
-                    )
+                    let midR: CGFloat = r * 0.5
+                    let midPoint = CGPoint(x: center.x + cosA * midR, y: center.y + sinA * midR)
+
+                    let a1: Double = angle + .pi / 6
+                    let a2: Double = angle - .pi / 6
+                    let subLen: CGFloat = r * 0.3
+
                     var b1 = Path()
                     b1.move(to: midPoint)
                     b1.addLine(to: CGPoint(
-                        x: midPoint.x + CGFloat(cos(branchAngle1)) * r * 0.3,
-                        y: midPoint.y + CGFloat(sin(branchAngle1)) * r * 0.3
+                        x: midPoint.x + CGFloat(Foundation.cos(a1)) * subLen,
+                        y: midPoint.y + CGFloat(Foundation.sin(a1)) * subLen
                     ))
                     var b2 = Path()
                     b2.move(to: midPoint)
                     b2.addLine(to: CGPoint(
-                        x: midPoint.x + CGFloat(cos(branchAngle2)) * r * 0.3,
-                        y: midPoint.y + CGFloat(sin(branchAngle2)) * r * 0.3
+                        x: midPoint.x + CGFloat(Foundation.cos(a2)) * subLen,
+                        y: midPoint.y + CGFloat(Foundation.sin(a2)) * subLen
                     ))
 
                     context.stroke(path, with: .color(crystalColor), lineWidth: 0.8)
