@@ -12,6 +12,7 @@ struct music_demoApp: App {
     @StateObject private var searchService = SearchService()
     @StateObject private var router = AppRouter()
     @StateObject private var snackbar = SnackbarState()
+    @StateObject private var wallpaperManager = WallpaperManager()
 
     private let playbackService = PlaybackService.shared
 
@@ -43,6 +44,7 @@ struct music_demoApp: App {
                         .environmentObject(searchService)
                         .environmentObject(router)
                         .environmentObject(snackbar)
+                        .environmentObject(wallpaperManager)
                         .environment(\.themePalette, resolvedPalette)
                         .snackbar(snackbar)
                 } else if let error = initError {

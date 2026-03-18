@@ -11,8 +11,7 @@ struct RootTabView: View {
 
     var body: some View {
         ZStack {
-            palette.background
-                .ignoresSafeArea()
+            ThemeBackgroundView()
 
             LibraryTabView()
                 .opacity(router.selectedTab == .library ? 1 : 0)
@@ -57,7 +56,8 @@ struct RootTabView: View {
     // MARK: - Custom Tab Bar
 
     private var customTabBar: some View {
-        VStack(spacing: 0) {
+        let hasCustomBg = themeManager.currentStyle.hasCustomBackground
+        return VStack(spacing: 0) {
             Divider()
                 .overlay(palette.separator)
 
@@ -69,7 +69,13 @@ struct RootTabView: View {
             .padding(.top, 6)
             .padding(.bottom, 2)
         }
-        .background(palette.surface.ignoresSafeArea(edges: .bottom))
+        .background {
+            if hasCustomBg {
+                Rectangle().fill(.ultraThinMaterial).ignoresSafeArea(edges: .bottom)
+            } else {
+                palette.surface.ignoresSafeArea(edges: .bottom)
+            }
+        }
     }
 
     private func tabButton(_ tab: AppTab, icon: String, label: String) -> some View {

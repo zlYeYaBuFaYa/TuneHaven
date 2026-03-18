@@ -3,13 +3,15 @@ import SwiftUI
 struct PlaylistTabView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playlistService: PlaylistService
+    @EnvironmentObject private var themeManager: ThemeManager
     @StateObject private var groupService = PlaylistGroupService()
     @Environment(\.themePalette) private var palette
 
     var body: some View {
+        let hasCustomBg = themeManager.currentStyle.hasCustomBackground
         NavigationStack(path: $router.playlistPath) {
             PlaylistMainView()
-                .fixNavigationControllerBackground(palette.background)
+                .fixNavigationControllerBackground(hasCustomBg ? Color.clear : palette.background)
                 .environmentObject(groupService)
                 .navigationDestination(for: AppDestination.self) { destination in
                     destinationView(destination)
@@ -17,8 +19,8 @@ struct PlaylistTabView: View {
                         .environment(\.themePalette, palette)
                 }
         }
-        .background(palette.background.ignoresSafeArea())
-        .toolbarBackground(palette.surface, for: .navigationBar)
+        .background(hasCustomBg ? Color.clear.ignoresSafeArea() : palette.background.ignoresSafeArea())
+        .toolbarBackground(hasCustomBg ? .ultraThinMaterial : .automatic, for: .navigationBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             MiniPlayerBar()
         }

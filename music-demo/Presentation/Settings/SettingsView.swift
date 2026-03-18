@@ -1,11 +1,13 @@
 import SwiftUI
 import UserNotifications
+import PhotosUI
 
 struct SettingsView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var searchService: SearchService
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
+    @EnvironmentObject private var wallpaperManager: WallpaperManager
     @Environment(\.themePalette) private var palette
     @Environment(\.colorScheme) private var colorScheme
 
@@ -29,8 +31,15 @@ struct SettingsView: View {
     @State private var showDocumentPicker = false
     @State private var showWifiTransfer = false
     @State private var showAppleMusicImport = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
 
     @EnvironmentObject private var router: AppRouter
+
+    private var listRowBg: Color {
+        themeManager.currentStyle.hasCustomBackground
+            ? palette.surface.opacity(0.75)
+            : palette.surface
+    }
 
     var body: some View {
         List {
@@ -42,7 +51,7 @@ struct SettingsView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(palette.background)
+        .background(themeManager.currentStyle.hasCustomBackground ? Color.clear : palette.background)
         .navigationTitle("设置")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(palette.surface, for: .navigationBar)
