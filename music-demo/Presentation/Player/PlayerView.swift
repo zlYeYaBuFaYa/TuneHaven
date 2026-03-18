@@ -279,10 +279,7 @@ struct PlayerView: View {
             Spacer()
             Button {
                 Task {
-                    if let id = playback.currentSong?.id {
-                        try? await libraryService.toggleFavorite(songId: id)
-                        playback.toggleCurrentSongFavorite()
-                    }
+                    await playback.toggleCurrentSongFavorite()
                 }
             } label: {
                 Image(systemName: playback.currentSong?.isFavorite == true ? "heart.fill" : "heart")

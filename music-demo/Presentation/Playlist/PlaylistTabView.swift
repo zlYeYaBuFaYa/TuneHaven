@@ -4,7 +4,7 @@ struct PlaylistTabView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var themeManager: ThemeManager
-    @StateObject private var groupService = PlaylistGroupService()
+    @EnvironmentObject private var groupService: PlaylistGroupService
     @Environment(\.themePalette) private var palette
 
     var body: some View {
@@ -12,15 +12,13 @@ struct PlaylistTabView: View {
         NavigationStack(path: $router.playlistPath) {
             PlaylistMainView()
                 .fixNavigationControllerBackground(hasCustomBg ? Color.clear : palette.background)
-                .environmentObject(groupService)
                 .navigationDestination(for: AppDestination.self) { destination in
                     destinationView(destination)
-                        .environmentObject(groupService)
                         .environment(\.themePalette, palette)
                 }
         }
         .background(hasCustomBg ? Color.clear.ignoresSafeArea() : palette.background.ignoresSafeArea())
-        .toolbarBackground(hasCustomBg ? .ultraThinMaterial : .automatic, for: .navigationBar)
+        .toolbarBackground(hasCustomBg ? Visibility.visible : .automatic, for: .navigationBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             MiniPlayerBar()
         }

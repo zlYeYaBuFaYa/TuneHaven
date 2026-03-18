@@ -1,21 +1,39 @@
 import SwiftUI
 import Combine
 
+@MainActor
+private final class SearchDebouncer: ObservableObject {
+    @Published var debouncedQuery = ""
+    private let subject = PassthroughSubject<String, Never>()
+    private var cancellable: AnyCancellable?
+
+    init() {
+        cancellable = subject
+            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
+            .removeDuplicates()
+            .sink { [weak self] query in
+                self?.debouncedQuery = query
+            }
+    }
+
+    func send(_ query: String) {
+        subject.send(query)
+    }
+}
+
 struct LibraryMainView: View {
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var searchService: SearchService
     @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
 
+    @StateObject private var searchDebouncer = SearchDebouncer()
     @State private var selectedTab: LibraryTab = .all
     @State private var searchText = ""
-    @State private var debouncedQuery = ""
     @State private var isSearchActive = false
     @State private var searchResult = SearchResult(songs: [], artists: [], albums: [], totalSongCount: 0, totalArtistCount: 0, totalAlbumCount: 0)
     @State private var sortOption: SongSortOption = .title
     @State private var formatFilter: AudioFormat = .all
-
-    private let searchSubject = PassthroughSubject<String, Never>()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,8 +42,8 @@ struct LibraryMainView: View {
             Divider()
                 .background(palette.separator)
 
-            if isSearchActive && !debouncedQuery.isEmpty {
-                SearchResultView(result: searchResult, query: debouncedQuery, tab: selectedTab)
+            if isSearchActive && !searchDebouncer.debouncedQuery.isEmpty {
+                SearchResultView(result: searchResult, query: searchDebouncer.debouncedQuery, tab: selectedTab)
             } else {
                 libraryContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -35,18 +53,13 @@ struct LibraryMainView: View {
         .navigationTitle("音乐库")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(palette.surface, for: .navigationBar)
-        .onReceive(
-            searchSubject
-                .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
-                .removeDuplicates()
-        ) { query in
-            debouncedQuery = query
+        .onChange(of: searchDebouncer.debouncedQuery) { _, query in
             performSearch(query: query)
         }
         .onChange(of: searchText) { _, newValue in
-            searchSubject.send(newValue)
+            searchDebouncer.send(newValue)
             if newValue.isEmpty {
-                debouncedQuery = ""
+                searchDebouncer.debouncedQuery = ""
                 searchResult = .empty
             }
             if !newValue.isEmpty {

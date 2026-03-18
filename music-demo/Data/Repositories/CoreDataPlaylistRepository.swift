@@ -87,6 +87,12 @@ final class CoreDataPlaylistRepository {
             request.predicate = NSPredicate(format: "id == %@ AND isSystem == NO", id as CVarArg)
             request.fetchLimit = 1
             guard let entity = try ctx.fetch(request).first else { return }
+
+            let psReq = PlaylistSongEntity.fetchRequest()
+            psReq.predicate = NSPredicate(format: "playlistId == %@", id as CVarArg)
+            let links = try ctx.fetch(psReq)
+            links.forEach { ctx.delete($0) }
+
             ctx.delete(entity)
         }
     }

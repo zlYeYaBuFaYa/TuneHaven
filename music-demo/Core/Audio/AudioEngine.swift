@@ -109,13 +109,18 @@ final class AudioEngine: ObservableObject {
         let item = AVPlayerItem(asset: asset)
         playerItem = item
 
+        statusObservation?.invalidate()
+        itemObservation?.invalidate()
+
         statusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            DispatchQueue.main.async { [weak self] in
-                switch item.status {
+            let status = item.status
+            let error = item.error
+            Task { @MainActor [weak self] in
+                switch status {
                 case .readyToPlay:
                     self?.isBuffering = false
                 case .failed:
-                    if let err = item.error {
+                    if let err = error {
                         self?.state = .error(AudioEngineError.loadFailed(underlying: err))
                     }
                 default: break
@@ -124,8 +129,9 @@ final class AudioEngine: ObservableObject {
         }
 
         itemObservation = item.observe(\.isPlaybackBufferEmpty, options: [.new]) { [weak self] item, _ in
-            DispatchQueue.main.async { [weak self] in
-                self?.isBuffering = item.isPlaybackBufferEmpty
+            let empty = item.isPlaybackBufferEmpty
+            Task { @MainActor [weak self] in
+                self?.isBuffering = empty
             }
         }
 
@@ -141,10 +147,7 @@ final class AudioEngine: ObservableObject {
 
     func play() {
         AudioSessionManager.shared.ensureActive()
-        player.play()
-        if playbackSpeed != 1.0 {
-            player.rate = playbackSpeed
-        }
+        player.rate = playbackSpeed
         state = .playing
         log.debug("开始播放")
     }
@@ -197,9 +200,12 @@ final class AudioEngine: ObservableObject {
         removeTimeObserver()
         let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
         timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-            guard let self else { return }
-            self.currentTime = time.seconds
-            self.onTimeUpdate?(time.seconds, self.duration)
+            let seconds = time.seconds
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.currentTime = seconds
+                self.onTimeUpdate?(seconds, self.duration)
+            }
         }
         NotificationCenter.default.addObserver(self,
             selector: #selector(playerItemDidFinish),
@@ -216,10 +222,13 @@ final class AudioEngine: ObservableObject {
     }
 
     @objc private func playerItemDidFinish() {
-        state = .paused
-        log.info("当前曲目播放结束")
-        currentTime = duration
-        onPlaybackEnded?()
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.state = .paused
+            self.log.info("当前曲目播放结束")
+            self.currentTime = self.duration
+            self.onPlaybackEnded?()
+        }
     }
 
     private func setupNotifications() {
@@ -228,14 +237,18 @@ final class AudioEngine: ObservableObject {
             object: AVAudioSession.sharedInstance(),
             queue: .main
         ) { [weak self] notification in
-            self?.handleInterruption(notification)
+            Task { @MainActor [weak self] in
+                self?.handleInterruption(notification)
+            }
         }
         routeChangeObserver = NotificationCenter.default.addObserver(
             forName: AVAudioSession.routeChangeNotification,
             object: AVAudioSession.sharedInstance(),
             queue: .main
         ) { [weak self] notification in
-            self?.handleRouteChange(notification)
+            Task { @MainActor [weak self] in
+                self?.handleRouteChange(notification)
+            }
         }
     }
 
@@ -252,10 +265,7 @@ final class AudioEngine: ObservableObject {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optValue)
                 if options.contains(.shouldResume) {
                     AudioSessionManager.shared.ensureActive()
-                    player.play()
-                    if playbackSpeed != 1.0 {
-                        player.rate = playbackSpeed
-                    }
+                    player.rate = playbackSpeed
                     state = .playing
                     log.info("音频中断结束，恢复播放")
                 }

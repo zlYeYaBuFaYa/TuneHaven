@@ -102,14 +102,20 @@ final class MusicLibraryService: ObservableObject {
     }
 
     private func scheduleCommit(token: UndoToken) {
-        let id = token.songIds.first ?? UUID()
+        let tokenId = UUID()
         let timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
-                try? await self?.songRepo.commitDelete(token: token)
-                self?.pendingUndoTokens.removeAll { $0.songIds == token.songIds }
+                guard let self else { return }
+                do {
+                    try await self.songRepo.commitDelete(token: token)
+                } catch {
+                    self.log.error(error, context: "commitDelete 失败，songIds=\(token.songIds)")
+                }
+                self.pendingUndoTokens.removeAll { $0.songIds == token.songIds }
+                self.undoTimers.removeValue(forKey: tokenId)
             }
         }
-        undoTimers[id] = timer
+        undoTimers[tokenId] = timer
     }
 
     private func invalidateTimer(for token: UndoToken) {

@@ -8,16 +8,15 @@ final class CoreDataStack {
 
     var viewContext: NSManagedObjectContext { container.viewContext }
 
-    lazy var backgroundContext: NSManagedObjectContext = {
-        let ctx = container.newBackgroundContext()
-        ctx.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-        return ctx
-    }()
+    private let backgroundContext: NSManagedObjectContext
 
     private init() {
         container = NSPersistentContainer(name: "MusicPlayer")
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        let ctx = container.newBackgroundContext()
+        ctx.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        backgroundContext = ctx
     }
 
     func load() async throws {
@@ -49,8 +48,11 @@ final class CoreDataStack {
                     if self.backgroundContext.hasChanges {
                         try self.backgroundContext.save()
                     }
-                    continuation.resume(returning: result)
+                    self.viewContext.perform {
+                        continuation.resume(returning: result)
+                    }
                 } catch {
+                    self.backgroundContext.rollback()
                     continuation.resume(throwing: error)
                 }
             }

@@ -17,6 +17,7 @@ final class PlaybackService: ObservableObject {
     private let engine = AudioEngine.shared
     private let queueService: PlayQueueService
     private let libraryService: MusicLibraryService
+    private let playlistRepo = CoreDataPlaylistRepository()
     private let songRepo = CoreDataSongRepository()
     private let imageCacheManager = ImageCacheManager.shared
     private var cancellables = Set<AnyCancellable>()
@@ -138,10 +139,16 @@ final class PlaybackService: ObservableObject {
         }
     }
 
-    func toggleCurrentSongFavorite() {
-        guard var song = currentSong else { return }
-        song.isFavorite.toggle()
-        currentSong = song
+    func toggleCurrentSongFavorite() async {
+        guard let song = currentSong else { return }
+        do {
+            try await libraryService.toggleFavorite(songId: song.id)
+            if let updated = await songRepo.fetchSong(id: song.id) {
+                currentSong = updated
+            }
+        } catch {
+            log.error(error, context: "切换收藏状态失败")
+        }
     }
 
     func cyclePlayMode() {
@@ -237,9 +244,13 @@ final class PlaybackService: ObservableObject {
             songs = detail.allSongs
             startIndex = songs.firstIndex(of: song) ?? 0
         case .playlist(let id):
-            songs = [song]
-            startIndex = 0
-            _ = id
+            if let detail = await playlistRepo.fetchPlaylistDetail(id: id) {
+                songs = detail.songs
+                startIndex = songs.firstIndex(of: song) ?? 0
+            } else {
+                songs = [song]
+                startIndex = 0
+            }
         case .queue:
             return
         }
@@ -261,7 +272,6 @@ final class PlaybackService: ObservableObject {
 
         await engine.load(url: fileURL)
         applySpeedForSong(song)
-        engine.setSpeed(playbackSpeed)
 
         if autoPlay {
             engine.play()
@@ -332,6 +342,9 @@ final class PlaybackService: ObservableObject {
             },
             onPause: { [weak self] in
                 Task { @MainActor in self?.engine.pause() }
+            },
+            onTogglePlayPause: { [weak self] in
+                Task { @MainActor in self?.togglePlayPause() }
             },
             onNext: { [weak self] in
                 Task { @MainActor in self?.playNext() }

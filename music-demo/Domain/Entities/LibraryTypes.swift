@@ -198,7 +198,11 @@ struct LyricsLine: Identifiable {
 }
 
 struct UndoToken {
+    struct MovedFile {
+        let tempPath: String
+        let originalRelativePath: String
+    }
     let songIds: [UUID]
-    let tempFilePaths: [String]
+    let movedFiles: [MovedFile]
     let expiresAt: Date
 }

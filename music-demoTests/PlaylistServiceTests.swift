@@ -210,7 +210,7 @@ struct UndoTokenTests {
     @Test("UndoToken 包含正确的 songIds")
     func testUndoTokenSongIds() {
         let ids = [UUID(), UUID(), UUID()]
-        let token = UndoToken(songIds: ids, tempFilePaths: [], expiresAt: Date().addingTimeInterval(30))
+        let token = UndoToken(songIds: ids, movedFiles: [], expiresAt: Date().addingTimeInterval(30))
         #expect(token.songIds == ids)
     }
 
@@ -218,15 +218,20 @@ struct UndoTokenTests {
     func testUndoTokenExpiry() {
         let now = Date()
         let expiresAt = now.addingTimeInterval(30)
-        let token = UndoToken(songIds: [UUID()], tempFilePaths: [], expiresAt: expiresAt)
+        let token = UndoToken(songIds: [UUID()], movedFiles: [], expiresAt: expiresAt)
         #expect(token.expiresAt > now)
-        #expect(token.expiresAt.timeIntervalSince(now) <= 31) // 约 30 秒
+        #expect(token.expiresAt.timeIntervalSince(now) <= 31)
     }
 
-    @Test("UndoToken 包含临时文件路径")
-    func testUndoTokenTempPaths() {
-        let paths = ["file1.mp3", "file2.mp3"]
-        let token = UndoToken(songIds: [UUID()], tempFilePaths: paths, expiresAt: Date())
-        #expect(token.tempFilePaths == paths)
+    @Test("UndoToken.MovedFile 保留临时路径和原始路径")
+    func testUndoTokenMovedFiles() {
+        let files = [
+            UndoToken.MovedFile(tempPath: "pending_delete/abc.mp3", originalRelativePath: "Music/song.mp3"),
+            UndoToken.MovedFile(tempPath: "pending_delete/def.mp3", originalRelativePath: "Music/song2.mp3"),
+        ]
+        let token = UndoToken(songIds: [UUID()], movedFiles: files, expiresAt: Date())
+        #expect(token.movedFiles.count == 2)
+        #expect(token.movedFiles[0].tempPath == "pending_delete/abc.mp3")
+        #expect(token.movedFiles[0].originalRelativePath == "Music/song.mp3")
     }
 }

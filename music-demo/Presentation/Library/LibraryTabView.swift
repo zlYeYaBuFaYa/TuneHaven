@@ -6,22 +6,20 @@ struct LibraryTabView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @Environment(\.themePalette) private var palette
 
-    @StateObject private var groupService = PlaylistGroupService()
+    @EnvironmentObject private var groupService: PlaylistGroupService
 
     var body: some View {
         let hasCustomBg = themeManager.currentStyle.hasCustomBackground
         NavigationStack(path: $router.libraryPath) {
             LibraryMainView()
                 .fixNavigationControllerBackground(hasCustomBg ? Color.clear : palette.background)
-                .environmentObject(groupService)
                 .navigationDestination(for: AppDestination.self) { destination in
                     destinationView(destination)
-                        .environmentObject(groupService)
                         .environment(\.themePalette, palette)
                 }
         }
         .background(hasCustomBg ? Color.clear.ignoresSafeArea() : palette.background.ignoresSafeArea())
-        .toolbarBackground(hasCustomBg ? .ultraThinMaterial : .automatic, for: .navigationBar)
+        .toolbarBackground(hasCustomBg ? Visibility.visible : .automatic, for: .navigationBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             MiniPlayerBar()
         }

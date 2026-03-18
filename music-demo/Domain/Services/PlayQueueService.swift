@@ -52,7 +52,11 @@ final class PlayQueueService: ObservableObject {
     }
 
     func moveInQueue(from source: IndexSet, to destination: Int) {
+        let currentId = currentItem?.id
         queue.move(fromOffsets: source, toOffset: destination)
+        if let currentId {
+            currentIndex = queue.firstIndex(where: { $0.id == currentId })
+        }
     }
 
     func clearQueue() {

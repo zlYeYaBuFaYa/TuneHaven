@@ -58,18 +58,14 @@ final class SearchService: ObservableObject {
     }
 
     func fetchHistory(tab: LibraryTab) async {
-        history = await withCheckedContinuation { continuation in
-            stack.viewContext.perform {
-                let request = SearchHistoryEntity.fetchRequest()
-                request.predicate = NSPredicate(format: "tabContext == %@", tab.rawValue)
-                request.sortDescriptors = [NSSortDescriptor(key: "searchedAt", ascending: false)]
-                request.fetchLimit = 10
-                let results = (try? self.stack.viewContext.fetch(request)) ?? []
-                continuation.resume(returning: results.compactMap { entity -> SearchHistoryItem? in
-                    guard let id = entity.id, let keyword = entity.keyword, let date = entity.searchedAt else { return nil }
-                    return SearchHistoryItem(id: id, keyword: keyword, searchedAt: date)
-                })
-            }
+        let request = SearchHistoryEntity.fetchRequest()
+        request.predicate = NSPredicate(format: "tabContext == %@", tab.rawValue)
+        request.sortDescriptors = [NSSortDescriptor(key: "searchedAt", ascending: false)]
+        request.fetchLimit = 10
+        let results = (try? stack.viewContext.fetch(request)) ?? []
+        history = results.compactMap { entity -> SearchHistoryItem? in
+            guard let id = entity.id, let keyword = entity.keyword, let date = entity.searchedAt else { return nil }
+            return SearchHistoryItem(id: id, keyword: keyword, searchedAt: date)
         }
     }
 

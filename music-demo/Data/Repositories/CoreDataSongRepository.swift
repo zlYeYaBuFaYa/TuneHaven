@@ -64,16 +64,14 @@ final class CoreDataSongRepository {
 
     func softDelete(ids: [UUID]) async throws -> UndoToken {
         let now = Date()
-        var tempPaths: [String] = []
+        var movedFiles: [UndoToken.MovedFile] = []
 
-        // 先收集文件信息，再标记删除
         var filesToMove: [(hash: String, relativePath: String)] = []
         try await stack.performBackground { ctx in
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", ids as NSArray)
             let entities = try ctx.fetch(request)
             for entity in entities {
-                // 检查是否还有其他非删除引用相同 hash 的歌曲
                 if let hash = entity.fileHash, let path = entity.fileRelativePath {
                     let countReq = SongEntity.fetchRequest()
                     countReq.predicate = NSPredicate(format: "fileHash == %@ AND softDeleted == NO AND NOT (id IN %@)",
@@ -90,11 +88,11 @@ final class CoreDataSongRepository {
 
         for file in filesToMove {
             if let tmpPath = try? FileStorageService.shared.moveToPendingDelete(relativePath: file.relativePath) {
-                tempPaths.append(tmpPath)
+                movedFiles.append(UndoToken.MovedFile(tempPath: tmpPath, originalRelativePath: file.relativePath))
             }
         }
 
-        return UndoToken(songIds: ids, tempFilePaths: tempPaths, expiresAt: now.addingTimeInterval(30))
+        return UndoToken(songIds: ids, movedFiles: movedFiles, expiresAt: now.addingTimeInterval(30))
     }
 
     func undoDelete(token: UndoToken) async throws {
@@ -107,8 +105,8 @@ final class CoreDataSongRepository {
                 entity.deletedAt = nil
             }
         }
-        for path in token.tempFilePaths {
-            try? FileStorageService.shared.restoreFromPendingDelete(fileName: path, originalRelativePath: path)
+        for file in token.movedFiles {
+            try? FileStorageService.shared.restoreFromPendingDelete(fileName: file.tempPath, originalRelativePath: file.originalRelativePath)
         }
     }
 
@@ -125,8 +123,8 @@ final class CoreDataSongRepository {
                 ctx.delete(song)
             }
         }
-        for path in token.tempFilePaths {
-            FileStorageService.shared.deleteFromPendingDelete(fileName: path)
+        for file in token.movedFiles {
+            FileStorageService.shared.deleteFromPendingDelete(fileName: file.tempPath)
         }
     }
 
@@ -173,8 +171,10 @@ final class CoreDataSongRepository {
                         let url = SandboxPathManager.musicFileURL(relativePath: path)
                         try? fm.removeItem(at: url)
                     }
+                }
+                if let songId = entity.id {
                     let psReq = PlaylistSongEntity.fetchRequest()
-                    psReq.predicate = NSPredicate(format: "songId == %@", entity.id! as CVarArg)
+                    psReq.predicate = NSPredicate(format: "songId == %@", songId as CVarArg)
                     let links = try ctx.fetch(psReq)
                     links.forEach { ctx.delete($0) }
                 }

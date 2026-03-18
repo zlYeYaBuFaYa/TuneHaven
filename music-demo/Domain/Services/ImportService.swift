@@ -4,7 +4,6 @@ import UIKit
 @MainActor
 final class ImportService: ObservableObject {
     private let log = AppLogger.shared
-    private let log = AppLogger.shared
 
     @Published private(set) var isImporting = false
     @Published private(set) var progress: ImportProgress?
@@ -122,9 +121,9 @@ final class ImportService: ObservableObject {
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "文件复制失败")
         }
 
+        let songId = UUID()
         var coverImagePath: String? = nil
         if let coverImage = finalCover {
-            let songId = UUID()
             let mediumThumb = ThumbnailGenerator.resize(coverImage, to: .medium)
             let cacheURL = SandboxPathManager.coverImageURL(songId: songId, size: .medium)
             if let data = mediumThumb.jpegData(compressionQuality: 0.85) {
@@ -135,7 +134,7 @@ final class ImportService: ObservableObject {
         }
 
         let song = Song(
-            id: UUID(),
+            id: songId,
             title: finalTitle,
             artist: finalArtist,
             album: finalAlbum,

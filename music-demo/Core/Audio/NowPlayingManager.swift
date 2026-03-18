@@ -1,6 +1,7 @@
 import MediaPlayer
 import UIKit
 
+@MainActor
 final class NowPlayingManager {
     static let shared = NowPlayingManager()
     private init() {}
@@ -35,11 +36,12 @@ final class NowPlayingManager {
     }
 
     func setupRemoteCommands(
-        onPlay: @escaping () -> Void,
-        onPause: @escaping () -> Void,
-        onNext: @escaping () -> Void,
-        onPrevious: @escaping () -> Void,
-        onSeek: @escaping (TimeInterval) -> Void
+        onPlay: @escaping @Sendable () -> Void,
+        onPause: @escaping @Sendable () -> Void,
+        onTogglePlayPause: @escaping @Sendable () -> Void,
+        onNext: @escaping @Sendable () -> Void,
+        onPrevious: @escaping @Sendable () -> Void,
+        onSeek: @escaping @Sendable (TimeInterval) -> Void
     ) {
         let center = MPRemoteCommandCenter.shared()
 
@@ -60,7 +62,7 @@ final class NowPlayingManager {
         center.playCommand.addTarget { _ in onPlay(); return .success }
         center.pauseCommand.addTarget { _ in onPause(); return .success }
         center.togglePlayPauseCommand.addTarget { _ in
-            if AudioEngine.shared.isPlaying { onPause() } else { onPlay() }
+            onTogglePlayPause()
             return .success
         }
         center.nextTrackCommand.addTarget { _ in onNext(); return .success }

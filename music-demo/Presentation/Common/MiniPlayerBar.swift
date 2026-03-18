@@ -36,10 +36,7 @@ struct MiniPlayerBar: View {
                             HStack(spacing: 16) {
                                 Button {
                                     Task {
-                                        if let id = playback.currentSong?.id {
-                                            try? await libraryService.toggleFavorite(songId: id)
-                                            playback.toggleCurrentSongFavorite()
-                                        }
+                                        await playback.toggleCurrentSongFavorite()
                                     }
                                 } label: {
                                     Image(systemName: song.isFavorite ? "heart.fill" : "heart")
