@@ -46,7 +46,21 @@ final class CoreDataStack {
                 do {
                     let result = try block(self.backgroundContext)
                     if self.backgroundContext.hasChanges {
+                        var notification: Notification?
+                        let token = NotificationCenter.default.addObserver(
+                            forName: .NSManagedObjectContextDidSave,
+                            object: self.backgroundContext,
+                            queue: nil
+                        ) { notification = $0 }
+
                         try self.backgroundContext.save()
+                        NotificationCenter.default.removeObserver(token)
+
+                        if let notification {
+                            self.viewContext.performAndWait {
+                                self.viewContext.mergeChanges(fromContextDidSave: notification)
+                            }
+                        }
                     }
                     self.viewContext.perform {
                         continuation.resume(returning: result)
