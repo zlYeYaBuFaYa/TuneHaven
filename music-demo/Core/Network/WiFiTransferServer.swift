@@ -397,9 +397,9 @@ enum WiFiTransferHTML {
             <div id="drop">
               <div class="icon">📁</div>
               <p style="font-size:15px;font-weight:500;margin-bottom:8px">拖拽文件到此处</p>
-              <p style="font-size:13px">支持 MP3、M4A、AAC、WAV、ALAC 格式</p>
+              <p style="font-size:13px">支持 MP3、M4A、AAC、WAV、ALAC、FLAC、AIFF、CAF 格式</p>
             </div>
-            <input type="file" id="fileInput" multiple accept=".mp3,.m4a,.aac,.wav,.alac,.flac" style="display:none">
+            <input type="file" id="fileInput" multiple accept=".mp3,.m4a,.aac,.wav,.alac,.flac,.aiff,.aif,.caf" style="display:none">
             <div style="display:flex;gap:8px;margin-bottom:12px">
               <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()" style="flex:1">选择文件</button>
               <button class="btn" id="uploadBtn" onclick="startUpload()" disabled style="flex:1">开始传输</button>

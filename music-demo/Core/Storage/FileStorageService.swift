@@ -6,7 +6,7 @@ final class FileStorageService {
     private init() {}
 
     static let maxFileSizeBytes: Int64 = 500 * 1024 * 1024
-    static let supportedExtensions: Set<String> = ["mp3", "m4a", "aac", "alac", "wav"]
+    static let supportedExtensions: Set<String> = ["mp3", "m4a", "aac", "alac", "wav", "flac", "aiff", "aif", "caf"]
 
     func sha256(of url: URL) throws -> String {
         let data = try Data(contentsOf: url)
