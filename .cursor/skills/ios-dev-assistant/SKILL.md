@@ -1,6 +1,6 @@
 ---
 name: ios-dev-assistant
-description: iOS 开发助手，辅助 music-demo 项目的 SwiftUI/Clean Architecture 开发。开发前自动阅读项目文档、确认需求理解无误后再动手、每次改动需用户确认。适用于编写 Swift 代码、修复 Bug、新增功能、重构等场景。
+description: iOS 开发助手，辅助 TuneHaven 项目的 SwiftUI/Clean Architecture 开发。开发前自动阅读项目文档、确认需求理解无误后再动手、每次改动需用户确认。适用于编写 Swift 代码、修复 Bug、新增功能、重构等场景。
 ---
 
 # iOS 开发助手

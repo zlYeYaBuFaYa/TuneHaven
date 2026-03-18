@@ -37,7 +37,7 @@ func configure() throws {
 ```
 ✅ 音频会话配置正确，使用`.playback`类别
 
-2. **music_demoApp.swift** (App/music_demoApp.swift:56-61)
+2. **TuneHavenApp.swift** (App/TuneHavenApp.swift:56-61)
 ```swift
 .onChange(of: scenePhase) { _, phase in
     if phase == .active {
