@@ -8,10 +8,10 @@ final class CoreDataPlaylistRepository {
     func fetchAll() async -> [Playlist] {
         await withCheckedContinuation { continuation in
             stack.viewContext.perform {
-                self.stack.viewContext.refreshAllObjects()
+                self.stack.viewContext.processPendingChanges()
                 let request = PlaylistEntity.fetchRequest()
                 request.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
-                request.fetchBatchSize = 50
+                request.returnsObjectsAsFaults = false
                 let results = (try? self.stack.viewContext.fetch(request)) ?? []
                 continuation.resume(returning: results.compactMap { PlaylistMapper.toDomain($0) })
             }

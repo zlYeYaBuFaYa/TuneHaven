@@ -3,17 +3,10 @@ import SwiftUI
 struct MiniPlayerBar: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var libraryService: MusicLibraryService
+    @EnvironmentObject private var themeManager: ThemeManager
     @ObservedObject private var playback = PlaybackService.shared
     @ObservedObject private var engine = AudioEngine.shared
     @Environment(\.themePalette) private var palette
-
-    private var gradientBg: LinearGradient {
-        LinearGradient(
-            colors: [palette.gradientStart, palette.gradientEnd],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
 
     var body: some View {
         if let song = playback.currentSong {
@@ -25,11 +18,11 @@ struct MiniPlayerBar: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(song.title)
                                 .font(.subheadline.weight(.medium))
-                                .foregroundColor(.white)
+                                .foregroundColor(palette.textPrimary)
                                 .lineLimit(1)
                             Text(song.artist)
                                 .font(.caption)
-                                .foregroundColor(.white.opacity(0.7))
+                                .foregroundColor(palette.textSecondary)
                                 .lineLimit(1)
                         }
 
@@ -43,7 +36,7 @@ struct MiniPlayerBar: View {
                             } label: {
                                 Image(systemName: song.isFavorite ? "heart.fill" : "heart")
                                     .font(.body)
-                                    .foregroundColor(song.isFavorite ? .white : .white.opacity(0.8))
+                                    .foregroundColor(song.isFavorite ? palette.accent : palette.iconSecondary)
                             }
                             .buttonStyle(.plain)
 
@@ -52,7 +45,7 @@ struct MiniPlayerBar: View {
                             } label: {
                                 Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
                                     .font(.title3)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(palette.primary)
                             }
                             .buttonStyle(.plain)
 
@@ -61,7 +54,7 @@ struct MiniPlayerBar: View {
                             } label: {
                                 Image(systemName: "forward.fill")
                                     .font(.title3)
-                                    .foregroundColor(.white.opacity(0.8))
+                                    .foregroundColor(palette.iconSecondary)
                             }
                             .buttonStyle(.plain)
                         }
@@ -72,14 +65,18 @@ struct MiniPlayerBar: View {
                     GeometryReader { geo in
                         let progress = engine.duration > 0 ? engine.currentTime / engine.duration : 0
                         Rectangle()
-                            .fill(Color.white.opacity(0.3))
+                            .fill(palette.primary.opacity(0.4))
                             .frame(width: geo.size.width * progress)
                     }
                     .frame(height: 2)
                 }
-                .background(gradientBg)
+                .background(palette.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: palette.gradientStart.opacity(0.3), radius: 8, y: 2)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(palette.separator, lineWidth: 0.5)
+                )
+                .shadow(color: palette.primary.opacity(0.08), radius: 6, y: 2)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .contentShape(Rectangle())

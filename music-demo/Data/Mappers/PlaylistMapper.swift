@@ -38,18 +38,20 @@ enum PlaylistMapper {
             case .favorites:
                 let req = SongEntity.fetchRequest() as NSFetchRequest<SongEntity>
                 req.predicate = NSPredicate(format: "isFavorite == YES AND softDeleted == NO")
-                return (try? ctx.count(for: req)) ?? 0
+                return (try? ctx.fetch(req))?.count ?? 0
             case .recentlyPlayed:
                 let req = SongEntity.fetchRequest() as NSFetchRequest<SongEntity>
                 req.predicate = NSPredicate(format: "lastPlayedDate != nil AND softDeleted == NO")
-                return (try? ctx.count(for: req)) ?? 0
+                return (try? ctx.fetch(req))?.count ?? 0
             default:
                 return 0
             }
         } else {
             let req = PlaylistSongEntity.fetchRequest() as NSFetchRequest<PlaylistSongEntity>
             req.predicate = NSPredicate(format: "playlistId == %@", id as CVarArg)
-            return (try? ctx.count(for: req)) ?? 0
+            req.includesSubentities = false
+            req.includesPropertyValues = false
+            return (try? ctx.fetch(req))?.count ?? 0
         }
     }
 
