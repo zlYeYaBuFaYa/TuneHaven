@@ -36,8 +36,12 @@ struct PlayerView: View {
 
     var body: some View {
         ZStack {
-            palette.background
-                .ignoresSafeArea()
+            LinearGradient(
+                colors: [palette.background, palette.surfaceSecondary, palette.highlight],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
             if showQueue {
                 PlayQueueView(onClose: { withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { showQueue = false } })
@@ -279,7 +283,7 @@ struct PlayerView: View {
                         CoverImageView(path: song.coverImagePath,
                                        size: coverSize,
                                        cornerRadius: 16)
-                            .shadow(color: .black.opacity(0.3), radius: 20, y: 8)
+                            .shadow(color: palette.gradientStart.opacity(0.35), radius: 20, y: 8)
                     }
                 } else {
                     PlaceholderCoverView(size: coverSize)
@@ -318,13 +322,33 @@ struct PlayerView: View {
 
     private var progressBar: some View {
         VStack(spacing: 6) {
-            Slider(
-                value: Binding(
-                    get: { engine.duration > 0 ? engine.currentTime / engine.duration : 0 },
-                    set: { playback.seek(to: $0 * engine.duration) }
+            GeometryReader { geo in
+                let progress = engine.duration > 0 ? engine.currentTime / engine.duration : 0
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(palette.separator)
+                        .frame(height: 4)
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [palette.gradientStart, palette.gradientEnd],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: max(geo.size.width * progress, 4), height: 4)
+                }
+                .frame(maxHeight: .infinity, alignment: .center)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            let ratio = min(max(value.location.x / geo.size.width, 0), 1)
+                            playback.seek(to: ratio * engine.duration)
+                        }
                 )
-            )
-            .tint(palette.primary)
+            }
+            .frame(height: 24)
 
             HStack {
                 Text(engine.currentTime.formattedTime)
@@ -358,9 +382,15 @@ struct PlayerView: View {
             Button { playback.togglePlayPause() } label: {
                 ZStack {
                     Circle()
-                        .fill(palette.primary)
+                        .fill(
+                            LinearGradient(
+                                colors: [palette.gradientStart, palette.gradientEnd],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .frame(width: 68, height: 68)
-                        .shadow(color: palette.primary.opacity(0.3), radius: 10, y: 4)
+                        .shadow(color: palette.gradientStart.opacity(0.35), radius: 10, y: 4)
                     Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
                         .font(.title2)
                         .foregroundColor(.white)

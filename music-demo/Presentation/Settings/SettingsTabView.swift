@@ -3,10 +3,11 @@ import SwiftUI
 struct SettingsTabView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var themeManager: ThemeManager
+    @EnvironmentObject private var wallpaperManager: WallpaperManager
     @Environment(\.themePalette) private var palette
 
     var body: some View {
-        let hasCustomBg = themeManager.currentStyle.hasCustomBackground
+        let hasCustomBg = themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
         NavigationStack(path: $router.settingsPath) {
             SettingsView()
                 .fixNavigationControllerBackground(hasCustomBg ? Color.clear : palette.background)

@@ -91,28 +91,39 @@ struct LibraryMainView: View {
     }
 
     private var tabBar: some View {
-        HStack(spacing: 0) {
-            ForEach(LibraryTab.allCases, id: \.self) { tab in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTab = tab
-                    }
-                } label: {
-                    VStack(spacing: 4) {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(LibraryTab.allCases, id: \.self) { tab in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedTab = tab
+                        }
+                    } label: {
                         Text(tab.displayName)
                             .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
-                            .foregroundColor(selectedTab == tab ? palette.primary : palette.textSecondary)
-                        Rectangle()
-                            .fill(selectedTab == tab ? palette.primary : Color.clear)
-                            .frame(height: 2)
-                            .cornerRadius(1)
+                            .foregroundColor(selectedTab == tab ? .white : palette.textSecondary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                Group {
+                                    if selectedTab == tab {
+                                        LinearGradient(
+                                            colors: [palette.gradientStart, palette.gradientEnd],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    } else {
+                                        palette.surfaceSecondary
+                                    }
+                                }
+                            )
+                            .clipShape(Capsule())
                     }
-                    .padding(.vertical, 8)
-                    .frame(maxWidth: .infinity)
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, 16)
     }
 
     @ViewBuilder

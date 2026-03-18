@@ -6,6 +6,7 @@ struct RootTabView: View {
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var snackbar: SnackbarState
     @EnvironmentObject private var libraryService: MusicLibraryService
+    @EnvironmentObject private var wallpaperManager: WallpaperManager
     @Environment(\.themePalette) private var palette
     @Environment(\.colorScheme) private var colorScheme
 
@@ -58,7 +59,7 @@ struct RootTabView: View {
     // MARK: - Custom Tab Bar
 
     private var customTabBar: some View {
-        let hasCustomBg = themeManager.currentStyle.hasCustomBackground
+        let hasCustomBg = themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
         return VStack(spacing: 0) {
             Divider()
                 .overlay(palette.separator)

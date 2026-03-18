@@ -86,11 +86,16 @@ struct music_demoApp: App {
                 switch phase {
                 case .active:
                     playbackService.checkSleepTimerOnForeground()
-                    themeManager.applyToWindows()
+                    refreshPaletteScheme()
+                    themeManager.refreshWindows()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        themeManager.refreshWindows()
+                    }
+                case .inactive:
                     refreshPaletteScheme()
                 case .background:
                     AudioSessionManager.shared.ensureActive()
-                default:
+                @unknown default:
                     break
                 }
             }

@@ -8,6 +8,7 @@ struct SettingsView: View {
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var wallpaperManager: WallpaperManager
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
     @Environment(\.colorScheme) private var colorScheme
 
@@ -31,12 +32,17 @@ struct SettingsView: View {
     @State private var showDocumentPicker = false
     @State private var showWifiTransfer = false
     @State private var showAppleMusicImport = false
+    @State private var showCloudDriveImport = false
     @State private var selectedPhotoItem: PhotosPickerItem?
 
     @EnvironmentObject private var router: AppRouter
 
+    private var hasCustomBg: Bool {
+        themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
+    }
+
     private var listRowBg: Color {
-        themeManager.currentStyle.hasCustomBackground
+        hasCustomBg
             ? palette.surface.opacity(0.75)
             : palette.surface
     }
@@ -51,7 +57,7 @@ struct SettingsView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(themeManager.currentStyle.hasCustomBackground ? Color.clear : palette.background)
+        .background(hasCustomBg ? Color.clear : palette.background)
         .navigationTitle("设置")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(palette.surface, for: .navigationBar)
@@ -79,6 +85,12 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showAppleMusicImport) {
             AppleMusicImportView()
+                .environment(\.themePalette, palette)
+                .environmentObject(importService)
+                .environmentObject(libraryService)
+        }
+        .sheet(isPresented: $showCloudDriveImport) {
+            CloudDriveImportView()
                 .environment(\.themePalette, palette)
                 .environmentObject(importService)
                 .environmentObject(libraryService)
@@ -129,6 +141,25 @@ struct SettingsView: View {
                 .listRowBackground(listRowBg)
 
                 Button {
+                    showCloudDriveImport = true
+                } label: {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("云盘导入")
+                                .font(.subheadline)
+                                .foregroundColor(palette.textPrimary)
+                            Text("从百度网盘等云盘导入音乐")
+                                .font(.caption)
+                                .foregroundColor(palette.textSecondary)
+                        }
+                    } icon: {
+                        Image(systemName: "cloud")
+                            .foregroundColor(palette.primary)
+                    }
+                }
+                .listRowBackground(listRowBg)
+
+                Button {
                     showWifiTransfer = true
                 } label: {
                     Label {
@@ -151,8 +182,7 @@ struct SettingsView: View {
                     Text("导入音乐")
                         .foregroundColor(palette.textPrimary)
                 } icon: {
-                    Image(systemName: "square.and.arrow.down")
-                        .foregroundColor(palette.primary)
+                    sectionIcon("square.and.arrow.down")
                 }
             }
             .tint(palette.textSecondary)
@@ -235,8 +265,7 @@ struct SettingsView: View {
                     Text("外观")
                         .foregroundColor(palette.textPrimary)
                 } icon: {
-                    Image(systemName: "paintbrush")
-                        .foregroundColor(palette.primary)
+                    sectionIcon("paintbrush")
                 }
             }
             .tint(palette.textSecondary)
@@ -302,6 +331,7 @@ struct SettingsView: View {
                         if let data = try? await newItem.loadTransferable(type: Data.self),
                            let uiImage = UIImage(data: data) {
                             wallpaperManager.setWallpaper(uiImage)
+                            snackbar.show(message: "壁纸已应用")
                         }
                         selectedPhotoItem = nil
                     }
@@ -427,8 +457,7 @@ struct SettingsView: View {
                     Text("播放")
                         .foregroundColor(palette.textPrimary)
                 } icon: {
-                    Image(systemName: "play.circle")
-                        .foregroundColor(palette.primary)
+                    sectionIcon("play.circle")
                 }
             }
             .tint(palette.textSecondary)
@@ -512,8 +541,7 @@ struct SettingsView: View {
                     Text("存储与隐私")
                         .foregroundColor(palette.textPrimary)
                 } icon: {
-                    Image(systemName: "externaldrive")
-                        .foregroundColor(palette.primary)
+                    sectionIcon("externaldrive")
                 }
             }
             .tint(palette.textSecondary)
@@ -535,8 +563,7 @@ struct SettingsView: View {
                     Text("关于")
                         .foregroundColor(palette.textPrimary)
                 } icon: {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(palette.primary)
+                    sectionIcon("info.circle")
                 }
             }
             .tint(palette.textSecondary)
@@ -556,6 +583,19 @@ struct SettingsView: View {
                 .multilineTextAlignment(.trailing)
         }
         .listRowBackground(listRowBg)
+    }
+
+    // MARK: - Section Icon
+
+    private func sectionIcon(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.subheadline)
+            .foregroundColor(palette.primaryDark)
+            .frame(width: 30, height: 30)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(palette.highlight)
+            )
     }
 
     // MARK: - Theme Card

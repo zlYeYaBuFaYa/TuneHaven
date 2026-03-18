@@ -52,16 +52,20 @@ struct ThemeBackgroundView: View {
     }
 
     private func userWallpaperBackground(_ image: UIImage) -> some View {
-        ZStack {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
+        GeometryReader { geo in
+            ZStack {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
 
-            palette.background.opacity(0.55)
+                palette.background.opacity(0.55)
 
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .opacity(0.3)
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.3)
+            }
         }
     }
 }

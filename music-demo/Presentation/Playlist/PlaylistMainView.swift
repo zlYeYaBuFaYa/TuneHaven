@@ -95,6 +95,9 @@ struct PlaylistMainView: View {
             }
         }
         .task { await playlistService.loadPlaylists() }
+        .onAppear {
+            Task { await playlistService.loadPlaylists() }
+        }
         .onChange(of: router.selectedTab) { _, newTab in
             if newTab == .playlist {
                 Task { await playlistService.loadPlaylists() }
@@ -125,7 +128,13 @@ struct SystemPlaylistRow: View {
             HStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(iconBackground)
+                        .fill(
+                            LinearGradient(
+                                colors: iconGradientColors,
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                         .frame(width: 48, height: 48)
                     Image(systemName: iconName)
                         .font(.title3)
@@ -155,11 +164,11 @@ struct SystemPlaylistRow: View {
         }
     }
 
-    private var iconBackground: Color {
+    private var iconGradientColors: [Color] {
         switch playlist.systemType {
-        case .favorites: return Color(hex: "#EF4444")
-        case .recentlyPlayed: return Color(hex: "#8B5CF6")
-        default: return Color(hex: "#10B981")
+        case .favorites: return [palette.gradientStart, palette.accent]
+        case .recentlyPlayed: return [palette.secondary, palette.gradientEnd]
+        default: return [palette.gradientStart, palette.gradientEnd]
         }
     }
 }

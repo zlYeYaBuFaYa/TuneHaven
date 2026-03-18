@@ -56,8 +56,8 @@ final class ThemeManager: ObservableObject {
     }
 
     func applyToWindows() {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene else {
-            AppLogger.shared.debug("[ThemeManager] applyToWindows — no windowScene yet")
+        guard let windowScene = Self.foregroundWindowScene else {
+            AppLogger.shared.debug("[ThemeManager] applyToWindows — no foreground windowScene yet")
             return
         }
         let style = colorMode.uiInterfaceStyle
@@ -75,14 +75,46 @@ final class ThemeManager: ObservableObject {
         AppLogger.shared.debug("[ThemeManager] applyToWindows — mode=\(colorMode) scheme=\(effectiveScheme) bgColor=\(bgColor)")
 
         AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
-        UIWindow.appearance().backgroundColor = bgColor
-        UIWindow.appearance().overrideUserInterfaceStyle = style
 
         windowScene.windows.forEach { window in
             window.overrideUserInterfaceStyle = style
             window.backgroundColor = bgColor
             Self.setNavigationControllerBackgrounds(on: window.rootViewController, color: bgColor)
         }
+    }
+
+    /// 轻量刷新：仅更新已有窗口的背景色和 interface style，不触碰 appearance proxy。
+    /// 用于前台恢复等场景，避免与 SwiftUI 渲染管线冲突。
+    func refreshWindows() {
+        guard let windowScene = Self.foregroundWindowScene else {
+            AppLogger.shared.debug("[ThemeManager] refreshWindows — no foreground windowScene")
+            return
+        }
+        let style = colorMode.uiInterfaceStyle
+        let effectiveScheme: ColorScheme
+        switch colorMode {
+        case .light: effectiveScheme = .light
+        case .dark: effectiveScheme = .dark
+        case .system:
+            effectiveScheme = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
+        }
+        let palette = effectiveScheme == .dark ? currentStyle.darkPalette : currentStyle.lightPalette
+        let bgColor = UIColor(palette.background)
+
+        windowScene.windows.forEach { window in
+            window.overrideUserInterfaceStyle = style
+            window.backgroundColor = bgColor
+        }
+        AppLogger.shared.debug("[ThemeManager] refreshWindows done — scheme=\(effectiveScheme)")
+    }
+
+    private static var foregroundWindowScene: UIWindowScene? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive }
+        ?? UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first
     }
 
     private static func setNavigationControllerBackgrounds(on vc: UIViewController?, color: UIColor) {

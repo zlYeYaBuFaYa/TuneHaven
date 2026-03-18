@@ -17,6 +17,7 @@ struct ImportFilesView: View {
     @State private var showDocumentPicker = false
     @State private var showWifiTransfer = false
     @State private var showAppleMusicImport = false
+    @State private var showCloudDriveImport = false
     @State private var importResult: ImportResult?
     @State private var isImporting = false
     @State private var progress: ImportProgress?
@@ -58,6 +59,25 @@ struct ImportFilesView: View {
                             }
                         } icon: {
                             Image(systemName: "music.note.house")
+                                .foregroundColor(palette.primary)
+                        }
+                    }
+                    .listRowBackground(palette.surface)
+
+                    Button {
+                        showCloudDriveImport = true
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("云盘导入")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundColor(palette.textPrimary)
+                                Text("从百度网盘等云盘服务导入音乐文件")
+                                    .font(.caption)
+                                    .foregroundColor(palette.textSecondary)
+                            }
+                        } icon: {
+                            Image(systemName: "cloud")
                                 .foregroundColor(palette.primary)
                         }
                     }
@@ -152,6 +172,12 @@ struct ImportFilesView: View {
         }
         .sheet(isPresented: $showAppleMusicImport) {
             AppleMusicImportView()
+                .environment(\.themePalette, palette)
+                .environmentObject(importService)
+                .environmentObject(libraryService)
+        }
+        .sheet(isPresented: $showCloudDriveImport) {
+            CloudDriveImportView()
                 .environment(\.themePalette, palette)
                 .environmentObject(importService)
                 .environmentObject(libraryService)
