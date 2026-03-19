@@ -118,10 +118,22 @@ struct LyricsPageView: View {
     private var lyricsContent: some View {
         if let data = lyricsData, !data.lines.isEmpty {
             syncedLyricsSection(data: data)
+                .mask(lyricsEdgeMask)
         } else if let data = lyricsData, !data.rawText.isEmpty {
             plainTextSection(text: data.rawText)
+                .mask(lyricsEdgeMask)
         } else {
             emptyLyricsSection
+        }
+    }
+
+    private var lyricsEdgeMask: some View {
+        VStack(spacing: 0) {
+            LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
+                .frame(height: 32)
+            Color.black
+            LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                .frame(height: 48)
         }
     }
 
@@ -175,12 +187,21 @@ struct LyricsPageView: View {
         } label: {
             Text(line.text)
                 .font(isCurrent ? .title.bold() : .title3)
-                .foregroundColor(isCurrent ? palette.primary : palette.playerSubtext)
+                .foregroundStyle(
+                    isCurrent
+                        ? AnyShapeStyle(LinearGradient(
+                            colors: [palette.gradientStart, palette.gradientEnd],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                          ))
+                        : AnyShapeStyle(palette.playerSubtext)
+                )
                 .opacity(lineOpacity(for: index))
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .scaleEffect(isCurrent ? 1.05 : 1.0)
                 .contentShape(Rectangle())
-                .animation(.easeInOut(duration: 0.3), value: isCurrent)
+                .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isCurrent)
         }
         .buttonStyle(.plain)
         .id(line.id)
@@ -226,16 +247,16 @@ struct LyricsPageView: View {
         }
     }
 
-    // MARK: - Progress
+    // MARK: - Progress (compact)
 
     private var progressSection: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
             GeometryReader { geo in
                 let progress = engine.duration > 0 ? engine.currentTime / engine.duration : 0
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(palette.separator)
-                        .frame(height: 4)
+                        .fill(palette.separator.opacity(0.6))
+                        .frame(height: 3)
                     Capsule()
                         .fill(
                             LinearGradient(
@@ -244,7 +265,7 @@ struct LyricsPageView: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: max(geo.size.width * progress, 4), height: 4)
+                        .frame(width: max(geo.size.width * progress, 3), height: 3)
                 }
                 .frame(maxHeight: .infinity, alignment: .center)
                 .contentShape(Rectangle())
@@ -256,35 +277,35 @@ struct LyricsPageView: View {
                         }
                 )
             }
-            .frame(height: 24)
+            .frame(height: 20)
 
             HStack {
                 Text(engine.currentTime.formattedTime)
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(palette.textSecondary)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundColor(palette.textTertiary)
                 Spacer()
                 Text("-\((engine.duration - engine.currentTime).formattedTime)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(palette.textSecondary)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundColor(palette.textTertiary)
             }
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, 4)
     }
 
-    // MARK: - Controls
+    // MARK: - Controls (compact)
 
     private var controlsSection: some View {
         HStack(alignment: .center, spacing: 0) {
             Button { playback.cyclePlayMode() } label: {
                 Image(systemName: playback.playMode.iconName)
-                    .font(.title3)
-                    .foregroundColor(palette.textSecondary)
+                    .font(.body)
+                    .foregroundColor(palette.textTertiary)
             }
             .frame(maxWidth: .infinity)
 
             Button { playback.playPrevious() } label: {
                 Image(systemName: "backward.fill")
-                    .font(.title)
+                    .font(.title2)
                     .foregroundColor(palette.textPrimary)
             }
             .frame(maxWidth: .infinity)
@@ -299,10 +320,10 @@ struct LyricsPageView: View {
                                 endPoint: .bottomTrailing
                             )
                         )
-                        .frame(width: 68, height: 68)
-                        .shadow(color: palette.gradientStart.opacity(0.35), radius: 10, y: 4)
+                        .frame(width: 52, height: 52)
+                        .shadow(color: palette.gradientStart.opacity(0.25), radius: 8, y: 3)
                     Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.title2)
+                        .font(.body.weight(.semibold))
                         .foregroundColor(.white)
                 }
             }
@@ -310,19 +331,19 @@ struct LyricsPageView: View {
 
             Button { playback.playNext() } label: {
                 Image(systemName: "forward.fill")
-                    .font(.title)
+                    .font(.title2)
                     .foregroundColor(palette.textPrimary)
             }
             .frame(maxWidth: .infinity)
 
             Button(action: onOpenQueue) {
                 Image(systemName: "list.bullet")
-                    .font(.title3)
-                    .foregroundColor(palette.textSecondary)
+                    .font(.body)
+                    .foregroundColor(palette.textTertiary)
             }
             .frame(maxWidth: .infinity)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
     }
 
     // MARK: - Helpers
