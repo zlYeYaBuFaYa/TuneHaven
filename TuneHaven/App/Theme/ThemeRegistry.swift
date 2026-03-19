@@ -9,20 +9,18 @@ final class ThemeRegistry {
 
     private init() {}
 
-    /// App 启动时调用，注册所有内置主题
     func bootstrap() {
-        register(.meadowBreeze)
-        register(.roseDream)
-        register(.frostElegance)
-        register(.crimsonTech)
-        register(.comicPop)
-        register(.inkWash)
-        register(.deepSpaceNeon)
+        register(.mintBreeze)
+        register(.deepOcean)
+        register(.cyberNeon)
+        register(.glacierBlue)
+        register(.auroraDream)
+        register(.midnightGold)
     }
 
     var allThemes: [ThemeStyle] { themes }
 
-    var defaultTheme: ThemeStyle { .meadowBreeze }
+    var defaultTheme: ThemeStyle { .mintBreeze }
 
     func register(_ style: ThemeStyle) {
         guard !themes.contains(where: { $0.id == style.id }) else { return }
@@ -31,5 +29,9 @@ final class ThemeRegistry {
 
     func theme(for id: String) -> ThemeStyle? {
         themes.first { $0.id == id }
+    }
+
+    func reset() {
+        themes.removeAll()
     }
 }

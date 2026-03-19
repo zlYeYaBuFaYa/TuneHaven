@@ -7,8 +7,6 @@ struct PlayerView: View {
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
-    @Environment(\.colorScheme) private var colorScheme
-
     private enum ActiveSheet: Identifiable {
         case moreActions
         case sleepTimer
@@ -37,7 +35,7 @@ struct PlayerView: View {
     @State private var pendingSheetWork: DispatchWorkItem?
 
     private var palette: ThemeColorPalette {
-        themeManager.resolvedPalette(for: colorScheme)
+        themeManager.palette
     }
 
     var body: some View {

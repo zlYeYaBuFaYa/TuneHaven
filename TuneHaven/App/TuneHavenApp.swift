@@ -23,21 +23,11 @@ struct TuneHavenApp: App {
     @State private var initError: String?
     @State private var pendingImportURLs: [URL] = []
     @State private var openInHandler: OpenInImportHandler?
-    @State private var paletteScheme: ColorScheme = {
-        let mode = ColorMode(rawValue: UserDefaults.standard.integer(forKey: AppStorageKey.colorMode)) ?? .system
-        switch mode {
-        case .light: return .light
-        case .dark: return .dark
-        case .system:
-            let style = UITraitCollection.current.userInterfaceStyle
-            return style == .dark ? .dark : .light
-        }
-    }()
 
     var body: some Scene {
         WindowGroup {
             ZStack {
-                resolvedPalette.background
+                themeManager.palette.background
                     .ignoresSafeArea()
 
                 if isReady {
@@ -54,7 +44,7 @@ struct TuneHavenApp: App {
                         .environmentObject(playbackService)
                         .environmentObject(AudioEngine.shared)
                         .environmentObject(webDAVService)
-                        .environment(\.themePalette, resolvedPalette)
+                        .environment(\.themePalette, themeManager.palette)
                         .snackbar(snackbar)
                 } else if let error = initError {
                     VStack(spacing: 16) {
@@ -74,19 +64,13 @@ struct TuneHavenApp: App {
                         .progressViewStyle(.circular)
                 }
             }
-            .preferredColorScheme(themeManager.resolvedColorScheme)
+            .preferredColorScheme(themeManager.colorScheme)
             .task { await initialize() }
             .onOpenURL { url in
                 handleIncomingURL(url)
             }
             .onAppear {
                 AppLogger.shared.debug("[App] onAppear — applying window theme")
-                refreshPaletteScheme()
-                themeManager.scheduleWindowRefresh(delay: 0.1, fullApply: true)
-            }
-            .onChange(of: themeManager.colorMode) { _, newMode in
-                AppLogger.shared.debug("[App] colorMode changed → \(newMode)")
-                refreshPaletteScheme()
                 themeManager.scheduleWindowRefresh(delay: 0.1, fullApply: true)
             }
             .onChange(of: scenePhase) { _, phase in
@@ -94,35 +78,13 @@ struct TuneHavenApp: App {
                 switch phase {
                 case .active:
                     playbackService.checkSleepTimerOnForeground()
-                    refreshPaletteScheme()
-                case .inactive:
-                    refreshPaletteScheme()
+                    themeManager.scheduleWindowRefresh(delay: 0.3, fullApply: false)
                 case .background:
                     AudioSessionManager.shared.ensureActive()
-                @unknown default:
+                default:
                     break
                 }
             }
-        }
-    }
-
-    private var resolvedPalette: ThemeColorPalette {
-        themeManager.resolvedPalette(for: paletteScheme)
-    }
-
-    private func refreshPaletteScheme() {
-        let scheme: ColorScheme
-        switch themeManager.colorMode {
-        case .light:
-            scheme = .light
-        case .dark:
-            scheme = .dark
-        case .system:
-            let style = UITraitCollection.current.userInterfaceStyle
-            scheme = style == .dark ? .dark : .light
-        }
-        if paletteScheme != scheme {
-            paletteScheme = scheme
         }
     }
 
@@ -149,7 +111,6 @@ struct TuneHavenApp: App {
     private func initialize() async {
         do {
             AppLogger.shared.info("[App] initialize start")
-            playbackService.configure(libraryService: libraryService)
             MigrationManager.shared.runVersionUpgradeTasks()
             try await CoreDataStack.shared.load()
             SandboxPathManager.createAllDirectories()
@@ -159,7 +120,7 @@ struct TuneHavenApp: App {
             OpenInImportHandler.cleanupInbox()
             playbackService.checkSleepTimerOnForeground()
             isReady = true
-            AppLogger.shared.info("[App] initialize done — isReady=true, scheduling UIKit background refresh")
+            AppLogger.shared.info("[App] initialize done — isReady=true")
 
             if !pendingImportURLs.isEmpty {
                 let urls = pendingImportURLs

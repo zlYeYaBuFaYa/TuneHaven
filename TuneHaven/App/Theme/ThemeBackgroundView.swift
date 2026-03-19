@@ -55,7 +55,6 @@ struct ThemeBackgroundView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var wallpaperManager: WallpaperManager
     @Environment(\.themePalette) private var palette
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
@@ -79,34 +78,14 @@ struct ThemeBackgroundView: View {
         switch config.backgroundType {
         case .solidColor:
             palette.background
-        case .codeGenerated(let pattern):
-            codeGeneratedBackground(pattern)
+        case .codeGenerated:
+            LinearGradient(
+                colors: [palette.gradientStart, palette.gradientEnd],
+                startPoint: .top,
+                endPoint: .bottom
+            )
         case .userWallpaper:
             palette.background
-        }
-    }
-
-    @ViewBuilder
-    private func codeGeneratedBackground(_ pattern: ThemePatternType) -> some View {
-        switch pattern {
-        case .comicSky:
-            ComicPopBackground()
-                .environment(\.colorScheme, colorScheme)
-        case .techGrid:
-            CrimsonTechBackground()
-                .environment(\.colorScheme, colorScheme)
-        case .inkMountain:
-            InkWashBackground()
-                .environment(\.colorScheme, colorScheme)
-        case .rosePetal:
-            RoseDreamBackground()
-                .environment(\.colorScheme, colorScheme)
-        case .frostAurora:
-            FrostEleganceBackground()
-                .environment(\.colorScheme, colorScheme)
-        case .spaceNeon:
-            DeepSpaceNeonBackground()
-                .environment(\.colorScheme, colorScheme)
         }
     }
 

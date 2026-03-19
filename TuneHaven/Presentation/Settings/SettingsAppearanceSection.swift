@@ -14,7 +14,6 @@ struct SettingsAppearanceSection: View {
     var body: some View {
         Section {
             DisclosureGroup(isExpanded: $isExpanded) {
-                colorModeRow
                 themeStyleRow
                 wallpaperRow
             } label: {
@@ -28,52 +27,6 @@ struct SettingsAppearanceSection: View {
             .tint(palette.textSecondary)
             .listRowBackground(listRowBg)
         }
-    }
-
-    // MARK: - Color Mode
-
-    private var colorModeRow: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("颜色模式")
-                .font(.caption)
-                .foregroundColor(palette.textSecondary)
-            HStack(spacing: 0) {
-                ForEach(ColorMode.allCases) { mode in
-                    Button {
-                        themeManager.setColorMode(mode)
-                    } label: {
-                        VStack(spacing: 4) {
-                            Image(systemName: mode.iconName)
-                                .font(.subheadline)
-                            Text(mode.displayName)
-                                .font(.caption2)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(
-                            themeManager.colorMode == mode
-                                ? palette.primary.opacity(0.15)
-                                : Color.clear
-                        )
-                        .foregroundColor(
-                            themeManager.colorMode == mode
-                                ? palette.primary
-                                : palette.textSecondary
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(
-                                    themeManager.colorMode == mode ? palette.primary : Color.clear,
-                                    lineWidth: 1.5
-                                )
-                        )
-                    }
-                    .buttonStyle(.borderless)
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-        }
-        .listRowBackground(listRowBg)
     }
 
     // MARK: - Theme Style
@@ -109,7 +62,7 @@ struct SettingsAppearanceSection: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(
                         LinearGradient(
-                            colors: [style.lightPalette.gradientStart, style.lightPalette.gradientEnd],
+                            colors: [style.previewGradient.start, style.previewGradient.end],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )

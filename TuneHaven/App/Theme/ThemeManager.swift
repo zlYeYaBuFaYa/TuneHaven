@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - EnvironmentKey
 
 struct ThemePaletteKey: EnvironmentKey {
-    static let defaultValue = ThemeStyle.meadowBreeze.lightPalette
+    static let defaultValue = ThemeStyle.mintBreeze.palette
 }
 
 extension EnvironmentValues {
@@ -17,88 +17,86 @@ extension EnvironmentValues {
 
 @MainActor
 final class ThemeManager: ObservableObject {
-    @Published private(set) var colorMode: ColorMode
     @Published private(set) var currentStyle: ThemeStyle
 
-    @AppStorage(AppStorageKey.colorMode)   private var storedColorMode: Int = 0
-    @AppStorage(AppStorageKey.themeStyle)  private var storedThemeStyle: String = "meadow_breeze"
+    @AppStorage("theme_style") private var storedThemeStyle: String = "mint_breeze"
 
     private let registry = ThemeRegistry.shared
 
-    private static let legacyThemeMapping: [String: String] = [
-        "morandi_green": "meadow_breeze",
-        "classic_indigo": "meadow_breeze",
-        "sakura_pink": "meadow_breeze",
-        "minimal_pure": "meadow_breeze",
-        "warm_sunlight": "meadow_breeze",
-        "digital_mist": "meadow_breeze"
+    private static let legacyMapping: [String: String] = [
+        "meadow_breeze":   "mint_breeze",
+        "rose_dream":      "mint_breeze",
+        "frost_elegance":  "glacier_blue",
+        "crimson_tech":    "cyber_neon",
+        "comic_pop":       "mint_breeze",
+        "ink_wash":        "deep_ocean",
+        "deep_space_neon": "aurora_dream",
+        "morandi_green":   "mint_breeze",
+        "classic_indigo":  "glacier_blue",
+        "sakura_pink":     "mint_breeze",
+        "minimal_pure":    "mint_breeze",
+        "warm_sunlight":   "midnight_gold",
+        "digital_mist":    "cyber_neon",
     ]
 
     init() {
         registry.bootstrap()
 
-        let mode = ColorMode(rawValue: UserDefaults.standard.integer(forKey: AppStorageKey.colorMode)) ?? .system
-        var styleId = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) ?? "meadow_breeze"
+        var styleId = UserDefaults.standard.string(forKey: "theme_style") ?? "mint_breeze"
 
-        if let migrated = Self.legacyThemeMapping[styleId] {
+        if let migrated = Self.legacyMapping[styleId] {
             styleId = migrated
-            UserDefaults.standard.set(migrated, forKey: AppStorageKey.themeStyle)
+            UserDefaults.standard.set(migrated, forKey: "theme_style")
         }
 
-        colorMode = mode
         currentStyle = registry.theme(for: styleId) ?? registry.defaultTheme
     }
 
-    func setColorMode(_ mode: ColorMode) {
-        colorMode = mode
-        storedColorMode = mode.rawValue
+    var palette: ThemeColorPalette { currentStyle.palette }
+
+    var colorScheme: ColorScheme { currentStyle.colorScheme }
+
+    func setTheme(_ style: ThemeStyle) {
+        currentStyle = style
+        storedThemeStyle = style.id
+        scheduleWindowRefresh(fullApply: true)
     }
+
+    // MARK: - Window Management
 
     func applyToWindows() {
         guard let windowScene = Self.foregroundWindowScene else {
             AppLogger.shared.debug("[ThemeManager] applyToWindows — no foreground windowScene yet")
             return
         }
-        let effectiveScheme = effectiveSchemeFromScene(windowScene)
-        let palette = effectiveScheme == .dark ? currentStyle.darkPalette : currentStyle.lightPalette
-        let bgColor = UIColor(palette.background)
-        let surfaceColor = UIColor(palette.surface)
+        let uiStyle: UIUserInterfaceStyle = currentStyle.colorScheme == .dark ? .dark : .light
+        let bgColor = UIColor(currentStyle.palette.background)
+        let surfaceColor = UIColor(currentStyle.palette.surface)
 
-        AppLogger.shared.debug("[ThemeManager] applyToWindows — mode=\(colorMode) scheme=\(effectiveScheme) bgColor=\(bgColor)")
+        AppLogger.shared.debug("[ThemeManager] applyToWindows — theme=\(currentStyle.id) scheme=\(currentStyle.colorScheme)")
 
         AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
 
         windowScene.windows.forEach { window in
+            window.overrideUserInterfaceStyle = uiStyle
             window.backgroundColor = bgColor
             Self.setNavigationControllerBackgrounds(on: window.rootViewController, color: bgColor)
         }
     }
 
-    /// 轻量刷新：仅更新已有窗口的背景色，不触碰 trait 或 appearance proxy。
-    /// 色彩模式完全由 SwiftUI .preferredColorScheme() 控制。
     func refreshWindows() {
         guard let windowScene = Self.foregroundWindowScene else {
             AppLogger.shared.debug("[ThemeManager] refreshWindows — no foreground windowScene")
             return
         }
-        let effectiveScheme = effectiveSchemeFromScene(windowScene)
-        let palette = effectiveScheme == .dark ? currentStyle.darkPalette : currentStyle.lightPalette
-        let bgColor = UIColor(palette.background)
+        let uiStyle: UIUserInterfaceStyle = currentStyle.colorScheme == .dark ? .dark : .light
+        let bgColor = UIColor(currentStyle.palette.background)
 
         windowScene.windows.forEach { window in
+            window.overrideUserInterfaceStyle = uiStyle
             window.backgroundColor = bgColor
         }
-        AppLogger.shared.debug("[ThemeManager] refreshWindows done — scheme=\(effectiveScheme)")
-    }
-
-    private func effectiveSchemeFromScene(_ windowScene: UIWindowScene) -> ColorScheme {
-        switch colorMode {
-        case .light: return .light
-        case .dark: return .dark
-        case .system:
-            let style = windowScene.windows.first?.traitCollection.userInterfaceStyle ?? .light
-            return style == .dark ? .dark : .light
-        }
+        AppLogger.shared.debug("[ThemeManager] refreshWindows done — theme=\(currentStyle.id)")
     }
 
     private static var foregroundWindowScene: UIWindowScene? {
@@ -110,7 +108,7 @@ final class ThemeManager: ObservableObject {
         return foreground ?? allScenes.first
     }
 
-    // MARK: - 延后刷新机制
+    // MARK: - Deferred Refresh
 
     private var pendingRefreshWork: DispatchWorkItem?
     private var pendingFullApply: Bool = false
@@ -135,7 +133,6 @@ final class ThemeManager: ObservableObject {
         guard let vc = vc else { return }
         if let nav = vc as? UINavigationController {
             nav.view.backgroundColor = color
-            AppLogger.shared.debug("[ThemeManager] set UINavigationController.view.bg = \(color)")
         }
         for child in vc.children {
             setNavigationControllerBackgrounds(on: child, color: color)
@@ -143,22 +140,5 @@ final class ThemeManager: ObservableObject {
         if let presented = vc.presentedViewController {
             setNavigationControllerBackgrounds(on: presented, color: color)
         }
-    }
-
-    func setTheme(_ style: ThemeStyle) {
-        currentStyle = style
-        storedThemeStyle = style.id
-        scheduleWindowRefresh(fullApply: true)
-    }
-
-    func resolvedPalette(for systemColorScheme: ColorScheme) -> ThemeColorPalette {
-        let effective = effectiveColorScheme(system: systemColorScheme)
-        return effective == .dark ? currentStyle.darkPalette : currentStyle.lightPalette
-    }
-
-    var resolvedColorScheme: ColorScheme? { colorMode.colorScheme }
-
-    private func effectiveColorScheme(system: ColorScheme) -> ColorScheme {
-        colorMode.colorScheme ?? system
     }
 }

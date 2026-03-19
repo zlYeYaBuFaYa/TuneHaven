@@ -10,7 +10,6 @@ struct RootTabView: View {
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
     @Environment(\.themePalette) private var palette
-    @Environment(\.colorScheme) private var colorScheme
 
     private var hasCustomBg: Bool {
         themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
@@ -115,7 +114,7 @@ struct RootTabView: View {
     // MARK: - Helpers
 
     private var resolvedPalette: ThemeColorPalette {
-        themeManager.resolvedPalette(for: colorScheme)
+        themeManager.palette
     }
 
     @ViewBuilder

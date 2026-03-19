@@ -107,81 +107,50 @@ struct SearchDebouncerTests {
     }
 }
 
-// MARK: - #19 ThemeVisualConfig 映射正确性
+// MARK: - #19 ThemeVisualConfig 映射正确性（重构后适配新主题）
 
 @Suite("P1 Fix #19: ThemeVisualConfig 映射")
 struct ThemeVisualConfigTests {
 
-    @Test("漫彩波普使用 comicPop 配置")
-    func testComicPopConfig() {
-        let style = ThemeStyle.comicPop
-        let config = style.visualConfig
-        #expect(config.backgroundType == .codeGenerated(.comicSky))
-        #expect(config.cardStyle == .rounded)
-        #expect(config.fontStyle == .rounded)
+    init() {
+        ThemeRegistry.shared.reset()
+        ThemeRegistry.shared.bootstrap()
+    }
+
+    @Test("青云薄荷使用 mintLeaves 配置")
+    func testMintBreezeConfig() {
+        let style = ThemeStyle.mintBreeze
+        #expect(style.visualConfig.backgroundType == .codeGenerated(.mintLeaves))
+        #expect(style.visualConfig.cardStyle == .minimal)
         #expect(style.hasCustomBackground == true)
     }
 
-    @Test("赤焰科技使用 crimsonTech 配置")
-    func testCrimsonTechConfig() {
-        let style = ThemeStyle.crimsonTech
-        let config = style.visualConfig
-        #expect(config.backgroundType == .codeGenerated(.techGrid))
-        #expect(config.cardStyle == .glassmorphism)
-        #expect(config.fontStyle == .monospaced)
-        #expect(style.hasCustomBackground == true)
+    @Test("赛博霓虹使用 cyberParticles + monospaced")
+    func testCyberNeonConfig() {
+        let style = ThemeStyle.cyberNeon
+        #expect(style.visualConfig.backgroundType == .codeGenerated(.cyberParticles))
+        #expect(style.visualConfig.cardStyle == .glassmorphism)
+        #expect(style.visualConfig.fontStyle == .monospaced)
     }
 
-    @Test("水墨丹青使用 inkWash 配置")
-    func testInkWashConfig() {
-        let style = ThemeStyle.inkWash
-        let config = style.visualConfig
-        #expect(config.backgroundType == .codeGenerated(.inkMountain))
-        #expect(config.cardStyle == .minimal)
-        #expect(config.fontStyle == .serif)
-        #expect(style.hasCustomBackground == true)
+    @Test("冰川幽蓝使用 frosted 卡片风格")
+    func testGlacierBlueConfig() {
+        let style = ThemeStyle.glacierBlue
+        #expect(style.visualConfig.cardStyle == .frosted)
+        #expect(style.visualConfig.navigationBarBlur == true)
     }
 
-    @Test("玫瑰梦境使用 roseDream 配置")
-    func testRoseDreamConfig() {
-        let style = ThemeStyle.roseDream
-        let config = style.visualConfig
-        #expect(config.backgroundType == .codeGenerated(.rosePetal))
-        #expect(config.cardStyle == .softFloat)
-        #expect(style.hasCustomBackground == true)
-    }
-
-    @Test("霜色风雅使用 frostElegance 配置")
-    func testFrostEleganceConfig() {
-        let style = ThemeStyle.frostElegance
-        let config = style.visualConfig
-        #expect(config.backgroundType == .codeGenerated(.frostAurora))
-        #expect(config.cardStyle == .frosted)
-        #expect(style.hasCustomBackground == true)
-    }
-
-    @Test("翠野清风使用纯色默认配置")
-    func testMeadowBreezeConfig() {
-        let style = ThemeStyle.meadowBreeze
-        let config = style.visualConfig
-        #expect(config.backgroundType == .solidColor)
-        #expect(config.cardStyle == .standard)
-        #expect(style.hasCustomBackground == false)
-    }
-
-    @Test("所有主题都已在 ThemeRegistry 注册")
-    func testAllThemesRegistered() {
-        let registry = ThemeRegistry.shared
-        registry.bootstrap()
-        let themes = registry.allThemes
-        #expect(themes.count >= 6)
+    @Test("所有新主题都已在 ThemeRegistry 注册")
+    func testAllNewThemesRegistered() {
+        let themes = ThemeRegistry.shared.allThemes
+        #expect(themes.count == 6)
         let ids = Set(themes.map { $0.id })
-        #expect(ids.contains("meadow_breeze"))
-        #expect(ids.contains("rose_dream"))
-        #expect(ids.contains("frost_elegance"))
-        #expect(ids.contains("crimson_tech"))
-        #expect(ids.contains("comic_pop"))
-        #expect(ids.contains("ink_wash"))
+        #expect(ids.contains("mint_breeze"))
+        #expect(ids.contains("deep_ocean"))
+        #expect(ids.contains("cyber_neon"))
+        #expect(ids.contains("glacier_blue"))
+        #expect(ids.contains("aurora_dream"))
+        #expect(ids.contains("midnight_gold"))
     }
 }
 

@@ -3,125 +3,89 @@ import Foundation
 import SwiftUI
 @testable import TuneHaven
 
-// MARK: - ColorMode Tests
-
-@Suite("ColorMode Tests")
-struct ColorModeTests {
-
-    @Test("ColorMode 包含 3 种模式")
-    func testColorModeCount() {
-        #expect(ColorMode.allCases.count == 3)
-    }
-
-    @Test("system 模式的 colorScheme 为 nil（跟随系统）")
-    func testSystemColorSchemeIsNil() {
-        #expect(ColorMode.system.colorScheme == nil)
-    }
-
-    @Test("light 模式的 colorScheme 为 .light")
-    func testLightColorScheme() {
-        #expect(ColorMode.light.colorScheme == .light)
-    }
-
-    @Test("dark 模式的 colorScheme 为 .dark")
-    func testDarkColorScheme() {
-        #expect(ColorMode.dark.colorScheme == .dark)
-    }
-
-    @Test("所有 ColorMode 的 displayName 不为空")
-    func testDisplayNamesNotEmpty() {
-        for mode in ColorMode.allCases {
-            #expect(!mode.displayName.isEmpty, "\(mode) 的 displayName 不应为空")
-        }
-    }
-
-    @Test("所有 ColorMode 的 iconName 不为空")
-    func testIconNamesNotEmpty() {
-        for mode in ColorMode.allCases {
-            #expect(!mode.iconName.isEmpty, "\(mode) 的 iconName 不应为空")
-        }
-    }
-
-    @Test("rawValue 从 0 开始连续")
-    func testRawValues() {
-        #expect(ColorMode.system.rawValue == 0)
-        #expect(ColorMode.light.rawValue == 1)
-        #expect(ColorMode.dark.rawValue == 2)
-    }
-
-    @Test("Identifiable 的 id 等于 rawValue")
-    func testIdentifiableId() {
-        #expect(ColorMode.system.id == 0)
-        #expect(ColorMode.light.id == 1)
-        #expect(ColorMode.dark.id == 2)
-    }
-
-    @Test("可从合法 rawValue 初始化")
-    func testRawValueInit() {
-        #expect(ColorMode(rawValue: 0) == .system)
-        #expect(ColorMode(rawValue: 1) == .light)
-        #expect(ColorMode(rawValue: 2) == .dark)
-    }
-
-    @Test("非法 rawValue 初始化返回 nil")
-    func testInvalidRawValueReturnsNil() {
-        #expect(ColorMode(rawValue: 99) == nil)
-        #expect(ColorMode(rawValue: -1) == nil)
-    }
-}
-
 // MARK: - ThemeRegistry Tests
 
 @Suite("ThemeRegistry Tests")
 struct ThemeRegistryTests {
 
+    init() {
+        ThemeRegistry.shared.reset()
+        ThemeRegistry.shared.bootstrap()
+    }
+
     @Test("bootstrap 后注册表包含 6 个主题")
     func testAllThemesCount() {
-        let registry = ThemeRegistry.shared
-        registry.bootstrap()
-        #expect(registry.allThemes.count == 6)
+        #expect(ThemeRegistry.shared.allThemes.count == 6)
     }
 
     @Test("所有主题 id 唯一")
     func testAllThemeIdsUnique() {
-        let registry = ThemeRegistry.shared
-        registry.bootstrap()
-        let ids = registry.allThemes.map { $0.id }
+        let ids = ThemeRegistry.shared.allThemes.map { $0.id }
         #expect(ids.count == Set(ids).count)
     }
 
     @Test("所有主题 displayName 不为空")
     func testAllThemeDisplayNamesNotEmpty() {
-        let registry = ThemeRegistry.shared
-        registry.bootstrap()
-        for theme in registry.allThemes {
+        for theme in ThemeRegistry.shared.allThemes {
             #expect(!theme.displayName.isEmpty, "主题 \(theme.id) 的 displayName 不应为空")
         }
     }
 
-    @Test("可通过 id 查找主题")
+    @Test("可通过 id 查找新主题")
     func testThemeLookup() {
-        let registry = ThemeRegistry.shared
-        registry.bootstrap()
-        #expect(registry.theme(for: "meadow_breeze") != nil)
-        #expect(registry.theme(for: "rose_dream") != nil)
-        #expect(registry.theme(for: "frost_elegance") != nil)
-        #expect(registry.theme(for: "crimson_tech") != nil)
-        #expect(registry.theme(for: "comic_pop") != nil)
-        #expect(registry.theme(for: "ink_wash") != nil)
+        #expect(ThemeRegistry.shared.theme(for: "mint_breeze") != nil)
+        #expect(ThemeRegistry.shared.theme(for: "deep_ocean") != nil)
+        #expect(ThemeRegistry.shared.theme(for: "cyber_neon") != nil)
+        #expect(ThemeRegistry.shared.theme(for: "glacier_blue") != nil)
+        #expect(ThemeRegistry.shared.theme(for: "aurora_dream") != nil)
+        #expect(ThemeRegistry.shared.theme(for: "midnight_gold") != nil)
     }
 
     @Test("查找不存在的 id 返回 nil")
     func testThemeLookupNotFound() {
-        let registry = ThemeRegistry.shared
-        registry.bootstrap()
-        #expect(registry.theme(for: "nonexistent") == nil)
+        #expect(ThemeRegistry.shared.theme(for: "nonexistent") == nil)
     }
 
-    @Test("默认主题为翠野清风")
+    @Test("旧主题 id 查找返回 nil（已移除）")
+    func testOldThemeIdsReturnNil() {
+        #expect(ThemeRegistry.shared.theme(for: "meadow_breeze") == nil)
+        #expect(ThemeRegistry.shared.theme(for: "rose_dream") == nil)
+        #expect(ThemeRegistry.shared.theme(for: "crimson_tech") == nil)
+    }
+
+    @Test("默认主题为青云薄荷")
     func testDefaultTheme() {
-        let registry = ThemeRegistry.shared
-        #expect(registry.defaultTheme.id == "meadow_breeze")
+        #expect(ThemeRegistry.shared.defaultTheme.id == "mint_breeze")
+    }
+
+    @Test("Light 主题的 colorScheme 为 .light")
+    func testLightThemesHaveLightScheme() {
+        for id in ["mint_breeze", "glacier_blue"] {
+            let theme = ThemeRegistry.shared.theme(for: id)
+            #expect(theme?.colorScheme == .light, "\(id) should be .light")
+        }
+    }
+
+    @Test("Dark 主题的 colorScheme 为 .dark")
+    func testDarkThemesHaveDarkScheme() {
+        for id in ["deep_ocean", "cyber_neon", "aurora_dream", "midnight_gold"] {
+            let theme = ThemeRegistry.shared.theme(for: id)
+            #expect(theme?.colorScheme == .dark, "\(id) should be .dark")
+        }
+    }
+
+    @Test("重复 register 不会导致重复主题")
+    func testDuplicateRegisterIgnored() {
+        let before = ThemeRegistry.shared.allThemes.count
+        ThemeRegistry.shared.register(.mintBreeze)
+        #expect(ThemeRegistry.shared.allThemes.count == before)
+    }
+
+    @Test("reset 后注册表为空")
+    func testResetClearsAll() {
+        ThemeRegistry.shared.reset()
+        #expect(ThemeRegistry.shared.allThemes.isEmpty)
+        ThemeRegistry.shared.bootstrap()
     }
 }
 
@@ -130,44 +94,108 @@ struct ThemeRegistryTests {
 @Suite("ThemeStyle Tests")
 struct ThemeStyleTests {
 
-    @Test("meadowBreeze 的 id 为 meadow_breeze")
-    func testMeadowBreezeId() {
-        #expect(ThemeStyle.meadowBreeze.id == "meadow_breeze")
+    @Test("mintBreeze 的 id 正确")
+    func testMintBreezeId() {
+        #expect(ThemeStyle.mintBreeze.id == "mint_breeze")
     }
 
-    @Test("roseDream 的 id 为 rose_dream")
-    func testRoseDreamId() {
-        #expect(ThemeStyle.roseDream.id == "rose_dream")
+    @Test("deepOcean 的 id 正确")
+    func testDeepOceanId() {
+        #expect(ThemeStyle.deepOcean.id == "deep_ocean")
     }
 
-    @Test("frostElegance 的 id 为 frost_elegance")
-    func testFrostEleganceId() {
-        #expect(ThemeStyle.frostElegance.id == "frost_elegance")
+    @Test("cyberNeon 的 id 正确")
+    func testCyberNeonId() {
+        #expect(ThemeStyle.cyberNeon.id == "cyber_neon")
     }
 
-    @Test("crimsonTech 的 id 为 crimson_tech")
-    func testCrimsonTechId() {
-        #expect(ThemeStyle.crimsonTech.id == "crimson_tech")
+    @Test("glacierBlue 的 id 正确")
+    func testGlacierBlueId() {
+        #expect(ThemeStyle.glacierBlue.id == "glacier_blue")
     }
 
-    @Test("comicPop 的 id 为 comic_pop")
-    func testComicPopId() {
-        #expect(ThemeStyle.comicPop.id == "comic_pop")
+    @Test("auroraDream 的 id 正确")
+    func testAuroraDreamId() {
+        #expect(ThemeStyle.auroraDream.id == "aurora_dream")
     }
 
-    @Test("inkWash 的 id 为 ink_wash")
-    func testInkWashId() {
-        #expect(ThemeStyle.inkWash.id == "ink_wash")
+    @Test("midnightGold 的 id 正确")
+    func testMidnightGoldId() {
+        #expect(ThemeStyle.midnightGold.id == "midnight_gold")
     }
 
-    @Test("ThemeStyle 实现 Identifiable，id 不为空")
+    @Test("所有主题的 Identifiable id 不为空")
     func testIdentifiable() {
         let themes: [ThemeStyle] = [
-            .meadowBreeze, .roseDream, .frostElegance,
-            .crimsonTech, .comicPop, .inkWash
+            .mintBreeze, .deepOcean, .cyberNeon,
+            .glacierBlue, .auroraDream, .midnightGold
         ]
         for style in themes {
             #expect(!style.id.isEmpty)
+        }
+    }
+
+    @Test("ThemeStyle Equatable 基于 id 判等")
+    func testEquatable() {
+        #expect(ThemeStyle.mintBreeze == ThemeStyle.mintBreeze)
+        #expect(ThemeStyle.mintBreeze != ThemeStyle.deepOcean)
+    }
+
+    @Test("所有主题均有 hasCustomBackground = true")
+    func testAllThemesHaveCustomBackground() {
+        let themes: [ThemeStyle] = [
+            .mintBreeze, .deepOcean, .cyberNeon,
+            .glacierBlue, .auroraDream, .midnightGold
+        ]
+        for style in themes {
+            #expect(style.hasCustomBackground == true, "\(style.id) should have custom background")
+        }
+    }
+}
+
+// MARK: - ThemeColorPalette Tests
+
+@Suite("ThemeColorPalette Tests")
+struct ThemeColorPaletteTests {
+
+    @Test("mintBreeze palette 所有颜色字段可被访问")
+    func testMintBreezePaletteAccessible() {
+        let palette = ThemeStyle.mintBreeze.palette
+        _ = palette.primary
+        _ = palette.primaryDark
+        _ = palette.primaryLight
+        _ = palette.background
+        _ = palette.surface
+        _ = palette.surfaceSecondary
+        _ = palette.textPrimary
+        _ = palette.textSecondary
+        _ = palette.textTertiary
+        _ = palette.separator
+        _ = palette.secondary
+        _ = palette.accent
+        _ = palette.highlight
+        _ = palette.gradientStart
+        _ = palette.gradientEnd
+        _ = palette.playerBackground
+        _ = palette.playerText
+        _ = palette.playerSubtext
+        _ = palette.progressBackground
+        _ = palette.iconSecondary
+        _ = palette.tagBackground
+        _ = palette.tagText
+    }
+
+    @Test("每个主题都有完整的 palette")
+    func testEachStyleHasPalette() {
+        let themes: [ThemeStyle] = [
+            .mintBreeze, .deepOcean, .cyberNeon,
+            .glacierBlue, .auroraDream, .midnightGold
+        ]
+        for style in themes {
+            _ = style.palette.primary
+            _ = style.palette.background
+            _ = style.palette.textPrimary
+            _ = style.palette.gradientStart
         }
     }
 }
@@ -208,16 +236,6 @@ struct ColorHexTests {
         _ = Color(hex: "#10b981")
         _ = Color(hex: "ff0000")
     }
-
-    @Test("全零 HEX 可正常初始化（纯黑）")
-    func testBlackHex() {
-        _ = Color(hex: "#000000")
-    }
-
-    @Test("全 F HEX 可正常初始化（纯白）")
-    func testWhiteHex() {
-        _ = Color(hex: "#FFFFFF")
-    }
 }
 
 // MARK: - SemanticColor Tests
@@ -225,94 +243,27 @@ struct ColorHexTests {
 @Suite("SemanticColor Tests")
 struct SemanticColorTests {
 
-    @Test("danger 颜色可正常初始化")
-    func testDangerColor() {
+    @Test("所有语义色可正常初始化")
+    func testAllSemanticColors() {
         _ = SemanticColor.danger
-    }
-
-    @Test("warning 颜色可正常初始化")
-    func testWarningColor() {
         _ = SemanticColor.warning
-    }
-
-    @Test("success 颜色可正常初始化")
-    func testSuccessColor() {
         _ = SemanticColor.success
-    }
-
-    @Test("info 颜色可正常初始化")
-    func testInfoColor() {
         _ = SemanticColor.info
-    }
-
-    @Test("dangerDark 颜色可正常初始化")
-    func testDangerDarkColor() {
         _ = SemanticColor.dangerDark
-    }
-
-    @Test("warningDark 颜色可正常初始化")
-    func testWarningDarkColor() {
         _ = SemanticColor.warningDark
-    }
-
-    @Test("successDark 颜色可正常初始化")
-    func testSuccessDarkColor() {
         _ = SemanticColor.successDark
     }
 }
 
-// MARK: - ThemeColorPalette Tests
+// MARK: - GradientPair Tests
 
-@Suite("ThemeColorPalette Tests")
-struct ThemeColorPaletteTests {
+@Suite("GradientPair Tests")
+struct GradientPairTests {
 
-    @Test("lightPalette 所有颜色字段可被访问")
-    func testLightPaletteAccessible() {
-        let palette = ThemeStyle.meadowBreeze.lightPalette
-        _ = palette.primary
-        _ = palette.primaryDark
-        _ = palette.primaryLight
-        _ = palette.background
-        _ = palette.surface
-        _ = palette.surfaceSecondary
-        _ = palette.textPrimary
-        _ = palette.textSecondary
-        _ = palette.textTertiary
-        _ = palette.separator
-        _ = palette.secondary
-        _ = palette.accent
-        _ = palette.highlight
-        _ = palette.gradientStart
-        _ = palette.gradientEnd
-        _ = palette.playerBackground
-        _ = palette.playerText
-        _ = palette.playerSubtext
-        _ = palette.progressBackground
-        _ = palette.iconSecondary
-        _ = palette.tagBackground
-        _ = palette.tagText
-    }
-
-    @Test("darkPalette 所有颜色字段可被访问")
-    func testDarkPaletteAccessible() {
-        let palette = ThemeStyle.meadowBreeze.darkPalette
-        _ = palette.primary
-        _ = palette.background
-        _ = palette.surface
-        _ = palette.textPrimary
-        _ = palette.secondary
-        _ = palette.gradientStart
-    }
-
-    @Test("每个主题都有 lightPalette 和 darkPalette")
-    func testEachStyleHasBothPalettes() {
-        let themes: [ThemeStyle] = [
-            .meadowBreeze, .roseDream, .frostElegance,
-            .crimsonTech, .comicPop, .inkWash
-        ]
-        for style in themes {
-            _ = style.lightPalette
-            _ = style.darkPalette
-        }
+    @Test("GradientPair Equatable")
+    func testEquatable() {
+        let a = GradientPair(start: Color(hex: "#FF0000"), end: Color(hex: "#00FF00"))
+        let b = GradientPair(start: Color(hex: "#FF0000"), end: Color(hex: "#00FF00"))
+        #expect(a == b)
     }
 }
