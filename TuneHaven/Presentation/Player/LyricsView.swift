@@ -14,6 +14,15 @@ struct LyricsPageView: View {
     @State private var scrollResumeTask: Task<Void, Never>?
     @State private var hasPerformedInitialScroll = false
     @State private var dragOffset: CGFloat = 0
+    @State private var dragOffsetX: CGFloat = 0
+    @State private var dragDirection: DragDirection? = nil
+    @State private var lyricsScale: CGFloat = 1.0
+    @GestureState private var pinchScale: CGFloat = 1.0
+    @State private var isLyricsHorizontalSwipe = false
+
+    private var effectiveScale: CGFloat {
+        min(max(lyricsScale * pinchScale, 0.8), 2.0)
+    }
 
     private var currentLineIndex: Int? {
         guard let lines = lyricsData?.lines, !lines.isEmpty else { return nil }
@@ -42,38 +51,117 @@ struct LyricsPageView: View {
 
             progressSection
                 .padding(.top, 8)
+
             controlsSection
+                .contentShape(Rectangle())
+                .gesture(dismissGesture)
         }
         .padding(.horizontal, 24)
         .padding(.top, 12)
         .padding(.bottom, 36)
-        .offset(y: dragOffset)
-        .onAppear { dragOffset = 0 }
+        .offset(x: dragOffsetX, y: dragOffset)
+        .onAppear { dragOffset = 0; dragOffsetX = 0 }
     }
+
+    // MARK: - Gestures
 
     private var dismissGesture: some Gesture {
         DragGesture(minimumDistance: 20, coordinateSpace: .global)
             .onChanged { value in
+                let dx = value.translation.width
                 let dy = value.translation.height
-                if dy > 0 {
+
+                if dragDirection == nil {
+                    dragDirection = abs(dx) > abs(dy) ? .horizontal : .vertical
+                }
+
+                switch dragDirection {
+                case .horizontal where dx > 0:
+                    dragOffsetX = dx * 0.7
+                case .vertical where dy > 0:
                     dragOffset = dy * 0.7
-                } else {
+                case .vertical:
                     dragOffset = dy * 0.1
+                default: break
                 }
             }
             .onEnded { value in
-                let velocity = value.predictedEndTranslation.height
-                if value.translation.height > 100 || velocity > 400 {
+                let dir = dragDirection
+                dragDirection = nil
+                finishDismissGesture(dir: dir, value: value)
+            }
+    }
+
+    private var lyricsAreaGesture: some Gesture {
+        DragGesture(minimumDistance: 8, coordinateSpace: .global)
+            .onChanged { value in
+                handleUserScroll()
+
+                let dx = value.translation.width
+                let dy = value.translation.height
+
+                if !isLyricsHorizontalSwipe && abs(dx) > abs(dy) * 1.3 && dx > 10 {
+                    isLyricsHorizontalSwipe = true
+                }
+
+                if isLyricsHorizontalSwipe {
+                    dragOffsetX = max(dx * 0.7, 0)
+                }
+            }
+            .onEnded { value in
+                guard isLyricsHorizontalSwipe else {
+                    isLyricsHorizontalSwipe = false
+                    return
+                }
+                isLyricsHorizontalSwipe = false
+
+                let dx = value.translation.width
+                let vx = value.predictedEndTranslation.width
+
+                if dx > 100 || vx > 400 {
+                    dragOffsetX = 0
                     onDismiss()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                        dragOffset = 0
-                    }
                 } else {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
-                        dragOffset = 0
+                        dragOffsetX = 0
                     }
                 }
             }
+    }
+
+    private var lyricsPinchGesture: some Gesture {
+        MagnificationGesture()
+            .updating($pinchScale) { value, state, _ in
+                state = value
+            }
+            .onEnded { value in
+                lyricsScale = min(max(lyricsScale * value, 0.8), 2.0)
+            }
+    }
+
+    private func finishDismissGesture(dir: DragDirection?, value: DragGesture.Value) {
+        let dx = value.translation.width
+        let dy = value.translation.height
+        let vx = value.predictedEndTranslation.width
+        let vy = value.predictedEndTranslation.height
+
+        let shouldDismiss: Bool
+        switch dir {
+        case .horizontal: shouldDismiss = dx > 100 || vx > 400
+        case .vertical:   shouldDismiss = dy > 100 || vy > 400
+        case .none:       shouldDismiss = false
+        }
+
+        if shouldDismiss {
+            dragOffset = 0
+            dragOffsetX = 0
+            onDismiss()
+        } else {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                dragOffset = 0
+                dragOffsetX = 0
+            }
+        }
     }
 
     // MARK: - Header
@@ -152,10 +240,8 @@ struct LyricsPageView: View {
                     Color.clear.frame(height: 200)
                 }
             }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 5)
-                    .onChanged { _ in handleUserScroll() }
-            )
+            .simultaneousGesture(lyricsAreaGesture)
+            .simultaneousGesture(lyricsPinchGesture)
             .onChange(of: currentLineIndex) { _, newIdx in
                 guard !isUserScrolling, let idx = newIdx,
                       idx < data.lines.count else { return }
@@ -186,7 +272,7 @@ struct LyricsPageView: View {
             playback.seek(to: line.timestamp)
         } label: {
             Text(line.text)
-                .font(isCurrent ? .title.bold() : .title3)
+                .font(.system(size: (isCurrent ? 28 : 20) * effectiveScale, weight: isCurrent ? .bold : .regular))
                 .foregroundStyle(
                     isCurrent
                         ? AnyShapeStyle(LinearGradient(
@@ -197,6 +283,7 @@ struct LyricsPageView: View {
                         : AnyShapeStyle(palette.playerSubtext)
                 )
                 .opacity(lineOpacity(for: index))
+                .shadow(color: isCurrent ? palette.gradientStart.opacity(0.6) : .clear, radius: isCurrent ? 10 : 0)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .scaleEffect(isCurrent ? 1.05 : 1.0)
@@ -212,12 +299,14 @@ struct LyricsPageView: View {
     private func plainTextSection(text: String) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
             Text(text)
-                .font(.title3)
+                .font(.system(size: 20 * effectiveScale))
                 .foregroundColor(palette.playerSubtext)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 20)
         }
+        .simultaneousGesture(lyricsAreaGesture)
+        .simultaneousGesture(lyricsPinchGesture)
     }
 
     // MARK: - Empty
@@ -351,13 +440,13 @@ struct LyricsPageView: View {
     // MARK: - Helpers
 
     private func lineOpacity(for index: Int) -> Double {
-        guard let current = currentLineIndex else { return 0.5 }
+        guard let current = currentLineIndex else { return 0.4 }
         let distance = abs(index - current)
         if distance == 0 { return 1.0 }
-        if distance == 1 { return 0.65 }
-        if distance == 2 { return 0.5 }
-        if distance <= 4 { return 0.4 }
-        return 0.3
+        if distance == 1 { return 0.45 }
+        if distance == 2 { return 0.3 }
+        if distance <= 4 { return 0.2 }
+        return 0.15
     }
 
     private func handleUserScroll() {

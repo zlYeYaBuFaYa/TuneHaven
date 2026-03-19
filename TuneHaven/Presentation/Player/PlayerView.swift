@@ -29,6 +29,8 @@ struct PlayerView: View {
     @State private var showQueue = false
     @State private var activeSheet: ActiveSheet?
     @State private var dragOffset: CGFloat = 0
+    @State private var dragOffsetX: CGFloat = 0
+    @State private var dragDirection: DragDirection? = nil
     @State private var showDeleteLyricsConfirm = false
     @State private var showLyricsImporter = false
     @State private var showLyricsPage = false
@@ -80,9 +82,9 @@ struct PlayerView: View {
                     .transition(.opacity)
             }
         }
-        .offset(y: dragOffset)
+        .offset(x: dragOffsetX, y: dragOffset)
         .environment(\.themePalette, palette)
-        .onAppear { dragOffset = 0 }
+        .onAppear { dragOffset = 0; dragOffsetX = 0 }
         .sheet(item: $activeSheet) { sheet in
             Group {
                 switch sheet {
@@ -143,24 +145,50 @@ struct PlayerView: View {
         DragGesture(minimumDistance: 20, coordinateSpace: .global)
             .onChanged { value in
                 guard !showQueue, !showLyricsPage else { return }
+                let dx = value.translation.width
                 let dy = value.translation.height
-                if dy > 0 {
+
+                if dragDirection == nil {
+                    dragDirection = abs(dx) > abs(dy) ? .horizontal : .vertical
+                }
+
+                switch dragDirection {
+                case .horizontal where dx > 0:
+                    dragOffsetX = dx * 0.7
+                case .vertical where dy > 0:
                     dragOffset = dy * 0.7
-                } else {
+                case .vertical:
                     dragOffset = dy * 0.1
+                default: break
                 }
             }
             .onEnded { value in
                 guard !showQueue, !showLyricsPage else { return }
-                let velocity = value.predictedEndTranslation.height
-                if value.translation.height > 100 || velocity > 400 {
+                let dir = dragDirection
+                dragDirection = nil
+
+                let dx = value.translation.width
+                let dy = value.translation.height
+                let vx = value.predictedEndTranslation.width
+                let vy = value.predictedEndTranslation.height
+
+                let shouldDismiss: Bool
+                switch dir {
+                case .horizontal: shouldDismiss = dx > 100 || vx > 400
+                case .vertical:   shouldDismiss = dy > 100 || vy > 400
+                case .none:       shouldDismiss = false
+                }
+
+                if shouldDismiss {
                     router.closePlayer()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
                         dragOffset = 0
+                        dragOffsetX = 0
                     }
                 } else {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
                         dragOffset = 0
+                        dragOffsetX = 0
                     }
                 }
             }
@@ -348,41 +376,65 @@ struct PlayerView: View {
 
     private var coverSection: some View {
         GeometryReader { geo in
-            let coverSize = geo.size.width
-            Group {
+            let coverSize = geo.size.width * 0.85
+            ZStack(alignment: .bottom) {
+                albumCoverImage(size: coverSize)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                 if let song = playback.currentSong {
                     let hasLyrics = lyricsData.map { !$0.lines.isEmpty || !$0.rawText.isEmpty } ?? false
-                    ZStack(alignment: .bottom) {
-                        CoverImageView(path: song.coverImagePath,
-                                       size: coverSize,
-                                       cornerRadius: 16)
-                            .shadow(color: palette.gradientStart.opacity(0.35), radius: 20, y: 8)
-
-                        if !hasLyrics {
-                            Button {
-                                activeSheet = .lyricsSearch(song)
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "magnifyingglass")
-                                    Text("搜索歌词")
-                                }
-                                .font(.caption.weight(.medium))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(.ultraThinMaterial)
-                                .clipShape(Capsule())
+                    if !hasLyrics {
+                        Button {
+                            activeSheet = .lyricsSearch(song)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "magnifyingglass")
+                                Text("搜索歌词")
                             }
-                            .padding(.bottom, 16)
+                            .font(.caption.weight(.medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Capsule())
                         }
+                        .padding(.bottom, 8)
                     }
-                } else {
-                    PlaceholderCoverView(size: coverSize)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .aspectRatio(1, contentMode: .fit)
+    }
+
+    @ViewBuilder
+    private func albumCoverImage(size: CGFloat) -> some View {
+        if let path = playback.currentSong?.coverImagePath,
+           let image = ImageCacheManager.shared.image(forKey: path) {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
+        } else {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [palette.gradientStart.opacity(0.5), palette.gradientEnd.opacity(0.3)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: size, height: size)
+                .overlay {
+                    Image(systemName: "music.note")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: size * 0.25)
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                .shadow(color: .black.opacity(0.2), radius: 16, y: 8)
+        }
     }
 
     private var songInfo: some View {
@@ -587,4 +639,8 @@ struct PlayerView: View {
         pendingSheetWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
+}
+
+enum DragDirection {
+    case horizontal, vertical
 }
