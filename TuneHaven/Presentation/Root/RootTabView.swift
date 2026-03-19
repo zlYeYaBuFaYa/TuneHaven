@@ -41,7 +41,7 @@ struct RootTabView: View {
             set:  { router.isPlayerPresented = $0 }
         )) {
             PlayerView()
-                .environment(\.themePalette, resolvedPalette)
+                .environment(\.themePalette, themeManager.palette)
                 .environmentObject(themeManager)
                 .environmentObject(router)
                 .environmentObject(libraryService)
@@ -52,7 +52,7 @@ struct RootTabView: View {
         }
         .sheet(item: $router.sheet) { destination in
             sheetView(for: destination)
-                .environment(\.themePalette, resolvedPalette)
+                .environment(\.themePalette, themeManager.palette)
                 .environmentObject(themeManager)
                 .environmentObject(router)
                 .environmentObject(libraryService)
@@ -112,10 +112,6 @@ struct RootTabView: View {
     }
 
     // MARK: - Helpers
-
-    private var resolvedPalette: ThemeColorPalette {
-        themeManager.palette
-    }
 
     @ViewBuilder
     private func sheetView(for destination: SheetDestination) -> some View {
