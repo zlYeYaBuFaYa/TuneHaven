@@ -35,6 +35,7 @@ struct PlayerView: View {
     @State private var dragOffset: CGFloat = 0
     @State private var showDeleteLyricsConfirm = false
     @State private var showLyricsImporter = false
+    @State private var showLyricsPage = false
 
     private var palette: ThemeColorPalette {
         themeManager.resolvedPalette(for: colorScheme)
@@ -49,7 +50,34 @@ struct PlayerView: View {
             )
             .ignoresSafeArea()
 
-            if showQueue {
+            if showLyricsPage {
+                LyricsPageView(
+                    lyricsData: lyricsData,
+                    onDismiss: {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                            showLyricsPage = false
+                        }
+                    },
+                    onSearchLyrics: {
+                        if let song = playback.currentSong {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                                showLyricsPage = false
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                activeSheet = .lyricsSearch(song)
+                            }
+                        }
+                    },
+                    onOpenQueue: {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                            showLyricsPage = false
+                            showQueue = true
+                        }
+                    }
+                )
+                .id(playback.currentSong?.id)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if showQueue {
                 PlayQueueView(onClose: { withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { showQueue = false } })
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             } else {
@@ -121,7 +149,7 @@ struct PlayerView: View {
     private var playerDismissGesture: some Gesture {
         DragGesture(minimumDistance: 20, coordinateSpace: .global)
             .onChanged { value in
-                guard !showQueue else { return }
+                guard !showQueue, !showLyricsPage else { return }
                 let dy = value.translation.height
                 if dy > 0 {
                     dragOffset = dy * 0.7
@@ -130,7 +158,7 @@ struct PlayerView: View {
                 }
             }
             .onEnded { value in
-                guard !showQueue else { return }
+                guard !showQueue, !showLyricsPage else { return }
                 let velocity = value.predictedEndTranslation.height
                 if value.translation.height > 100 || velocity > 400 {
                     router.closePlayer()
@@ -155,8 +183,9 @@ struct PlayerView: View {
                     .padding(.bottom, 4)
                 Spacer(minLength: 20)
                 coverSection
-                Spacer(minLength: 28)
+                Spacer(minLength: 16)
                 songInfo
+                currentLyricsPreview
             }
             .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
@@ -347,16 +376,14 @@ struct PlayerView: View {
             let coverSize = geo.size.width
             Group {
                 if let song = playback.currentSong {
-                    if let lData = lyricsData, !lData.lines.isEmpty {
-                        LyricsView(lyricsData: lData, currentTime: engine.currentTime)
-                            .frame(width: coverSize, height: coverSize)
-                    } else {
-                        ZStack(alignment: .bottom) {
-                            CoverImageView(path: song.coverImagePath,
-                                           size: coverSize,
-                                           cornerRadius: 16)
-                                .shadow(color: palette.gradientStart.opacity(0.35), radius: 20, y: 8)
+                    let hasLyrics = lyricsData.map { !$0.lines.isEmpty || !$0.rawText.isEmpty } ?? false
+                    ZStack(alignment: .bottom) {
+                        CoverImageView(path: song.coverImagePath,
+                                       size: coverSize,
+                                       cornerRadius: 16)
+                            .shadow(color: palette.gradientStart.opacity(0.35), radius: 20, y: 8)
 
+                        if !hasLyrics {
                             Button {
                                 activeSheet = .lyricsSearch(song)
                             } label: {
@@ -407,6 +434,54 @@ struct PlayerView: View {
             }
         }
         .padding(.vertical, 12)
+    }
+
+    private var currentLyricsPreview: some View {
+        Group {
+            if let data = lyricsData, !data.lines.isEmpty {
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                        showLyricsPage = true
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text(currentLyricsText(from: data) ?? " ")
+                            .font(.subheadline)
+                            .foregroundColor(palette.textSecondary)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.right")
+                            .font(.caption2)
+                            .foregroundColor(palette.textTertiary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                }
+                .padding(.top, 8)
+            } else if let data = lyricsData, !data.rawText.isEmpty {
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                        showLyricsPage = true
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("查看歌词")
+                            .font(.subheadline)
+                            .foregroundColor(palette.textTertiary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption2)
+                            .foregroundColor(palette.textTertiary)
+                    }
+                }
+                .padding(.top, 8)
+            }
+        }
+    }
+
+    private func currentLyricsText(from data: LyricsData) -> String? {
+        for line in data.lines.reversed() {
+            if engine.currentTime >= line.timestamp { return line.text }
+        }
+        return data.lines.first?.text
     }
 
     private var progressBar: some View {
