@@ -11,7 +11,7 @@ struct PlaylistNameValidationTests {
     // MARK: - 命名校验辅助函数（与 PlaylistService.createPlaylist 逻辑一致）
 
     private func validatePlaylistName(_ name: String) throws {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw AppError.playlistNameEmpty }
         let reserved = ["我喜欢", "最近播放"]
         guard !reserved.contains(trimmed) else { throw AppError.playlistNameDuplicate }

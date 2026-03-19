@@ -302,10 +302,10 @@ struct AudioFormatIntegrationTests {
         }
     }
 
-    @Test("FLAC 显示名称包含暂不支持提示")
+    @Test("FLAC 显示名称包含无损标识")
     func testFLACDisplayNameHasWarning() {
         let flac = AudioFormat.flac
-        #expect(flac.displayName.contains("暂不支持"))
+        #expect(flac.displayName.contains("无损"))
     }
 
     @Test("all 格式的 rawValue 为 all")

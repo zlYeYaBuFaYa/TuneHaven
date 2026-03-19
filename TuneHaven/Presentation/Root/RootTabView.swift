@@ -34,7 +34,10 @@ struct RootTabView: View {
         .environment(\.hasCustomBackground, hasCustomBg)
         .animation(nil, value: router.selectedTab)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            customTabBar
+            VStack(spacing: 0) {
+                MiniPlayerBar()
+                customTabBar
+            }
         }
         .fullScreenCover(isPresented: .init(
             get:  { router.isPlayerPresented },

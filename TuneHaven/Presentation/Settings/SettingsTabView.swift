@@ -20,9 +20,6 @@ struct SettingsTabView: View {
         }
         .background(hasCustomBg ? Color.clear.ignoresSafeArea() : palette.background.ignoresSafeArea())
         .toolbarBackground(hasCustomBg ? Visibility.visible : .automatic, for: .navigationBar)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            MiniPlayerBar()
-        }
     }
 
     @ViewBuilder

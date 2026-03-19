@@ -89,11 +89,9 @@ final class ThemeManager: ObservableObject {
             AppLogger.shared.debug("[ThemeManager] refreshWindows — no foreground windowScene")
             return
         }
-        let uiStyle: UIUserInterfaceStyle = currentStyle.colorScheme == .dark ? .dark : .light
         let bgColor = UIColor(currentStyle.palette.background)
 
         windowScene.windows.forEach { window in
-            window.overrideUserInterfaceStyle = uiStyle
             window.backgroundColor = bgColor
         }
         AppLogger.shared.debug("[ThemeManager] refreshWindows done — theme=\(currentStyle.id)")

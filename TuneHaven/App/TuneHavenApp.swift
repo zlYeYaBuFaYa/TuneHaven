@@ -78,7 +78,6 @@ struct TuneHavenApp: App {
                 switch phase {
                 case .active:
                     playbackService.checkSleepTimerOnForeground()
-                    themeManager.scheduleWindowRefresh(delay: 0.3, fullApply: false)
                 case .background:
                     AudioSessionManager.shared.ensureActive()
                 default:

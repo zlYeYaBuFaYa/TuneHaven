@@ -6,32 +6,44 @@ final class ThemeRegistry {
     static let shared = ThemeRegistry()
 
     private var themes: [ThemeStyle] = []
+    private let lock = NSLock()
 
     private init() {}
 
     func bootstrap() {
-        register(.mintBreeze)
-        register(.deepOcean)
-        register(.cyberNeon)
-        register(.glacierBlue)
-        register(.auroraDream)
-        register(.midnightGold)
+        lock.lock()
+        defer { lock.unlock() }
+        let defaults: [ThemeStyle] = [.mintBreeze, .deepOcean, .cyberNeon, .glacierBlue, .auroraDream, .midnightGold]
+        for style in defaults {
+            guard !themes.contains(where: { $0.id == style.id }) else { continue }
+            themes.append(style)
+        }
     }
 
-    var allThemes: [ThemeStyle] { themes }
+    var allThemes: [ThemeStyle] {
+        lock.lock()
+        defer { lock.unlock() }
+        return themes
+    }
 
     var defaultTheme: ThemeStyle { .mintBreeze }
 
     func register(_ style: ThemeStyle) {
+        lock.lock()
+        defer { lock.unlock() }
         guard !themes.contains(where: { $0.id == style.id }) else { return }
         themes.append(style)
     }
 
     func theme(for id: String) -> ThemeStyle? {
-        themes.first { $0.id == id }
+        lock.lock()
+        defer { lock.unlock() }
+        return themes.first { $0.id == id }
     }
 
     func reset() {
+        lock.lock()
+        defer { lock.unlock() }
         themes.removeAll()
     }
 }

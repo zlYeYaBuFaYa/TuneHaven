@@ -20,7 +20,7 @@ final class PlaylistService: ObservableObject {
     }
 
     func createPlaylist(name: String, description: String?) async throws -> Playlist {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw AppError.playlistNameEmpty }
         let reserved = ["我喜欢", "最近播放"]
         guard !reserved.contains(trimmed) else { throw AppError.playlistNameDuplicate }
