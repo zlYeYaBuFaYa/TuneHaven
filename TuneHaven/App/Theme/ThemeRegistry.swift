@@ -17,6 +17,7 @@ final class ThemeRegistry {
         register(.crimsonTech)
         register(.comicPop)
         register(.inkWash)
+        register(.deepSpaceNeon)
     }
 
     var allThemes: [ThemeStyle] { themes }

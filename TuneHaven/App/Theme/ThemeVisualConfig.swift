@@ -14,6 +14,7 @@ enum ThemePatternType: String, Equatable {
     case inkMountain
     case rosePetal
     case frostAurora
+    case spaceNeon
 }
 
 // MARK: - 主题卡片风格
@@ -101,6 +102,15 @@ extension ThemeVisualConfig {
         navigationBarBlur: true,
         tabBarBlur: true
     )
+
+    static let deepSpaceNeon = ThemeVisualConfig(
+        backgroundType: .codeGenerated(.spaceNeon),
+        cardStyle: .glassmorphism,
+        fontStyle: .system,
+        contentOverlayOpacity: 0.04,
+        navigationBarBlur: true,
+        tabBarBlur: true
+    )
 }
 
 // MARK: - ThemeStyle 视觉配置扩展
@@ -113,6 +123,7 @@ extension ThemeStyle {
         case "ink_wash":        return .inkWash
         case "rose_dream":      return .roseDream
         case "frost_elegance":  return .frostElegance
+        case "deep_space_neon": return .deepSpaceNeon
         default:                return .solidDefault
         }
     }

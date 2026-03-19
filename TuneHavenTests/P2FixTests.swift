@@ -86,7 +86,10 @@ struct PlayQueueEmptyGuardTests {
         let songs = makeSongs(count: 3)
         service.replaceQueue(with: songs, startAt: 0)
 
-        for i in 0..<3 { service.queue[i].isPlayed = true }
+        for i in 0..<3 {
+            service.setCurrentIndex(to: i)
+            service.markCurrentAsPlayed()
+        }
 
         let next = service.nextSong(for: .repeatAll, dislikes: [:])
         #expect(next != nil)

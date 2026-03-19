@@ -12,37 +12,37 @@
 			containerPortal = 08A412422F64515600FEA07C /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 08A412492F64515600FEA07C;
-			remoteInfo = "TuneHaven";
+			remoteInfo = TuneHaven;
 		};
 		08A412622F64515700FEA07C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 08A412422F64515600FEA07C /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 08A412492F64515600FEA07C;
-			remoteInfo = "TuneHaven";
+			remoteInfo = TuneHaven;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		08A4124A2F64515600FEA07C /* TuneHaven.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "TuneHaven.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		08A412572F64515700FEA07C /* TuneHavenTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "TuneHavenTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		08A412612F64515700FEA07C /* TuneHavenUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "TuneHavenUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		08A4124A2F64515600FEA07C /* TuneHaven.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TuneHaven.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		08A412572F64515700FEA07C /* TuneHavenTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TuneHavenTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		08A412612F64515700FEA07C /* TuneHavenUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TuneHavenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		08A4124C2F64515600FEA07C /* TuneHaven */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "TuneHaven";
+			path = TuneHaven;
 			sourceTree = "<group>";
 		};
 		08A4125A2F64515700FEA07C /* TuneHavenTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "TuneHavenTests";
+			path = TuneHavenTests;
 			sourceTree = "<group>";
 		};
 		08A412642F64515700FEA07C /* TuneHavenUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "TuneHavenUITests";
+			path = TuneHavenUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -110,10 +110,10 @@
 			fileSystemSynchronizedGroups = (
 				08A4124C2F64515600FEA07C /* TuneHaven */,
 			);
-			name = "TuneHaven";
+			name = TuneHaven;
 			packageProductDependencies = (
 			);
-			productName = "TuneHaven";
+			productName = TuneHaven;
 			productReference = 08A4124A2F64515600FEA07C /* TuneHaven.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -133,10 +133,10 @@
 			fileSystemSynchronizedGroups = (
 				08A4125A2F64515700FEA07C /* TuneHavenTests */,
 			);
-			name = "TuneHavenTests";
+			name = TuneHavenTests;
 			packageProductDependencies = (
 			);
-			productName = "TuneHavenTests";
+			productName = TuneHavenTests;
 			productReference = 08A412572F64515700FEA07C /* TuneHavenTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
@@ -156,10 +156,10 @@
 			fileSystemSynchronizedGroups = (
 				08A412642F64515700FEA07C /* TuneHavenUITests */,
 			);
-			name = "TuneHavenUITests";
+			name = TuneHavenUITests;
 			packageProductDependencies = (
 			);
-			productName = "TuneHavenUITests";
+			productName = TuneHavenUITests;
 			productReference = 08A412612F64515700FEA07C /* TuneHavenUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
@@ -410,7 +410,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "demo.TuneHaven";
+				PRODUCT_BUNDLE_IDENTIFIER = demo.TuneHaven;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -439,7 +439,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "demo.TuneHaven";
+				PRODUCT_BUNDLE_IDENTIFIER = demo.TuneHaven;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -453,10 +453,11 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P75GB74NR6;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "demo.TuneHavenTests";
+				PRODUCT_BUNDLE_IDENTIFIER = demo.TuneHavenTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -471,10 +472,11 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P75GB74NR6;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "demo.TuneHavenTests";
+				PRODUCT_BUNDLE_IDENTIFIER = demo.TuneHavenTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -488,14 +490,15 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P75GB74NR6;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "demo.TuneHavenUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = demo.TuneHavenUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "TuneHaven";
+				TEST_TARGET_NAME = TuneHaven;
 			};
 			name = Debug;
 		};
@@ -504,14 +507,15 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = P75GB74NR6;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "demo.TuneHavenUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = demo.TuneHavenUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = "TuneHaven";
+				TEST_TARGET_NAME = TuneHaven;
 			};
 			name = Release;
 		};
