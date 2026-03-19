@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TuneHaven 主题设计系统 v2.0</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: { extend: { fontFamily: { display: ['"SF Pro Display"', 'system-ui', 'sans-serif'] } } }
+}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap');
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { background: #08080C; font-family: 'SF Pro Display', system-ui, -apple-system, sans-serif; }
+.phone {
+  width: 280px; min-width: 280px; height: 580px;
+  border-radius: 40px; border: 3px solid #333;
+  overflow: hidden; position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+  flex-shrink: 0;
+}
+.phone-screen { width: 100%; height: 100%; overflow: hidden; position: relative; }
+.dynamic-island {
+  position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  width: 80px; height: 22px; background: #000; border-radius: 20px; z-index: 30;
+}
+.status-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 20px 0; font-size: 11px; font-weight: 600; z-index: 20; position: relative;
+  padding-top: 38px;
+}
+.home-indicator {
+  position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  width: 100px; height: 4px; border-radius: 2px; z-index: 20;
+}
+.song-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.song-cover { width: 42px; height: 42px; border-radius: 8px; flex-shrink: 0; }
+.mini-player-bar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  border-radius: 14px; margin: 0 12px;
+}
+.tab-bar-bottom { display: flex; justify-content: space-around; padding: 6px 0 14px; font-size: 9px; }
+.swatch { width: 40px; height: 40px; border-radius: 10px; border: 2px solid rgba(255,255,255,0.1); }
+.gradient-bar { height: 6px; border-radius: 3px; width: 100%; }
+nav a { transition: all 0.2s; }
+nav a:hover { opacity: 1 !important; }
+.theme-section { opacity: 0; transform: translateY(30px); animation: fadeIn 0.6s forwards; }
+@keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+.glow { filter: drop-shadow(0 0 8px var(--glow-color, rgba(255,255,255,0.3))); }
+.lyric-line { padding: 6px 0; transition: all 0.3s; }
+.serif-font { font-family: 'Noto Serif SC', serif; }
+</style>
+</head>
+<body class="text-white antialiased">
+
+<!-- ============ HERO ============ -->
+<header class="text-center py-20 px-6 relative overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-transparent to-purple-900/20"></div>
+  <div class="relative z-10">
+    <p class="text-xs uppercase tracking-[0.3em] text-gray-500 mb-4">Design System v2.0</p>
+    <h1 class="text-5xl font-bold bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent mb-4">
+      TuneHaven 主题设计
+    </h1>
+    <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+      6 套全新渐变色主题 · 告别莫兰迪 · 拥抱鲜活色彩
+    </p>
+    <div class="flex gap-3 justify-center mt-8 flex-wrap">
+      <span class="px-3 py-1 rounded-full text-xs bg-white/5 border border-white/10">现代简约</span>
+      <span class="px-3 py-1 rounded-full text-xs bg-white/5 border border-white/10">深海静谧</span>
+      <span class="px-3 py-1 rounded-full text-xs bg-white/5 border border-white/10">未来科技</span>
+      <span class="px-3 py-1 rounded-full text-xs bg-white/5 border border-white/10">北欧冰川</span>
+      <span class="px-3 py-1 rounded-full text-xs bg-white/5 border border-white/10">极光梦幻</span>
+      <span class="px-3 py-1 rounded-full text-xs bg-white/5 border border-white/10">夜幕鎏金</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============ NAV ============ -->
+<nav class="sticky top-0 z-50 bg-[#08080C]/80 backdrop-blur-xl border-b border-white/5 py-3 px-6">
+  <div class="max-w-6xl mx-auto flex gap-6 overflow-x-auto text-sm">
+    <a href="#t1" class="text-emerald-400 hover:text-emerald-300 whitespace-nowrap">01 青云薄荷</a>
+    <a href="#t2" class="text-sky-400 hover:text-sky-300 whitespace-nowrap">02 深海鲸歌</a>
+    <a href="#t3" class="text-fuchsia-400 hover:text-fuchsia-300 whitespace-nowrap">03 赛博霓虹</a>
+    <a href="#t4" class="text-blue-400 hover:text-blue-300 whitespace-nowrap">04 冰川幽蓝</a>
+    <a href="#t5" class="text-violet-400 hover:text-violet-300 whitespace-nowrap">05 极光幻境</a>
+    <a href="#t6" class="text-yellow-500 hover:text-yellow-400 whitespace-nowrap">06 夜幕鎏金</a>
+  </div>
+</nav>
+
+<!-- ================================================================ -->
+<!-- THEME 1: 青云薄荷 — 现代简约 (REVISED: cyan with soft transitions) -->
+<!-- ================================================================ -->
+<section id="t1" class="theme-section max-w-6xl mx-auto px-6 py-20">
+  <div class="mb-12">
+    <p class="text-xs uppercase tracking-[0.3em] text-emerald-400/60 mb-2">Theme 01 — Modern Minimalist</p>
+    <h2 class="text-4xl font-bold mb-3">青云薄荷</h2>
+    <p class="text-gray-400 max-w-xl">保留青色调性，但渐变过渡如丝绸般柔滑——从几近透明的薄荷白
+      缓缓融入淡青，再轻柔地沉入中等饱和度的青绿。不会有突兀的色阶跳跃，只有如呼吸般自然的过渡。</p>
+    <div class="flex gap-3 mt-6 items-center">
+      <div class="swatch" style="background: linear-gradient(135deg, #E0F7FA, #4DB6AC)"></div>
+      <div class="swatch" style="background: #4DB6AC"></div>
+      <div class="swatch" style="background: #F0FDFA"></div>
+      <div class="swatch" style="background: #26A69A"></div>
+      <div class="swatch" style="background: #00695C"></div>
+      <div class="ml-4 flex-1">
+        <div class="gradient-bar" style="background: linear-gradient(90deg, #E0F7FA, #B2DFDB, #80CBC4, #4DB6AC, #26A69A)"></div>
+        <p class="text-[10px] text-gray-500 mt-1">#E0F7FA → #B2DFDB → #80CBC4 → #4DB6AC → #26A69A（极柔和过渡）</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-8 overflow-x-auto pb-4">
+    <!-- Phone 1: Lyrics — ultra-soft cyan gradient -->
+    <div class="phone">
+      <div class="phone-screen" style="background: linear-gradient(180deg, #E0F7FA 0%, #D4F0F0 15%, #B2DFDB 35%, #95D0C8 50%, #80CBC4 65%, #5DB8AD 80%, #4DB6AC 100%)">
+        <div class="dynamic-island"></div>
+        <div class="status-bar" style="color: #00695C">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-2 flex justify-between items-center">
+          <span style="color: #00897B; font-size: 18px">∨</span>
+          <div class="flex gap-2" style="color: #00897B; font-size: 14px">
+            <span>◎</span><span>⊕</span><span>●</span>
+          </div>
+        </div>
+        <div class="px-5 pt-3 pb-2">
+          <h3 class="font-bold text-lg" style="color: #004D40">Shape of You</h3>
+          <p class="text-xs" style="color: #00796B">Ed Sheeran · 制作团队 ></p>
+        </div>
+        <div class="px-5 flex-1" style="font-size: 13px; line-height: 1.8">
+          <p class="lyric-line" style="color: rgba(0,77,64,0.28)">now I'm singing like</p>
+          <p class="lyric-line" style="color: rgba(0,77,64,0.22); font-size: 11px">然后我们就可以翩然起舞了</p>
+          <p class="lyric-line font-bold text-xl mt-2" style="color: #004D40; font-size: 18px; line-height: 1.4">
+            Girl you know I<br>want your love
+          </p>
+          <p class="lyric-line mt-1" style="color: rgba(0,77,64,0.48); font-size: 11px">女孩 你知道我渴望你的爱</p>
+          <p class="lyric-line mt-3" style="color: rgba(0,77,64,0.32)">Your love was handmade for somebody like me</p>
+          <p class="lyric-line" style="color: rgba(0,77,64,0.22); font-size: 11px">你的爱为我量身打造 专属于我</p>
+          <p class="lyric-line mt-3" style="color: rgba(0,77,64,0.18)">Come on now follow my lead</p>
+          <p class="lyric-line" style="color: rgba(0,77,64,0.12); font-size: 11px">来吧 听我指挥吧</p>
+        </div>
+        <div class="px-5 pb-2 flex justify-between items-center" style="color: #00897B; font-size: 11px">
+          <div class="flex gap-5"><span>弹</span><span>词</span><span>译<sup style="font-size:7px">on</sup></span><span>☆<sup style="font-size:7px">off</sup></span></div>
+          <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: #26A69A; color: white; font-size: 16px">▶</div>
+        </div>
+        <div class="home-indicator" style="background: rgba(0,77,64,0.22)"></div>
+      </div>
+    </div>
+
+    <!-- Phone 2: Library -->
+    <div class="phone">
+      <div class="phone-screen" style="background: #F0FDFA">
+        <div class="dynamic-island"></div>
+        <div class="status-bar" style="color: #607D75">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-1 flex justify-between items-center">
+          <h3 class="text-lg font-bold" style="color: #004D40">音乐库</h3>
+          <span class="text-xs px-3 py-1 rounded-full" style="background: #26A69A; color: white">+ 导入</span>
+        </div>
+        <div class="px-5 pt-3">
+          <div class="rounded-xl px-3 py-2 text-xs" style="background: rgba(77,182,172,0.08); color: #80A9A0">🔍 搜索歌曲、艺术家、专辑...</div>
+        </div>
+        <div class="flex gap-0 px-5 pt-3 text-xs font-medium">
+          <span class="flex-1 text-center pb-2" style="color: #26A69A; border-bottom: 2px solid #26A69A">全部</span>
+          <span class="flex-1 text-center pb-2" style="color: #A0B8B2; border-bottom: 2px solid transparent">艺术家</span>
+          <span class="flex-1 text-center pb-2" style="color: #A0B8B2; border-bottom: 2px solid transparent">专辑</span>
+        </div>
+        <div class="px-5 pt-2" style="font-size: 12px">
+          <div class="song-row" style="border-bottom: 1px solid #D4EFEA">
+            <div class="song-cover" style="background: linear-gradient(135deg, #B2DFDB, #4DB6AC)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #004D40">Shape of You</p>
+              <p class="text-[10px]" style="color: #6B9B90">Ed Sheeran</p>
+            </div>
+            <span style="color: #A0B8B2; font-size: 10px">3:54</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid #D4EFEA">
+            <div class="song-cover" style="background: linear-gradient(135deg, #80CBC4, #26A69A)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #004D40">Blinding Lights</p>
+              <p class="text-[10px]" style="color: #6B9B90">The Weeknd</p>
+            </div>
+            <span style="color: #A0B8B2; font-size: 10px">3:20</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid #D4EFEA">
+            <div class="song-cover" style="background: linear-gradient(135deg, #E0F2F1, #80CBC4)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #004D40">晴天</p>
+              <p class="text-[10px]" style="color: #6B9B90">周杰伦</p>
+            </div>
+            <span style="color: #A0B8B2; font-size: 10px">4:29</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid #D4EFEA">
+            <div class="song-cover" style="background: linear-gradient(135deg, #4DB6AC, #00897B)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #004D40">起风了</p>
+              <p class="text-[10px]" style="color: #6B9B90">买辣椒也用券</p>
+            </div>
+            <span style="color: #A0B8B2; font-size: 10px">5:12</span>
+          </div>
+          <div class="song-row">
+            <div class="song-cover" style="background: linear-gradient(135deg, #E0F7FA, #4DB6AC)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #004D40">Bohemian Rhapsody</p>
+              <p class="text-[10px]" style="color: #6B9B90">Queen</p>
+            </div>
+            <span style="color: #A0B8B2; font-size: 10px">5:55</span>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0">
+          <div class="mx-4 mb-1">
+            <div class="mini-player-bar" style="background: rgba(77,182,172,0.07); border: 1px solid rgba(77,182,172,0.1)">
+              <div class="w-8 h-8 rounded-md" style="background: linear-gradient(135deg, #B2DFDB, #4DB6AC)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-medium truncate" style="color: #004D40">Shape of You</p>
+                <p class="text-[8px]" style="color: #6B9B90">Ed Sheeran</p>
+              </div>
+              <span style="color: #26A69A; font-size: 18px">▶</span>
+            </div>
+          </div>
+          <div class="tab-bar-bottom" style="background: #F0FDFA; border-top: 1px solid #D4EFEA">
+            <div class="text-center" style="color: #26A69A"><div class="text-base">♫</div>音乐库</div>
+            <div class="text-center" style="color: #A0B8B2"><div class="text-base">☰</div>歌单</div>
+            <div class="text-center" style="color: #A0B8B2"><div class="text-base">⚙</div>设置</div>
+          </div>
+        </div>
+        <div class="home-indicator" style="background: rgba(0,0,0,0.1)"></div>
+      </div>
+    </div>
+
+    <!-- Phone 3: Player — soft cyan gradient -->
+    <div class="phone">
+      <div class="phone-screen" style="background: linear-gradient(180deg, #E0F7FA 0%, #C8EDE8 18%, #B2DFDB 35%, #95D0C8 50%, #80CBC4 65%, #5DB8AD 82%, #4DB6AC 100%)">
+        <div class="dynamic-island"></div>
+        <div class="status-bar" style="color: #00695C">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-1">
+          <span style="color: #00897B; font-size: 18px">∨</span>
+        </div>
+        <div class="flex justify-center pt-4 pb-4">
+          <div class="w-48 h-48 rounded-2xl shadow-xl" style="background: linear-gradient(135deg, #B2DFDB 0%, #80CBC4 35%, #4DB6AC 65%, #26A69A 100%)">
+            <div class="w-full h-full flex items-center justify-center text-4xl" style="color: rgba(255,255,255,0.4)">♫</div>
+          </div>
+        </div>
+        <div class="text-center px-5">
+          <h3 class="font-bold text-base" style="color: #004D40">Shape of You</h3>
+          <p class="text-xs mt-1" style="color: #00796B">Ed Sheeran</p>
+        </div>
+        <div class="px-8 pt-5">
+          <div class="w-full h-1 rounded-full" style="background: rgba(0,77,64,0.1)">
+            <div class="h-full rounded-full" style="width: 38%; background: #00897B"></div>
+          </div>
+          <div class="flex justify-between mt-1" style="font-size: 9px; color: #00796B">
+            <span>1:24</span><span>3:54</span>
+          </div>
+        </div>
+        <div class="flex justify-center items-center gap-8 pt-4" style="color: #004D40">
+          <span class="text-sm">⇄</span>
+          <span class="text-2xl">⏮</span>
+          <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background: #26A69A; color: white; font-size: 22px">▶</div>
+          <span class="text-2xl">⏭</span>
+          <span class="text-sm">↻</span>
+        </div>
+        <div class="flex justify-center gap-10 pt-6" style="font-size: 10px; color: #00796B">
+          <span>🕐</span><span>词</span><span>1.0x</span><span>☰</span>
+        </div>
+        <div class="home-indicator" style="background: rgba(0,77,64,0.22)"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<!-- THEME 2: 深海鲸歌 — 深海静谧 (NEW) -->
+<!-- ================================================================ -->
+<section id="t2" class="theme-section max-w-6xl mx-auto px-6 py-20" style="animation-delay: 0.1s">
+  <div class="mb-12">
+    <p class="text-xs uppercase tracking-[0.3em] text-sky-400/60 mb-2">Theme 02 — Deep Ocean Serenade</p>
+    <h2 class="text-4xl font-bold mb-3">深海鲸歌</h2>
+    <p class="text-gray-400 max-w-xl">万丈深海的宁静——从午夜藏青到深海靛蓝的渐变，
+      仿佛在幽暗海域中听见鲸鱼低沉的歌声。月光般的浅蓝点缀在深色中，沉静而治愈。</p>
+    <div class="flex gap-3 mt-6 items-center">
+      <div class="swatch" style="background: linear-gradient(135deg, #0A192F, #1E3A5F)"></div>
+      <div class="swatch" style="background: #64B5F6"></div>
+      <div class="swatch" style="background: #0A192F"></div>
+      <div class="swatch" style="background: #48BFE3"></div>
+      <div class="swatch" style="background: #CAF0F8"></div>
+      <div class="ml-4 flex-1">
+        <div class="gradient-bar" style="background: linear-gradient(90deg, #0A192F, #112240, #1E3A5F, #48BFE3, #CAF0F8)"></div>
+        <p class="text-[10px] text-gray-500 mt-1">#0A192F → #112240 → #1E3A5F · accent #48BFE3 · #CAF0F8</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-8 overflow-x-auto pb-4">
+    <!-- Phone 1: Lyrics -->
+    <div class="phone" style="border-color: #1A2744; box-shadow: 0 20px 60px rgba(10,25,47,0.6), 0 0 30px rgba(72,191,227,0.08)">
+      <div class="phone-screen" style="background: linear-gradient(180deg, #0A192F 0%, #112240 35%, #172B45 65%, #1E3A5F 100%)">
+        <div class="absolute top-0 left-0 right-0 h-72 opacity-15" style="background: radial-gradient(ellipse at 60% 40%, #48BFE3 0%, transparent 55%)"></div>
+        <div class="dynamic-island" style="background: #000"></div>
+        <div class="status-bar" style="color: #64B5F6">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-2 flex justify-between items-center relative z-10">
+          <span style="color: #5C8AB5; font-size: 18px">∨</span>
+          <div class="flex gap-2" style="color: #5C8AB5; font-size: 14px">
+            <span>◎</span><span>⊕</span><span>●</span>
+          </div>
+        </div>
+        <div class="px-5 pt-3 pb-2 relative z-10">
+          <h3 class="font-bold text-lg" style="color: #CAF0F8">Ocean Eyes</h3>
+          <p class="text-xs" style="color: #5C8AB5">Billie Eilish</p>
+        </div>
+        <div class="px-5 flex-1 relative z-10" style="font-size: 13px; line-height: 1.8">
+          <p class="lyric-line" style="color: rgba(202,240,248,0.15)">Can't stop staring at your face</p>
+          <p class="lyric-line" style="color: rgba(202,240,248,0.1); font-size: 11px">无法不注视着你的脸</p>
+          <p class="lyric-line font-bold text-xl mt-2" style="color: #64B5F6; font-size: 18px; line-height: 1.4; text-shadow: 0 0 15px rgba(100,181,246,0.3)">
+            I've been watching you<br>for some time
+          </p>
+          <p class="lyric-line mt-1" style="color: rgba(72,191,227,0.5); font-size: 11px">我已注视你许久</p>
+          <p class="lyric-line mt-3" style="color: rgba(202,240,248,0.2)">Can't stop staring at those ocean eyes</p>
+          <p class="lyric-line" style="color: rgba(202,240,248,0.12); font-size: 11px">无法不凝望你如海洋般的眼眸</p>
+          <p class="lyric-line mt-3" style="color: rgba(202,240,248,0.1)">Burning cities and napalm skies</p>
+          <p class="lyric-line" style="color: rgba(202,240,248,0.06); font-size: 11px">燃烧的城市与汽油弹的天空</p>
+        </div>
+        <div class="px-5 pb-2 flex justify-between items-center relative z-10" style="color: #5C8AB5; font-size: 11px">
+          <div class="flex gap-5"><span>弹</span><span>词</span><span>译<sup style="font-size:7px">on</sup></span><span>☆</span></div>
+          <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: #48BFE3; color: #0A192F; font-size: 16px; box-shadow: 0 0 15px rgba(72,191,227,0.3)">▶</div>
+        </div>
+        <div class="home-indicator" style="background: rgba(100,181,246,0.3)"></div>
+      </div>
+    </div>
+
+    <!-- Phone 2: Library -->
+    <div class="phone" style="border-color: #1A2744; box-shadow: 0 20px 60px rgba(10,25,47,0.6)">
+      <div class="phone-screen" style="background: #0A192F">
+        <div class="dynamic-island" style="background: #000"></div>
+        <div class="status-bar" style="color: #64B5F6">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-1 flex justify-between items-center">
+          <h3 class="text-lg font-bold" style="color: #CAF0F8">音乐库</h3>
+          <span class="text-xs px-3 py-1 rounded-full" style="background: #48BFE3; color: #0A192F; font-weight: 600">+ 导入</span>
+        </div>
+        <div class="px-5 pt-3">
+          <div class="rounded-xl px-3 py-2 text-xs" style="background: rgba(72,191,227,0.06); border: 1px solid rgba(72,191,227,0.1); color: #5C8AB5">🔍 搜索歌曲、艺术家、专辑...</div>
+        </div>
+        <div class="flex gap-0 px-5 pt-3 text-xs font-medium">
+          <span class="flex-1 text-center pb-2" style="color: #64B5F6; border-bottom: 2px solid #64B5F6">全部</span>
+          <span class="flex-1 text-center pb-2" style="color: #3D5A80; border-bottom: 2px solid transparent">艺术家</span>
+          <span class="flex-1 text-center pb-2" style="color: #3D5A80; border-bottom: 2px solid transparent">专辑</span>
+        </div>
+        <div class="px-5 pt-2" style="font-size: 12px">
+          <div class="song-row" style="border-bottom: 1px solid rgba(72,191,227,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #1E3A5F, #48BFE3)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #CAF0F8">Ocean Eyes</p>
+              <p class="text-[10px]" style="color: #5C8AB5">Billie Eilish</p>
+            </div>
+            <span style="color: #3D5A80; font-size: 10px">3:20</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid rgba(72,191,227,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #0A192F, #64B5F6)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #CAF0F8">Watermelon Sugar</p>
+              <p class="text-[10px]" style="color: #5C8AB5">Harry Styles</p>
+            </div>
+            <span style="color: #3D5A80; font-size: 10px">2:54</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid rgba(72,191,227,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #172B45, #48BFE3)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #CAF0F8">海阔天空</p>
+              <p class="text-[10px]" style="color: #5C8AB5">Beyond</p>
+            </div>
+            <span style="color: #3D5A80; font-size: 10px">5:25</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid rgba(72,191,227,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #1E3A5F, #0A192F)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #CAF0F8">夜曲</p>
+              <p class="text-[10px]" style="color: #5C8AB5">周杰伦</p>
+            </div>
+            <span style="color: #3D5A80; font-size: 10px">3:46</span>
+          </div>
+          <div class="song-row">
+            <div class="song-cover" style="background: linear-gradient(135deg, #48BFE3, #1E3A5F)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #CAF0F8">Diving Bell</p>
+              <p class="text-[10px]" style="color: #5C8AB5">Starset</p>
+            </div>
+            <span style="color: #3D5A80; font-size: 10px">4:18</span>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0">
+          <div class="mx-4 mb-1">
+            <div class="mini-player-bar" style="background: rgba(72,191,227,0.05); border: 1px solid rgba(72,191,227,0.1)">
+              <div class="w-8 h-8 rounded-md" style="background: linear-gradient(135deg, #1E3A5F, #48BFE3)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-medium truncate" style="color: #CAF0F8">Ocean Eyes</p>
+                <p class="text-[8px]" style="color: #5C8AB5">Billie Eilish</p>
+              </div>
+              <span style="color: #48BFE3; font-size: 18px">▶</span>
+            </div>
+          </div>
+          <div class="tab-bar-bottom" style="background: #0A192F; border-top: 1px solid rgba(72,191,227,0.06)">
+            <div class="text-center" style="color: #64B5F6"><div class="text-base">♫</div>音乐库</div>
+            <div class="text-center" style="color: #3D5A80"><div class="text-base">☰</div>歌单</div>
+            <div class="text-center" style="color: #3D5A80"><div class="text-base">⚙</div>设置</div>
+          </div>
+        </div>
+        <div class="home-indicator" style="background: rgba(100,181,246,0.3)"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<!-- THEME 3: 赛博霓虹 — 未来科技 (KEPT) -->
+<!-- ================================================================ -->
+<section id="t3" class="theme-section max-w-6xl mx-auto px-6 py-20" style="animation-delay: 0.2s">
+  <div class="mb-12">
+    <p class="text-xs uppercase tracking-[0.3em] text-fuchsia-400/60 mb-2">Theme 03 — Neon Cyberpunk</p>
+    <h2 class="text-4xl font-bold mb-3">赛博霓虹</h2>
+    <p class="text-gray-400 max-w-xl">深空暗色背景上，霓虹青与品红交错闪烁。
+      毛玻璃质感卡片漂浮于数字暗夜中，每一个像素都在呼吸赛博朋克的气息。</p>
+    <div class="flex gap-3 mt-6 items-center">
+      <div class="swatch" style="background: linear-gradient(135deg, #0D0221, #150050)"></div>
+      <div class="swatch" style="background: #00F5FF"></div>
+      <div class="swatch" style="background: #FF00A0"></div>
+      <div class="swatch" style="background: #BD00FF"></div>
+      <div class="swatch" style="background: #1A1A2E"></div>
+      <div class="ml-4 flex-1">
+        <div class="gradient-bar" style="background: linear-gradient(90deg, #00F5FF, #BD00FF, #FF00A0)"></div>
+        <p class="text-[10px] text-gray-500 mt-1">#00F5FF → #BD00FF → #FF00A0</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-8 overflow-x-auto pb-4">
+    <!-- Phone 1: Lyrics -->
+    <div class="phone" style="border-color: #1A1A3E; box-shadow: 0 20px 60px rgba(0,245,255,0.1), 0 0 30px rgba(189,0,255,0.05)">
+      <div class="phone-screen" style="background: linear-gradient(180deg, #0D0221 0%, #150050 50%, #0D0221 100%)">
+        <div class="dynamic-island" style="background: #000; box-shadow: 0 0 10px rgba(0,245,255,0.3)"></div>
+        <div class="status-bar" style="color: #00F5FF">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-2 flex justify-between items-center">
+          <span style="color: #8888CC; font-size: 18px">∨</span>
+          <div class="flex gap-2" style="color: #8888CC; font-size: 14px">
+            <span>◎</span><span>⊕</span><span>●</span>
+          </div>
+        </div>
+        <div class="px-5 pt-3 pb-2">
+          <h3 class="font-bold text-lg" style="color: #E0E0FF; text-shadow: 0 0 10px rgba(0,245,255,0.3)">Blinding Lights</h3>
+          <p class="text-xs" style="color: #8888CC">The Weeknd</p>
+        </div>
+        <div class="px-5 flex-1" style="font-size: 13px; line-height: 1.8">
+          <p class="lyric-line" style="color: rgba(224,224,255,0.15)">I look around and</p>
+          <p class="lyric-line" style="color: rgba(224,224,255,0.1); font-size: 11px">我环顾四周</p>
+          <p class="lyric-line font-bold text-xl mt-2" style="color: #00F5FF; font-size: 18px; line-height: 1.4; text-shadow: 0 0 20px rgba(0,245,255,0.5)">
+            I'm blinding by<br>the lights
+          </p>
+          <p class="lyric-line mt-1" style="color: rgba(189,0,255,0.6); font-size: 11px">我被这些灯光迷了眼</p>
+          <p class="lyric-line mt-3" style="color: rgba(224,224,255,0.2)">No I can't sleep until I feel your touch</p>
+          <p class="lyric-line" style="color: rgba(224,224,255,0.1); font-size: 11px">不 没有你的触碰我无法入眠</p>
+          <p class="lyric-line mt-3" style="color: rgba(224,224,255,0.1)">I said ooh I'm drowning in the night</p>
+        </div>
+        <div class="px-5 pb-2 flex justify-between items-center" style="color: #8888CC; font-size: 11px">
+          <div class="flex gap-5"><span>弹</span><span>词</span><span>译<sup style="font-size:7px">on</sup></span><span>☆</span></div>
+          <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, #00F5FF, #BD00FF); color: #0D0221; font-size: 16px; box-shadow: 0 0 20px rgba(0,245,255,0.4)">▶</div>
+        </div>
+        <div class="home-indicator" style="background: rgba(0,245,255,0.3)"></div>
+      </div>
+    </div>
+
+    <!-- Phone 2: Library -->
+    <div class="phone" style="border-color: #1A1A3E; box-shadow: 0 20px 60px rgba(189,0,255,0.1), 0 0 30px rgba(0,245,255,0.05)">
+      <div class="phone-screen" style="background: #0D0221">
+        <div class="dynamic-island" style="background: #000"></div>
+        <div class="status-bar" style="color: #00F5FF">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-1 flex justify-between items-center">
+          <h3 class="text-lg font-bold" style="color: #E0E0FF; text-shadow: 0 0 10px rgba(0,245,255,0.2)">音乐库</h3>
+          <span class="text-xs px-3 py-1 rounded-full" style="background: linear-gradient(135deg, #00F5FF, #BD00FF); color: #0D0221; font-weight: 600">+ 导入</span>
+        </div>
+        <div class="px-5 pt-3">
+          <div class="rounded-xl px-3 py-2 text-xs" style="background: rgba(0,245,255,0.05); border: 1px solid rgba(0,245,255,0.1); color: #8888CC">🔍 搜索歌曲、艺术家、专辑...</div>
+        </div>
+        <div class="flex gap-0 px-5 pt-3 text-xs font-medium">
+          <span class="flex-1 text-center pb-2" style="color: #00F5FF; border-bottom: 2px solid #00F5FF; text-shadow: 0 0 8px rgba(0,245,255,0.4)">全部</span>
+          <span class="flex-1 text-center pb-2" style="color: #5555AA; border-bottom: 2px solid transparent">艺术家</span>
+          <span class="flex-1 text-center pb-2" style="color: #5555AA; border-bottom: 2px solid transparent">专辑</span>
+        </div>
+        <div class="px-5 pt-2" style="font-size: 12px">
+          <div class="song-row" style="border-bottom: 1px solid rgba(0,245,255,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #00F5FF, #0088AA); box-shadow: 0 0 10px rgba(0,245,255,0.2)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #E0E0FF">Blinding Lights</p>
+              <p class="text-[10px]" style="color: #6666AA">The Weeknd</p>
+            </div>
+            <span style="color: #5555AA; font-size: 10px">3:20</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid rgba(0,245,255,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #BD00FF, #6600AA); box-shadow: 0 0 10px rgba(189,0,255,0.2)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #E0E0FF">Midnight City</p>
+              <p class="text-[10px]" style="color: #6666AA">M83</p>
+            </div>
+            <span style="color: #5555AA; font-size: 10px">4:03</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid rgba(0,245,255,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #FF00A0, #AA0066); box-shadow: 0 0 10px rgba(255,0,160,0.2)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #E0E0FF">Hyperballad</p>
+              <p class="text-[10px]" style="color: #6666AA">Björk</p>
+            </div>
+            <span style="color: #5555AA; font-size: 10px">5:21</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid rgba(0,245,255,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #0044FF, #00F5FF); box-shadow: 0 0 10px rgba(0,68,255,0.2)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #E0E0FF">Digital Love</p>
+              <p class="text-[10px]" style="color: #6666AA">Daft Punk</p>
+            </div>
+            <span style="color: #5555AA; font-size: 10px">4:58</span>
+          </div>
+          <div class="song-row">
+            <div class="song-cover" style="background: linear-gradient(135deg, #4400CC, #BD00FF); box-shadow: 0 0 10px rgba(68,0,204,0.2)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #E0E0FF">Technologic</p>
+              <p class="text-[10px]" style="color: #6666AA">Daft Punk</p>
+            </div>
+            <span style="color: #5555AA; font-size: 10px">4:44</span>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0">
+          <div class="mx-4 mb-1">
+            <div class="mini-player-bar" style="background: rgba(0,245,255,0.04); border: 1px solid rgba(0,245,255,0.1); backdrop-filter: blur(10px)">
+              <div class="w-8 h-8 rounded-md" style="background: linear-gradient(135deg, #00F5FF, #0088AA)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-medium truncate" style="color: #E0E0FF">Blinding Lights</p>
+                <p class="text-[8px]" style="color: #6666AA">The Weeknd</p>
+              </div>
+              <span style="color: #00F5FF; font-size: 18px; text-shadow: 0 0 10px rgba(0,245,255,0.5)">▶</span>
+            </div>
+          </div>
+          <div class="tab-bar-bottom" style="background: rgba(13,2,33,0.95); border-top: 1px solid rgba(0,245,255,0.06)">
+            <div class="text-center" style="color: #00F5FF; text-shadow: 0 0 8px rgba(0,245,255,0.3)"><div class="text-base">♫</div>音乐库</div>
+            <div class="text-center" style="color: #5555AA"><div class="text-base">☰</div>歌单</div>
+            <div class="text-center" style="color: #5555AA"><div class="text-base">⚙</div>设置</div>
+          </div>
+        </div>
+        <div class="home-indicator" style="background: rgba(0,245,255,0.3)"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<!-- THEME 4: 冰川幽蓝 — 北欧冰川 (NEW) -->
+<!-- ================================================================ -->
+<section id="t4" class="theme-section max-w-6xl mx-auto px-6 py-20" style="animation-delay: 0.3s">
+  <div class="mb-12">
+    <p class="text-xs uppercase tracking-[0.3em] text-blue-400/60 mb-2">Theme 04 — Glacier Blue</p>
+    <h2 class="text-4xl font-bold mb-3">冰川幽蓝</h2>
+    <p class="text-gray-400 max-w-xl">北欧冰川般的纯净蓝白色调——从近乎透明的霜白渐变到清澈的天蓝。
+      极致克制的配色，只用蓝色的深浅变化构建全部视觉层次。纯粹、冷冽、无杂质。</p>
+    <div class="flex gap-3 mt-6 items-center">
+      <div class="swatch" style="background: linear-gradient(135deg, #E3F2FD, #42A5F5)"></div>
+      <div class="swatch" style="background: #1E88E5"></div>
+      <div class="swatch" style="background: #F5F9FF"></div>
+      <div class="swatch" style="background: #82B1FF"></div>
+      <div class="swatch" style="background: #0D47A1"></div>
+      <div class="ml-4 flex-1">
+        <div class="gradient-bar" style="background: linear-gradient(90deg, #F5F9FF, #BBDEFB, #64B5F6, #42A5F5, #1E88E5)"></div>
+        <p class="text-[10px] text-gray-500 mt-1">#F5F9FF → #BBDEFB → #64B5F6 → #42A5F5 → #1E88E5</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-8 overflow-x-auto pb-4">
+    <!-- Phone 1: Lyrics -->
+    <div class="phone" style="box-shadow: 0 20px 60px rgba(30,136,229,0.12), 0 0 30px rgba(66,165,245,0.05)">
+      <div class="phone-screen" style="background: linear-gradient(180deg, #F5F9FF 0%, #BBDEFB 30%, #90CAF9 60%, #42A5F5 100%)">
+        <div class="dynamic-island"></div>
+        <div class="status-bar" style="color: #1565C0">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-2 flex justify-between items-center">
+          <span style="color: #1976D2; font-size: 18px">∨</span>
+          <div class="flex gap-2" style="color: #1976D2; font-size: 14px">
+            <span>◎</span><span>⊕</span><span>●</span>
+          </div>
+        </div>
+        <div class="px-5 pt-3 pb-2">
+          <h3 class="font-bold text-lg" style="color: #0D47A1">Snowman</h3>
+          <p class="text-xs" style="color: #1565C0">Sia</p>
+        </div>
+        <div class="px-5 flex-1" style="font-size: 13px; line-height: 1.8">
+          <p class="lyric-line" style="color: rgba(13,71,161,0.25)">Don't cry snowman not in front of me</p>
+          <p class="lyric-line" style="color: rgba(13,71,161,0.18); font-size: 11px">别哭 雪人 不要在我面前</p>
+          <p class="lyric-line font-bold text-xl mt-2" style="color: #0D47A1; font-size: 18px; line-height: 1.4">
+            Let me fly you to<br>the moon and back
+          </p>
+          <p class="lyric-line mt-1" style="color: rgba(13,71,161,0.45); font-size: 11px">让我带你飞向月球再返回</p>
+          <p class="lyric-line mt-3" style="color: rgba(13,71,161,0.3)">I don't want you melting away</p>
+          <p class="lyric-line" style="color: rgba(13,71,161,0.2); font-size: 11px">我不想你融化消失</p>
+          <p class="lyric-line mt-3" style="color: rgba(13,71,161,0.15)">Don't cry snowman don't you fear the sun</p>
+          <p class="lyric-line" style="color: rgba(13,71,161,0.1); font-size: 11px">别哭 雪人 不要害怕太阳</p>
+        </div>
+        <div class="px-5 pb-2 flex justify-between items-center" style="color: #1976D2; font-size: 11px">
+          <div class="flex gap-5"><span>弹</span><span>词</span><span>译<sup style="font-size:7px">on</sup></span><span>☆</span></div>
+          <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: #1E88E5; color: white; font-size: 16px">▶</div>
+        </div>
+        <div class="home-indicator" style="background: rgba(13,71,161,0.2)"></div>
+      </div>
+    </div>
+
+    <!-- Phone 2: Library -->
+    <div class="phone" style="box-shadow: 0 20px 60px rgba(30,136,229,0.08)">
+      <div class="phone-screen" style="background: #F5F9FF">
+        <div class="dynamic-island"></div>
+        <div class="status-bar" style="color: #5C6BC0">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-1 flex justify-between items-center">
+          <h3 class="text-lg font-bold" style="color: #0D47A1">音乐库</h3>
+          <span class="text-xs px-3 py-1 rounded-full" style="background: #1E88E5; color: white">+ 导入</span>
+        </div>
+        <div class="px-5 pt-3">
+          <div class="rounded-xl px-3 py-2 text-xs" style="background: rgba(30,136,229,0.06); color: #7986CB">🔍 搜索歌曲、艺术家、专辑...</div>
+        </div>
+        <div class="flex gap-0 px-5 pt-3 text-xs font-medium">
+          <span class="flex-1 text-center pb-2" style="color: #1E88E5; border-bottom: 2px solid #1E88E5">全部</span>
+          <span class="flex-1 text-center pb-2" style="color: #90A4AE; border-bottom: 2px solid transparent">艺术家</span>
+          <span class="flex-1 text-center pb-2" style="color: #90A4AE; border-bottom: 2px solid transparent">专辑</span>
+        </div>
+        <div class="px-5 pt-2" style="font-size: 12px">
+          <div class="song-row" style="border-bottom: 1px solid #E3F2FD">
+            <div class="song-cover" style="background: linear-gradient(135deg, #BBDEFB, #42A5F5)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #0D47A1">Snowman</p>
+              <p class="text-[10px]" style="color: #7986CB">Sia</p>
+            </div>
+            <span style="color: #B0BEC5; font-size: 10px">3:12</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid #E3F2FD">
+            <div class="song-cover" style="background: linear-gradient(135deg, #90CAF9, #1E88E5)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #0D47A1">冬眠</p>
+              <p class="text-[10px]" style="color: #7986CB">司南</p>
+            </div>
+            <span style="color: #B0BEC5; font-size: 10px">4:35</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid #E3F2FD">
+            <div class="song-cover" style="background: linear-gradient(135deg, #E3F2FD, #64B5F6)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #0D47A1">A Thousand Years</p>
+              <p class="text-[10px]" style="color: #7986CB">Christina Perri</p>
+            </div>
+            <span style="color: #B0BEC5; font-size: 10px">4:45</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid #E3F2FD">
+            <div class="song-cover" style="background: linear-gradient(135deg, #42A5F5, #0D47A1)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #0D47A1">雪落下的声音</p>
+              <p class="text-[10px]" style="color: #7986CB">陆虎</p>
+            </div>
+            <span style="color: #B0BEC5; font-size: 10px">4:01</span>
+          </div>
+          <div class="song-row">
+            <div class="song-cover" style="background: linear-gradient(135deg, #64B5F6, #1976D2)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #0D47A1">River Flows in You</p>
+              <p class="text-[10px]" style="color: #7986CB">Yiruma</p>
+            </div>
+            <span style="color: #B0BEC5; font-size: 10px">3:42</span>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0">
+          <div class="mx-4 mb-1">
+            <div class="mini-player-bar" style="background: rgba(30,136,229,0.06); border: 1px solid rgba(30,136,229,0.1)">
+              <div class="w-8 h-8 rounded-md" style="background: linear-gradient(135deg, #BBDEFB, #42A5F5)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-medium truncate" style="color: #0D47A1">Snowman</p>
+                <p class="text-[8px]" style="color: #7986CB">Sia</p>
+              </div>
+              <span style="color: #1E88E5; font-size: 18px">▶</span>
+            </div>
+          </div>
+          <div class="tab-bar-bottom" style="background: #F5F9FF; border-top: 1px solid #E3F2FD">
+            <div class="text-center" style="color: #1E88E5"><div class="text-base">♫</div>音乐库</div>
+            <div class="text-center" style="color: #B0BEC5"><div class="text-base">☰</div>歌单</div>
+            <div class="text-center" style="color: #B0BEC5"><div class="text-base">⚙</div>设置</div>
+          </div>
+        </div>
+        <div class="home-indicator" style="background: rgba(0,0,0,0.1)"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<!-- THEME 5: 极光幻境 — 极光梦幻 (KEPT) -->
+<!-- ================================================================ -->
+<section id="t5" class="theme-section max-w-6xl mx-auto px-6 py-20" style="animation-delay: 0.4s">
+  <div class="mb-12">
+    <p class="text-xs uppercase tracking-[0.3em] text-violet-400/60 mb-2">Theme 05 — Aurora Dreamscape</p>
+    <h2 class="text-4xl font-bold mb-3">极光幻境</h2>
+    <p class="text-gray-400 max-w-xl">深邃夜空中流动的极光色彩——从靛蓝到紫罗兰的渐变为主调，
+      偶尔闪过翡翠绿的极光丝带。沉浸式的深色体验，优雅而神秘。</p>
+    <div class="flex gap-3 mt-6 items-center">
+      <div class="swatch" style="background: linear-gradient(135deg, #4776E6, #8E54E9)"></div>
+      <div class="swatch" style="background: #7C4DFF"></div>
+      <div class="swatch" style="background: #0F0C29"></div>
+      <div class="swatch" style="background: #69F0AE"></div>
+      <div class="swatch" style="background: #E8EAF6"></div>
+      <div class="ml-4 flex-1">
+        <div class="gradient-bar" style="background: linear-gradient(90deg, #4776E6, #7C4DFF, #8E54E9, #69F0AE)"></div>
+        <p class="text-[10px] text-gray-500 mt-1">#4776E6 → #7C4DFF → #8E54E9 · accent #69F0AE</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-8 overflow-x-auto pb-4">
+    <!-- Phone 1: Lyrics -->
+    <div class="phone" style="border-color: #2A1F4E; box-shadow: 0 20px 60px rgba(124,77,255,0.15), 0 0 40px rgba(142,84,233,0.05)">
+      <div class="phone-screen" style="background: linear-gradient(180deg, #0F0C29 0%, #1A1145 30%, #302B63 60%, #24243E 100%)">
+        <div class="absolute top-0 left-0 right-0 h-64 opacity-20" style="background: radial-gradient(ellipse at 70% 20%, #69F0AE 0%, transparent 50%), radial-gradient(ellipse at 30% 60%, #7C4DFF 0%, transparent 50%)"></div>
+        <div class="dynamic-island" style="background: #000; box-shadow: 0 0 8px rgba(124,77,255,0.3)"></div>
+        <div class="status-bar" style="color: #9FA8DA">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-2 flex justify-between items-center relative z-10">
+          <span style="color: #7C7CCF; font-size: 18px">∨</span>
+          <div class="flex gap-2" style="color: #7C7CCF; font-size: 14px">
+            <span>◎</span><span>⊕</span><span>●</span>
+          </div>
+        </div>
+        <div class="px-5 pt-3 pb-2 relative z-10">
+          <h3 class="font-bold text-lg" style="color: #E8EAF6">Starboy</h3>
+          <p class="text-xs" style="color: #9FA8DA">The Weeknd ft. Daft Punk</p>
+        </div>
+        <div class="px-5 flex-1 relative z-10" style="font-size: 13px; line-height: 1.8">
+          <p class="lyric-line" style="color: rgba(232,234,246,0.15)">Look what you've done</p>
+          <p class="lyric-line" style="color: rgba(232,234,246,0.1); font-size: 11px">看看你做了什么</p>
+          <p class="lyric-line font-bold text-xl mt-2" style="color: #B388FF; font-size: 18px; line-height: 1.4; text-shadow: 0 0 20px rgba(179,136,255,0.4)">
+            I'm a starboy
+          </p>
+          <p class="lyric-line mt-1" style="color: rgba(105,240,174,0.5); font-size: 11px">我是星之子</p>
+          <p class="lyric-line mt-3" style="color: rgba(232,234,246,0.2)">Every day a nigga try to test me, ah</p>
+          <p class="lyric-line" style="color: rgba(232,234,246,0.1); font-size: 11px">每天都有人试图考验我</p>
+          <p class="lyric-line mt-3" style="color: rgba(232,234,246,0.1)">House so empty need a centerpiece</p>
+        </div>
+        <div class="px-5 pb-2 flex justify-between items-center relative z-10" style="color: #7C7CCF; font-size: 11px">
+          <div class="flex gap-5"><span>弹</span><span>词</span><span>译<sup style="font-size:7px">on</sup></span><span>☆</span></div>
+          <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, #7C4DFF, #B388FF); color: white; font-size: 16px; box-shadow: 0 0 20px rgba(124,77,255,0.4)">▶</div>
+        </div>
+        <div class="home-indicator" style="background: rgba(179,136,255,0.3)"></div>
+      </div>
+    </div>
+
+    <!-- Phone 2: Player -->
+    <div class="phone" style="border-color: #2A1F4E; box-shadow: 0 20px 60px rgba(124,77,255,0.15)">
+      <div class="phone-screen" style="background: linear-gradient(180deg, #0F0C29 0%, #1A1145 40%, #302B63 100%)">
+        <div class="absolute top-0 left-0 right-0 h-full opacity-15" style="background: radial-gradient(ellipse at 50% 30%, #69F0AE 0%, transparent 40%), radial-gradient(ellipse at 80% 70%, #7C4DFF 0%, transparent 40%)"></div>
+        <div class="dynamic-island" style="background: #000"></div>
+        <div class="status-bar" style="color: #9FA8DA">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-1 relative z-10">
+          <span style="color: #7C7CCF; font-size: 18px">∨</span>
+        </div>
+        <div class="flex justify-center pt-4 pb-4 relative z-10">
+          <div class="w-48 h-48 rounded-2xl" style="background: linear-gradient(135deg, #4776E6 0%, #7C4DFF 40%, #8E54E9 70%, #69F0AE 100%); box-shadow: 0 10px 40px rgba(124,77,255,0.4)">
+            <div class="w-full h-full flex items-center justify-center text-4xl" style="color: rgba(255,255,255,0.4)">♫</div>
+          </div>
+        </div>
+        <div class="text-center px-5 relative z-10">
+          <h3 class="font-bold text-base" style="color: #E8EAF6">Starboy</h3>
+          <p class="text-xs mt-1" style="color: #9FA8DA">The Weeknd ft. Daft Punk</p>
+        </div>
+        <div class="px-8 pt-5 relative z-10">
+          <div class="w-full h-1 rounded-full" style="background: rgba(124,77,255,0.2)">
+            <div class="h-full rounded-full" style="width: 55%; background: linear-gradient(90deg, #7C4DFF, #B388FF)"></div>
+          </div>
+          <div class="flex justify-between mt-1" style="font-size: 9px; color: #9FA8DA">
+            <span>2:11</span><span>3:50</span>
+          </div>
+        </div>
+        <div class="flex justify-center items-center gap-8 pt-4 relative z-10" style="color: #C5CAE9">
+          <span class="text-sm">⇄</span>
+          <span class="text-2xl">⏮</span>
+          <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background: linear-gradient(135deg, #7C4DFF, #B388FF); color: white; font-size: 22px; box-shadow: 0 0 25px rgba(124,77,255,0.5)">▶</div>
+          <span class="text-2xl">⏭</span>
+          <span class="text-sm">↻</span>
+        </div>
+        <div class="flex justify-center gap-10 pt-6 relative z-10" style="font-size: 10px; color: #7C7CCF">
+          <span>🕐</span><span>词</span><span>1.0x</span><span>☰</span>
+        </div>
+        <div class="home-indicator" style="background: rgba(179,136,255,0.3)"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ -->
+<!-- THEME 6: 夜幕鎏金 — Midnight Gold -->
+<!-- ================================================================ -->
+<section id="t6" class="theme-section max-w-6xl mx-auto px-6 py-20" style="animation-delay: 0.5s">
+  <div class="mb-12">
+    <p class="text-xs uppercase tracking-[0.3em] text-yellow-500/60 mb-2">Theme 06 — Midnight Gold</p>
+    <h2 class="text-4xl font-bold mb-3">夜幕鎏金</h2>
+    <p class="text-gray-400 max-w-xl">纯粹的深黑为底，鎏金色点缀其间——如夜色中的烛光，
+      如黑丝绒上的金线。极致克制的用色，只在关键处以金色破局，奢华而不张扬。</p>
+    <div class="flex gap-3 mt-6 items-center">
+      <div class="swatch" style="background: linear-gradient(135deg, #1A1A1A, #0A0A0A)"></div>
+      <div class="swatch" style="background: #D4AF37"></div>
+      <div class="swatch" style="background: #0A0A0A"></div>
+      <div class="swatch" style="background: #FFD700"></div>
+      <div class="swatch" style="background: #E8DCC8"></div>
+      <div class="ml-4 flex-1">
+        <div class="gradient-bar" style="background: linear-gradient(90deg, #0A0A0A, #1A1A1A, #D4AF37, #FFD700, #FFF0C0)"></div>
+        <p class="text-[10px] text-gray-500 mt-1">#0A0A0A base · #D4AF37 gold · #FFD700 highlight</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-8 overflow-x-auto pb-4">
+    <!-- Phone 1: Lyrics -->
+    <div class="phone" style="border-color: #2A2520; box-shadow: 0 20px 60px rgba(212,175,55,0.08), 0 0 30px rgba(0,0,0,0.6)">
+      <div class="phone-screen" style="background: linear-gradient(180deg, #0A0A0A 0%, #0F0F0D 20%, #141410 40%, #1A1815 60%, #1E1C16 80%, #22201A 100%)">
+        <div class="absolute top-0 left-0 right-0 h-72 opacity-10" style="background: radial-gradient(ellipse at 50% 35%, rgba(212,175,55,0.2) 0%, transparent 60%)"></div>
+        <div class="dynamic-island" style="background: #000; box-shadow: 0 0 6px rgba(212,175,55,0.15)"></div>
+        <div class="status-bar" style="color: #D4AF37">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-2 flex justify-between items-center relative z-10">
+          <span style="color: #A08930; font-size: 18px">∨</span>
+          <div class="flex gap-2" style="color: #A08930; font-size: 14px">
+            <span>◎</span><span>⊕</span><span>●</span>
+          </div>
+        </div>
+        <div class="px-5 pt-3 pb-2 relative z-10">
+          <h3 class="font-bold text-lg" style="color: #E8DCC8">Skyfall</h3>
+          <p class="text-xs" style="color: #A08930">Adele</p>
+        </div>
+        <div class="px-5 flex-1 relative z-10" style="font-size: 13px; line-height: 1.8">
+          <p class="lyric-line" style="color: rgba(232,220,200,0.15)">This is the end</p>
+          <p class="lyric-line" style="color: rgba(232,220,200,0.1); font-size: 11px">这就是终结</p>
+          <p class="lyric-line font-bold text-xl mt-2" style="color: #D4AF37; font-size: 18px; line-height: 1.4; text-shadow: 0 0 15px rgba(212,175,55,0.3)">
+            Let the sky fall<br>when it crumbles
+          </p>
+          <p class="lyric-line mt-1" style="color: rgba(212,175,55,0.45); font-size: 11px">让天塌下来吧 当它崩碎之时</p>
+          <p class="lyric-line mt-3" style="color: rgba(232,220,200,0.2)">We will stand tall</p>
+          <p class="lyric-line" style="color: rgba(232,220,200,0.12); font-size: 11px">我们依然傲立</p>
+          <p class="lyric-line mt-3" style="color: rgba(232,220,200,0.1)">Face it all together</p>
+          <p class="lyric-line" style="color: rgba(232,220,200,0.06); font-size: 11px">一起面对这一切</p>
+        </div>
+        <div class="px-5 pb-2 flex justify-between items-center relative z-10" style="color: #A08930; font-size: 11px">
+          <div class="flex gap-5"><span>弹</span><span>词</span><span>译<sup style="font-size:7px">on</sup></span><span>☆</span></div>
+          <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background: #D4AF37; color: #0A0A0A; font-size: 16px; box-shadow: 0 0 18px rgba(212,175,55,0.35)">▶</div>
+        </div>
+        <div class="home-indicator" style="background: rgba(212,175,55,0.25)"></div>
+      </div>
+    </div>
+
+    <!-- Phone 2: Library -->
+    <div class="phone" style="border-color: #2A2520; box-shadow: 0 20px 60px rgba(0,0,0,0.6)">
+      <div class="phone-screen" style="background: #0A0A0A">
+        <div class="dynamic-island" style="background: #000"></div>
+        <div class="status-bar" style="color: #D4AF37">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-1 flex justify-between items-center">
+          <h3 class="text-lg font-bold" style="color: #E8DCC8">音乐库</h3>
+          <span class="text-xs px-3 py-1 rounded-full font-semibold" style="background: #D4AF37; color: #0A0A0A">+ 导入</span>
+        </div>
+        <div class="px-5 pt-3">
+          <div class="rounded-xl px-3 py-2 text-xs" style="background: rgba(212,175,55,0.04); border: 1px solid rgba(212,175,55,0.08); color: #706840">🔍 搜索歌曲、艺术家、专辑...</div>
+        </div>
+        <div class="flex gap-0 px-5 pt-3 text-xs font-medium">
+          <span class="flex-1 text-center pb-2" style="color: #D4AF37; border-bottom: 2px solid #D4AF37; text-shadow: 0 0 6px rgba(212,175,55,0.3)">全部</span>
+          <span class="flex-1 text-center pb-2" style="color: #4A4530; border-bottom: 2px solid transparent">艺术家</span>
+          <span class="flex-1 text-center pb-2" style="color: #4A4530; border-bottom: 2px solid transparent">专辑</span>
+        </div>
+        <div class="px-5 pt-2" style="font-size: 12px">
+          <div class="song-row" style="border-bottom: 1px solid rgba(212,175,55,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #D4AF37, #8B7420); box-shadow: 0 0 8px rgba(212,175,55,0.15)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #E8DCC8">Skyfall</p>
+              <p class="text-[10px]" style="color: #706840">Adele</p>
+            </div>
+            <span style="color: #4A4530; font-size: 10px">4:46</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid rgba(212,175,55,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #1A1A1A, #D4AF37); box-shadow: 0 0 8px rgba(212,175,55,0.1)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #E8DCC8">Bohemian Rhapsody</p>
+              <p class="text-[10px]" style="color: #706840">Queen</p>
+            </div>
+            <span style="color: #4A4530; font-size: 10px">5:55</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid rgba(212,175,55,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #A08930, #0A0A0A); box-shadow: 0 0 8px rgba(212,175,55,0.1)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #E8DCC8">夜曲</p>
+              <p class="text-[10px]" style="color: #706840">周杰伦</p>
+            </div>
+            <span style="color: #4A4530; font-size: 10px">3:46</span>
+          </div>
+          <div class="song-row" style="border-bottom: 1px solid rgba(212,175,55,0.06)">
+            <div class="song-cover" style="background: linear-gradient(135deg, #FFD700, #A08930); box-shadow: 0 0 8px rgba(255,215,0,0.1)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #E8DCC8">Hotel California</p>
+              <p class="text-[10px]" style="color: #706840">Eagles</p>
+            </div>
+            <span style="color: #4A4530; font-size: 10px">6:30</span>
+          </div>
+          <div class="song-row">
+            <div class="song-cover" style="background: linear-gradient(135deg, #D4AF37, #22201A); box-shadow: 0 0 8px rgba(212,175,55,0.1)"></div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium truncate" style="color: #E8DCC8">Feeling Good</p>
+              <p class="text-[10px]" style="color: #706840">Michael Bublé</p>
+            </div>
+            <span style="color: #4A4530; font-size: 10px">3:29</span>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0">
+          <div class="mx-4 mb-1">
+            <div class="mini-player-bar" style="background: rgba(212,175,55,0.04); border: 1px solid rgba(212,175,55,0.08)">
+              <div class="w-8 h-8 rounded-md" style="background: linear-gradient(135deg, #D4AF37, #8B7420)"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-medium truncate" style="color: #E8DCC8">Skyfall</p>
+                <p class="text-[8px]" style="color: #706840">Adele</p>
+              </div>
+              <span style="color: #D4AF37; font-size: 18px; text-shadow: 0 0 10px rgba(212,175,55,0.4)">▶</span>
+            </div>
+          </div>
+          <div class="tab-bar-bottom" style="background: #0A0A0A; border-top: 1px solid rgba(212,175,55,0.06)">
+            <div class="text-center" style="color: #D4AF37; text-shadow: 0 0 6px rgba(212,175,55,0.2)"><div class="text-base">♫</div>音乐库</div>
+            <div class="text-center" style="color: #4A4530"><div class="text-base">☰</div>歌单</div>
+            <div class="text-center" style="color: #4A4530"><div class="text-base">⚙</div>设置</div>
+          </div>
+        </div>
+        <div class="home-indicator" style="background: rgba(212,175,55,0.25)"></div>
+      </div>
+    </div>
+
+    <!-- Phone 3: Player -->
+    <div class="phone" style="border-color: #2A2520; box-shadow: 0 20px 60px rgba(212,175,55,0.06), 0 0 30px rgba(0,0,0,0.6)">
+      <div class="phone-screen" style="background: linear-gradient(180deg, #0A0A0A 0%, #0F0E0A 25%, #16140E 50%, #1E1C16 75%, #22201A 100%)">
+        <div class="absolute top-0 left-0 right-0 h-full opacity-10" style="background: radial-gradient(ellipse at 50% 30%, rgba(212,175,55,0.25) 0%, transparent 50%)"></div>
+        <div class="dynamic-island" style="background: #000"></div>
+        <div class="status-bar" style="color: #D4AF37">
+          <span>16:15</span><span>●●●● 5G ■</span>
+        </div>
+        <div class="px-5 pt-1 relative z-10">
+          <span style="color: #A08930; font-size: 18px">∨</span>
+        </div>
+        <div class="flex justify-center pt-4 pb-4 relative z-10">
+          <div class="w-48 h-48 rounded-2xl" style="background: linear-gradient(135deg, #1A1A1A 0%, #22201A 30%, #D4AF37 70%, #8B7420 100%); box-shadow: 0 10px 40px rgba(212,175,55,0.25)">
+            <div class="w-full h-full flex items-center justify-center text-4xl" style="color: rgba(212,175,55,0.35)">♫</div>
+          </div>
+        </div>
+        <div class="text-center px-5 relative z-10">
+          <h3 class="font-bold text-base" style="color: #E8DCC8">Skyfall</h3>
+          <p class="text-xs mt-1" style="color: #A08930">Adele</p>
+        </div>
+        <div class="px-8 pt-5 relative z-10">
+          <div class="w-full h-1 rounded-full" style="background: rgba(212,175,55,0.12)">
+            <div class="h-full rounded-full" style="width: 55%; background: linear-gradient(90deg, #8B7420, #D4AF37)"></div>
+          </div>
+          <div class="flex justify-between mt-1" style="font-size: 9px; color: #A08930">
+            <span>2:36</span><span>4:46</span>
+          </div>
+        </div>
+        <div class="flex justify-center items-center gap-8 pt-4 relative z-10" style="color: #E8DCC8">
+          <span class="text-sm">⇄</span>
+          <span class="text-2xl">⏮</span>
+          <div class="w-14 h-14 rounded-full flex items-center justify-center" style="background: #D4AF37; color: #0A0A0A; font-size: 22px; box-shadow: 0 0 25px rgba(212,175,55,0.4)">▶</div>
+          <span class="text-2xl">⏭</span>
+          <span class="text-sm">↻</span>
+        </div>
+        <div class="flex justify-center gap-10 pt-6 relative z-10" style="font-size: 10px; color: #A08930">
+          <span>🕐</span><span>词</span><span>1.0x</span><span>☰</span>
+        </div>
+        <div class="home-indicator" style="background: rgba(212,175,55,0.25)"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COLOR TOKEN SUMMARY ============ -->
+<section class="max-w-6xl mx-auto px-6 py-20 border-t border-white/5">
+  <h2 class="text-3xl font-bold mb-8">色板 Token 对照表</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm text-left" style="min-width: 900px">
+      <thead class="text-xs text-gray-500 uppercase border-b border-white/10">
+        <tr>
+          <th class="py-3 pr-4">Token</th>
+          <th class="py-3 px-2 text-center">青云薄荷</th>
+          <th class="py-3 px-2 text-center">深海鲸歌</th>
+          <th class="py-3 px-2 text-center">赛博霓虹</th>
+          <th class="py-3 px-2 text-center">冰川幽蓝</th>
+          <th class="py-3 px-2 text-center">极光幻境</th>
+          <th class="py-3 px-2 text-center">夜幕鎏金</th>
+        </tr>
+      </thead>
+      <tbody class="text-gray-300">
+        <tr class="border-b border-white/5">
+          <td class="py-2 pr-4 text-gray-400">模式</td>
+          <td class="py-2 px-2 text-center text-emerald-300">Light</td>
+          <td class="py-2 px-2 text-center text-sky-300">Dark</td>
+          <td class="py-2 px-2 text-center text-fuchsia-300">Dark</td>
+          <td class="py-2 px-2 text-center text-blue-300">Light</td>
+          <td class="py-2 px-2 text-center text-violet-300">Dark</td>
+          <td class="py-2 px-2 text-center text-yellow-300">Dark</td>
+        </tr>
+        <tr class="border-b border-white/5">
+          <td class="py-2 pr-4 text-gray-400">gradientStart</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#B2DFDB"></span> #B2DFDB</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#0A192F"></span> #0A192F</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#00F5FF"></span> #00F5FF</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#BBDEFB"></span> #BBDEFB</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#4776E6"></span> #4776E6</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#0A0A0A"></span> #0A0A0A</td>
+        </tr>
+        <tr class="border-b border-white/5">
+          <td class="py-2 pr-4 text-gray-400">gradientEnd</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#4DB6AC"></span> #4DB6AC</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#1E3A5F"></span> #1E3A5F</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#FF00A0"></span> #FF00A0</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#1E88E5"></span> #1E88E5</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#8E54E9"></span> #8E54E9</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#22201A"></span> #22201A</td>
+        </tr>
+        <tr class="border-b border-white/5">
+          <td class="py-2 pr-4 text-gray-400">primary</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#26A69A"></span> #26A69A</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#64B5F6"></span> #64B5F6</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#00F5FF"></span> #00F5FF</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#1E88E5"></span> #1E88E5</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#7C4DFF"></span> #7C4DFF</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#D4AF37"></span> #D4AF37</td>
+        </tr>
+        <tr class="border-b border-white/5">
+          <td class="py-2 pr-4 text-gray-400">background</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded border border-white/20" style="background:#F0FDFA"></span> #F0FDFA</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#0A192F"></span> #0A192F</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#0D0221"></span> #0D0221</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded border border-white/20" style="background:#F5F9FF"></span> #F5F9FF</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#0F0C29"></span> #0F0C29</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#0A0A0A"></span> #0A0A0A</td>
+        </tr>
+        <tr class="border-b border-white/5">
+          <td class="py-2 pr-4 text-gray-400">textPrimary</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#004D40"></span> #004D40</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#CAF0F8"></span> #CAF0F8</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#E0E0FF"></span> #E0E0FF</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#0D47A1"></span> #0D47A1</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#E8EAF6"></span> #E8EAF6</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#E8DCC8"></span> #E8DCC8</td>
+        </tr>
+        <tr class="border-b border-white/5">
+          <td class="py-2 pr-4 text-gray-400">accent</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#4DB6AC"></span> #4DB6AC</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#48BFE3"></span> #48BFE3</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#BD00FF"></span> #BD00FF</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#82B1FF"></span> #82B1FF</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#69F0AE"></span> #69F0AE</td>
+          <td class="py-2 px-2 text-center"><span class="inline-block w-4 h-4 rounded" style="background:#D4AF37"></span> #D4AF37</td>
+        </tr>
+        <tr class="border-b border-white/5">
+          <td class="py-2 pr-4 text-gray-400">cardStyle</td>
+          <td class="py-2 px-2 text-center text-gray-400">minimal</td>
+          <td class="py-2 px-2 text-center text-gray-400">glassmorphism</td>
+          <td class="py-2 px-2 text-center text-gray-400">glassmorphism</td>
+          <td class="py-2 px-2 text-center text-gray-400">frosted</td>
+          <td class="py-2 px-2 text-center text-gray-400">glassmorphism</td>
+          <td class="py-2 px-2 text-center text-gray-400">minimal</td>
+        </tr>
+        <tr>
+          <td class="py-2 pr-4 text-gray-400">fontStyle</td>
+          <td class="py-2 px-2 text-center text-gray-400">system</td>
+          <td class="py-2 px-2 text-center text-gray-400">system</td>
+          <td class="py-2 px-2 text-center text-gray-400">monospaced</td>
+          <td class="py-2 px-2 text-center text-gray-400">system</td>
+          <td class="py-2 px-2 text-center text-gray-400">system</td>
+          <td class="py-2 px-2 text-center text-gray-400">rounded</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============ DESIGN NOTES ============ -->
+<section class="max-w-6xl mx-auto px-6 py-16 border-t border-white/5">
+  <h2 class="text-2xl font-bold mb-6">设计说明</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm text-gray-400">
+    <div>
+      <h3 class="text-white font-semibold mb-2">渐变策略</h3>
+      <p>每套主题的歌词页使用 180° 纵向渐变，从浅到深自然过渡。
+        列表页以纯色背景为主，渐变仅用于封面和按钮等小面积元素，避免视觉疲劳。
+        播放器使用 135° 对角渐变增加层次感。</p>
+    </div>
+    <div>
+      <h3 class="text-white font-semibold mb-2">Light / Dark 平衡</h3>
+      <p>6 套主题中 2 套浅色模式为主（薄荷、冰川），4 套深色模式为主（深海、赛博、极光、鎏金）。
+        每套均提供 Light + Dark 双色板。深色主题占多数，符合当下用户对 Dark Mode 的偏好。</p>
+    </div>
+    <div>
+      <h3 class="text-white font-semibold mb-2">色彩频谱覆盖</h3>
+      <p>6 套主题覆盖了完整色彩频谱——绿色系（薄荷）、深蓝系（深海）、
+        霓虹多彩系（赛博）、纯蓝系（冰川）、紫色系（极光）、红色系（绯红），
+        确保用户有丰富且差异化的选择。</p>
+    </div>
+    <div>
+      <h3 class="text-white font-semibold mb-2">专属背景动画</h3>
+      <p>薄荷→叶片飘浮、深海→气泡上升+光斑、赛博→数据流粒子、
+        冰川→冰晶微光闪烁、极光→极光波动、鎏金→金色粒子漂浮。
+        全部使用 drawingGroup() + Canvas 优化性能。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="text-center py-12 text-gray-600 text-xs border-t border-white/5">
+  <p>TuneHaven Theme Design System v2.0 · 6 Gradient Themes</p>
+  <p class="mt-1">Generated for review — colors and layouts subject to final tuning</p>
+</footer>
+
+</body>
+</html>
