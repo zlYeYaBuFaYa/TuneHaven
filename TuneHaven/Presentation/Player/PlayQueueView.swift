@@ -29,7 +29,9 @@ struct PlayQueueView: View {
                 Spacer()
                 VStack(spacing: 12) {
                     Image(systemName: "music.note.list")
-                        .font(.system(size: 48))
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 48, height: 48)
                         .foregroundColor(palette.playerSubtext.opacity(0.5))
                     Text("队列为空")
                         .foregroundColor(palette.playerSubtext)

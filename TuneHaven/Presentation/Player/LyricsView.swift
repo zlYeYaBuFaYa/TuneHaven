@@ -25,9 +25,17 @@ struct LyricsPageView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            dragIndicator
-            headerSection
-                .padding(.bottom, 12)
+            VStack(spacing: 0) {
+                Capsule()
+                    .fill(palette.textTertiary.opacity(0.4))
+                    .frame(width: 36, height: 5)
+                    .padding(.bottom, 8)
+
+                headerSection
+                    .padding(.bottom, 12)
+            }
+            .contentShape(Rectangle())
+            .gesture(dismissGesture)
 
             lyricsContent
                 .frame(maxHeight: .infinity)
@@ -40,18 +48,10 @@ struct LyricsPageView: View {
         .padding(.top, 12)
         .padding(.bottom, 36)
         .offset(y: dragOffset)
-        .gesture(lyricsDismissGesture)
         .onAppear { dragOffset = 0 }
     }
 
-    private var dragIndicator: some View {
-        Capsule()
-            .fill(palette.textTertiary.opacity(0.4))
-            .frame(width: 36, height: 5)
-            .padding(.bottom, 8)
-    }
-
-    private var lyricsDismissGesture: some Gesture {
+    private var dismissGesture: some Gesture {
         DragGesture(minimumDistance: 20, coordinateSpace: .global)
             .onChanged { value in
                 let dy = value.translation.height
@@ -226,7 +226,9 @@ struct LyricsPageView: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "music.note")
-                .font(.system(size: 40))
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 40, height: 40)
                 .foregroundColor(palette.textTertiary)
             Text("暂无歌词")
                 .font(.body)

@@ -31,7 +31,9 @@ struct BatchAddSongsView: View {
                     Spacer()
                     VStack(spacing: 12) {
                         Image(systemName: "music.note")
-                            .font(.system(size: 48))
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 48, height: 48)
                             .foregroundColor(palette.iconSecondary)
                         Text("音乐库中暂无歌曲")
                             .foregroundColor(palette.textSecondary)

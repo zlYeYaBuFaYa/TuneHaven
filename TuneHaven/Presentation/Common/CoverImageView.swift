@@ -37,7 +37,9 @@ struct PlaceholderCoverView: View {
                     )
                 )
             Image(systemName: "music.note")
-                .font(.system(size: size * 0.35))
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: size * 0.35, height: size * 0.35)
                 .foregroundColor(.white.opacity(0.8))
         }
         .frame(width: size, height: size)

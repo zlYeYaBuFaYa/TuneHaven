@@ -20,7 +20,9 @@ struct SongListView: View {
             } else if songs.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "music.note")
-                        .font(.system(size: 48))
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 48, height: 48)
                         .foregroundColor(palette.iconSecondary)
                     Text("暂无歌曲")
                         .foregroundColor(palette.textSecondary)

@@ -67,7 +67,9 @@ struct AppleMusicImportView: View {
         } else if mediaItems.isEmpty {
             VStack(spacing: 16) {
                 Image(systemName: "music.note.list")
-                    .font(.system(size: 48))
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 48, height: 48)
                     .foregroundColor(palette.iconSecondary)
                 Text("未找到本地音乐文件")
                     .font(.headline)
