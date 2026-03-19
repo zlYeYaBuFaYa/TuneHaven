@@ -14,6 +14,7 @@ struct LyricsSearchView: View {
     @State private var isSearching = false
     @State private var isSaving = false
     @State private var searchError: String?
+    @State private var saveError: String?
     @State private var hasSearched = false
 
     init(song: Song, onSaved: (() -> Void)? = nil) {
@@ -39,6 +40,14 @@ struct LyricsSearchView: View {
                     Button("关闭") { dismiss() }
                         .foregroundColor(palette.primary)
                 }
+            }
+            .alert("保存失败", isPresented: .init(
+                get: { saveError != nil },
+                set: { if !$0 { saveError = nil } }
+            )) {
+                Button("确定") { saveError = nil }
+            } message: {
+                Text(saveError ?? "")
             }
         }
     }
@@ -262,9 +271,9 @@ struct LyricsSearchView: View {
     }
 
     private func lyricsPreview(_ lyrics: String) -> some View {
-        let previewLines = lyrics.components(separatedBy: "\n")
+        let nonEmptyLines = lyrics.components(separatedBy: "\n")
             .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-            .prefix(6)
+        let previewLines = nonEmptyLines.prefix(6)
 
         return VStack(alignment: .leading, spacing: 2) {
             ForEach(Array(previewLines.enumerated()), id: \.offset) { _, line in
@@ -273,7 +282,7 @@ struct LyricsSearchView: View {
                     .foregroundColor(palette.textSecondary)
                     .lineLimit(1)
             }
-            if lyrics.components(separatedBy: "\n").filter({ !$0.trimmingCharacters(in: .whitespaces).isEmpty }).count > 6 {
+            if nonEmptyLines.count > 6 {
                 Text("...")
                     .font(.caption2)
                     .foregroundColor(palette.textTertiary)
@@ -322,7 +331,10 @@ struct LyricsSearchView: View {
                     dismiss()
                 }
             } catch {
-                isSaving = false
+                await MainActor.run {
+                    isSaving = false
+                    saveError = "歌词保存失败，请重试"
+                }
             }
         }
     }

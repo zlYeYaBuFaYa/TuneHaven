@@ -15,7 +15,6 @@ struct PlayerView: View {
         case speedPicker
         case addToPlaylist(songIds: [UUID])
         case lyricsSearch(Song)
-        case lyricsImport
 
         var id: String {
             switch self {
@@ -24,7 +23,6 @@ struct PlayerView: View {
             case .speedPicker: return "speedPicker"
             case .addToPlaylist(let ids): return "addToPlaylist_\(ids.first?.uuidString ?? "")"
             case .lyricsSearch: return "lyricsSearch"
-            case .lyricsImport: return "lyricsImport"
             }
         }
     }
@@ -105,8 +103,6 @@ struct PlayerView: View {
                     LyricsSearchView(song: song) {
                         Task { await loadLyrics() }
                     }
-                case .lyricsImport:
-                    EmptyView()
                 }
             }
             .environment(\.themePalette, palette)

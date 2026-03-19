@@ -183,13 +183,11 @@ struct SongInfoEditView: View {
     }
 
     private func reloadSong() async {
-        let repo = CoreDataSongRepository()
-        song = await repo.fetchSong(id: songId)
+        song = await CoreDataSongRepository().fetchSong(id: songId)
     }
 
     private func loadSong() async {
-        let repo = CoreDataSongRepository()
-        song = await repo.fetchSong(id: songId)
+        await reloadSong()
         if let s = song {
             title = s.title
             artist = s.artist

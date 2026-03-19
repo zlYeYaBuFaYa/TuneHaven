@@ -20,9 +20,11 @@ final class LyricsService {
         log.debug("加载歌词: \(song.title)")
 
         // Step 1: DB-specified source
+        var triedEmbedded = false
         if let source = song.lyricsSource {
             switch source {
             case .embedded:
+                triedEmbedded = true
                 if let data = await loadEmbedded(song: song) { return data }
             case .file, .manual:
                 if let path = song.lyricsPath,
@@ -30,8 +32,8 @@ final class LyricsService {
             }
         }
 
-        // Step 2: Fallback — embedded
-        if let embedded = await loadEmbedded(song: song) { return embedded }
+        // Step 2: Fallback — embedded (skip if already tried)
+        if !triedEmbedded, let embedded = await loadEmbedded(song: song) { return embedded }
 
         // Step 3: Fallback — external LRC files
         let songIdFile = "\(song.id.uuidString).lrc"
@@ -158,15 +160,18 @@ final class LyricsService {
 
     // MARK: - LRC Parsing
 
+    private static let lrcRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: #"\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)"#)
+    }()
+
     func parseLRC(_ content: String) -> [LyricsLine] {
+        guard let regex = Self.lrcRegex else { return [] }
         var lines: [LyricsLine] = []
         let rawLines = content.components(separatedBy: "\n")
         for line in rawLines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard trimmed.hasPrefix("[") else { continue }
-            let pattern = #"\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)"#
-            guard let regex = try? NSRegularExpression(pattern: pattern),
-                  let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) else { continue }
+            guard let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) else { continue }
 
             func group(_ i: Int) -> String {
                 guard let r = Range(match.range(at: i), in: trimmed) else { return "" }
