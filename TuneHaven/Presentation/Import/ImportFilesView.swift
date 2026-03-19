@@ -1,17 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-private extension UTType {
-    static let mp3 = UTType(filenameExtension: "mp3") ?? .audio
-    static let alac = UTType(filenameExtension: "alac") ?? .audio
-    static let flac = UTType(filenameExtension: "flac") ?? .audio
-    static let caf = UTType(filenameExtension: "caf") ?? .audio
-
-    static let allSupportedAudio: [UTType] = [
-        .audio, .mp3, .mpeg4Audio, .flac, .alac, .wav, .aiff, .caf
-    ]
-}
-
 struct ImportFilesView: View {
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
