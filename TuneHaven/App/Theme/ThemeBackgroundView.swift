@@ -66,7 +66,6 @@ struct ThemeBackgroundView: View {
                     .transition(.opacity)
             } else {
                 themeBackground
-                    .id(themeManager.currentStyle.id)
                     .transition(.opacity)
             }
         }

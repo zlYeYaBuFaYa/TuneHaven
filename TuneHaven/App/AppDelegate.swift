@@ -17,14 +17,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     /// 在窗口创建之前通过 UIAppearance 设置默认背景色 — 这是最早的时机
     private func configureEarlyAppearance() {
-        let mode = ColorMode(rawValue: UserDefaults.standard.integer(forKey: "color_mode")) ?? .system
+        let mode = ColorMode(rawValue: UserDefaults.standard.integer(forKey: AppStorageKey.colorMode)) ?? .system
         let isDark: Bool
         switch mode {
         case .light: isDark = false
         case .dark: isDark = true
-        case .system: isDark = UIScreen.main.traitCollection.userInterfaceStyle == .dark
+        case .system: isDark = UITraitCollection.current.userInterfaceStyle == .dark
         }
-        let styleId = UserDefaults.standard.string(forKey: "theme_style") ?? "meadow_breeze"
+        let styleId = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) ?? "meadow_breeze"
         let registry = ThemeRegistry.shared
         registry.bootstrap()
         let style = registry.theme(for: styleId) ?? registry.defaultTheme
@@ -32,7 +32,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         let surfaceColor = UIColor(isDark ? style.darkPalette.surface : style.lightPalette.surface)
 
         UIWindow.appearance().backgroundColor = bgColor
-        UIWindow.appearance().overrideUserInterfaceStyle = mode.uiInterfaceStyle
 
         Self.applyNavigationBarAppearance(surfaceColor: surfaceColor)
         AppLogger.shared.info("[AppDelegate] configureEarlyAppearance — isDark=\(isDark) bg=\(bgColor)")

@@ -63,9 +63,8 @@ final class MigrationManager {
     private func performUpgrade(from oldVersion: String, to newVersion: String) {
         // v1.x → v2.0: 示例：迁移 has_completed_onboarding 默认值
         if oldVersion.isEmpty || oldVersion < "2.0" {
-            if !UserDefaults.standard.bool(forKey: "has_completed_onboarding") {
-                // 老用户已安装使用，标记 onboarding 已完成
-                UserDefaults.standard.set(true, forKey: "has_completed_onboarding")
+            if !UserDefaults.standard.bool(forKey: AppStorageKey.hasCompletedOnboarding) {
+                UserDefaults.standard.set(true, forKey: AppStorageKey.hasCompletedOnboarding)
             }
         }
     }

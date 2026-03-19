@@ -12,6 +12,7 @@ struct RoseDreamBackground: View {
                 softVignette(size: geo.size)
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 梦幻粉色渐变

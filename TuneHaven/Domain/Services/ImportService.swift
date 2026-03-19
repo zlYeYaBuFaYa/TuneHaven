@@ -14,7 +14,6 @@ final class ImportService: ObservableObject {
 
     func importFromFiles(urls: [URL], onProgress: @escaping @MainActor (ImportProgress) -> Void) async -> ImportResult {
         log.info("开始导入 \(urls.count) 个文件")
-        log.info("开始导入 \(urls.count) 个文件")
         isImporting = true
         isCancelled = false
         var results: [SingleImportResult] = []

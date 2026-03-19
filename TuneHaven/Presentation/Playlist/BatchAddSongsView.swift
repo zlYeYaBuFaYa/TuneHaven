@@ -13,22 +13,9 @@ struct BatchAddSongsView: View {
     @State private var searchText = ""
     @State private var isLoading = true
     @State private var isSaving = false
-
-    private var filteredSongs: [Song] {
-        let available = allSongs.filter { !existingSongIds.contains($0.id) }
-        guard !searchText.isEmpty else { return available }
-        let keyword = searchText.lowercased()
-        return available.filter {
-            $0.title.lowercased().contains(keyword) ||
-            $0.artist.lowercased().contains(keyword) ||
-            $0.album.lowercased().contains(keyword)
-        }
-    }
-
-    private var groupedByArtist: [(String, [Song])] {
-        let grouped = Dictionary(grouping: filteredSongs) { $0.artist }
-        return grouped.sorted { $0.key < $1.key }
-    }
+    @StateObject private var searchDebouncer = SearchDebouncer()
+    @State private var filteredSongs: [Song] = []
+    @State private var groupedByArtist: [(String, [Song])] = []
 
     var body: some View {
         NavigationStack {
@@ -78,6 +65,32 @@ struct BatchAddSongsView: View {
             }
         }
         .task { await loadData() }
+        .onChange(of: searchText) { _, newValue in
+            searchDebouncer.send(newValue)
+            if newValue.isEmpty { recomputeFiltered(query: "") }
+        }
+        .onChange(of: searchDebouncer.debouncedQuery) { _, query in
+            recomputeFiltered(query: query)
+        }
+        .onChange(of: allSongs) { _, _ in recomputeFiltered(query: searchDebouncer.debouncedQuery) }
+    }
+
+    private func recomputeFiltered(query: String) {
+        let available = allSongs.filter { !existingSongIds.contains($0.id) }
+        let filtered: [Song]
+        if query.isEmpty {
+            filtered = available
+        } else {
+            let keyword = query.lowercased()
+            filtered = available.filter {
+                $0.title.lowercased().contains(keyword) ||
+                $0.artist.lowercased().contains(keyword) ||
+                $0.album.lowercased().contains(keyword)
+            }
+        }
+        filteredSongs = filtered
+        let grouped = Dictionary(grouping: filtered) { $0.artist }
+        groupedByArtist = grouped.sorted { $0.key < $1.key }
     }
 
     private var fixedHeader: some View {

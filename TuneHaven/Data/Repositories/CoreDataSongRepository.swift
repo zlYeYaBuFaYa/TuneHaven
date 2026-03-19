@@ -46,6 +46,32 @@ final class CoreDataSongRepository {
         }
     }
 
+    func fetchSongs(byArtist artist: String, sortBy: SongSortOption = .album, ascending: Bool = true) async -> [Song] {
+        await withCheckedContinuation { continuation in
+            stack.viewContext.perform {
+                let request = SongEntity.fetchRequest()
+                request.predicate = NSPredicate(format: "artist == %@ AND softDeleted == NO", artist)
+                request.sortDescriptors = [NSSortDescriptor(key: sortBy.coreDataKey, ascending: ascending)]
+                request.fetchBatchSize = 50
+                let results = (try? self.stack.viewContext.fetch(request)) ?? []
+                continuation.resume(returning: results.compactMap { SongMapper.toDomain($0) })
+            }
+        }
+    }
+
+    func fetchSongs(byAlbum album: String, artist: String, sortBy: SongSortOption = .title, ascending: Bool = true) async -> [Song] {
+        await withCheckedContinuation { continuation in
+            stack.viewContext.perform {
+                let request = SongEntity.fetchRequest()
+                request.predicate = NSPredicate(format: "album == %@ AND artist == %@ AND softDeleted == NO", album, artist)
+                request.sortDescriptors = [NSSortDescriptor(key: sortBy.coreDataKey, ascending: ascending)]
+                request.fetchBatchSize = 50
+                let results = (try? self.stack.viewContext.fetch(request)) ?? []
+                continuation.resume(returning: results.compactMap { SongMapper.toDomain($0) })
+            }
+        }
+    }
+
     func fetchByHash(_ hash: String) async -> Song? {
         await withCheckedContinuation { continuation in
             stack.viewContext.perform {

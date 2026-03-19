@@ -24,12 +24,13 @@ struct TuneHavenApp: App {
     @State private var pendingImportURLs: [URL] = []
     @State private var openInHandler: OpenInImportHandler?
     @State private var paletteScheme: ColorScheme = {
-        let mode = ColorMode(rawValue: UserDefaults.standard.integer(forKey: "color_mode")) ?? .system
+        let mode = ColorMode(rawValue: UserDefaults.standard.integer(forKey: AppStorageKey.colorMode)) ?? .system
         switch mode {
         case .light: return .light
         case .dark: return .dark
         case .system:
-            return UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
+            let style = UITraitCollection.current.userInterfaceStyle
+            return style == .dark ? .dark : .light
         }
     }()
 
@@ -94,7 +95,6 @@ struct TuneHavenApp: App {
                 case .active:
                     playbackService.checkSleepTimerOnForeground()
                     refreshPaletteScheme()
-                    themeManager.scheduleWindowRefresh(delay: 0.3, fullApply: false)
                 case .inactive:
                     refreshPaletteScheme()
                 case .background:
@@ -118,8 +118,8 @@ struct TuneHavenApp: App {
         case .dark:
             scheme = .dark
         case .system:
-            let systemDark = UIScreen.main.traitCollection.userInterfaceStyle == .dark
-            scheme = systemDark ? .dark : .light
+            let style = UITraitCollection.current.userInterfaceStyle
+            scheme = style == .dark ? .dark : .light
         }
         if paletteScheme != scheme {
             paletteScheme = scheme
@@ -149,6 +149,7 @@ struct TuneHavenApp: App {
     private func initialize() async {
         do {
             AppLogger.shared.info("[App] initialize start")
+            playbackService.configure(libraryService: libraryService)
             MigrationManager.shared.runVersionUpgradeTasks()
             try await CoreDataStack.shared.load()
             SandboxPathManager.createAllDirectories()

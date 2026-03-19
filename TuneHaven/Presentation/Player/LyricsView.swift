@@ -13,6 +13,7 @@ struct LyricsPageView: View {
     @State private var isUserScrolling = false
     @State private var scrollResumeTask: Task<Void, Never>?
     @State private var hasPerformedInitialScroll = false
+    @State private var dragOffset: CGFloat = 0
 
     private var currentLineIndex: Int? {
         guard let lines = lyricsData?.lines, !lines.isEmpty else { return nil }
@@ -24,6 +25,7 @@ struct LyricsPageView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            dragIndicator
             headerSection
                 .padding(.bottom, 12)
 
@@ -37,6 +39,41 @@ struct LyricsPageView: View {
         .padding(.horizontal, 24)
         .padding(.top, 12)
         .padding(.bottom, 36)
+        .offset(y: dragOffset)
+        .gesture(lyricsDismissGesture)
+        .onAppear { dragOffset = 0 }
+    }
+
+    private var dragIndicator: some View {
+        Capsule()
+            .fill(palette.textTertiary.opacity(0.4))
+            .frame(width: 36, height: 5)
+            .padding(.bottom, 8)
+    }
+
+    private var lyricsDismissGesture: some Gesture {
+        DragGesture(minimumDistance: 20, coordinateSpace: .global)
+            .onChanged { value in
+                let dy = value.translation.height
+                if dy > 0 {
+                    dragOffset = dy * 0.7
+                } else {
+                    dragOffset = dy * 0.1
+                }
+            }
+            .onEnded { value in
+                let velocity = value.predictedEndTranslation.height
+                if value.translation.height > 100 || velocity > 400 {
+                    onDismiss()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                        dragOffset = 0
+                    }
+                } else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                        dragOffset = 0
+                    }
+                }
+            }
     }
 
     // MARK: - Header
@@ -93,7 +130,7 @@ struct LyricsPageView: View {
     private func syncedLyricsSection(data: LyricsData) -> some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .center, spacing: 24) {
                     Color.clear.frame(height: 20)
 
                     ForEach(Array(data.lines.enumerated()), id: \.element.id) { index, line in
@@ -137,11 +174,11 @@ struct LyricsPageView: View {
             playback.seek(to: line.timestamp)
         } label: {
             Text(line.text)
-                .font(isCurrent ? .title2.bold() : .body)
+                .font(isCurrent ? .title.bold() : .title3)
                 .foregroundColor(isCurrent ? palette.primary : palette.playerSubtext)
                 .opacity(lineOpacity(for: index))
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
                 .contentShape(Rectangle())
                 .animation(.easeInOut(duration: 0.3), value: isCurrent)
         }
@@ -154,10 +191,10 @@ struct LyricsPageView: View {
     private func plainTextSection(text: String) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
             Text(text)
-                .font(.body)
+                .font(.title3)
                 .foregroundColor(palette.playerSubtext)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 20)
         }
     }

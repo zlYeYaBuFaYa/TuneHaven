@@ -34,6 +34,7 @@ struct PlayerView: View {
     @State private var showDeleteLyricsConfirm = false
     @State private var showLyricsImporter = false
     @State private var showLyricsPage = false
+    @State private var pendingSheetWork: DispatchWorkItem?
 
     private var palette: ThemeColorPalette {
         themeManager.resolvedPalette(for: colorScheme)
@@ -61,9 +62,7 @@ struct PlayerView: View {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                                 showLyricsPage = false
                             }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                activeSheet = .lyricsSearch(song)
-                            }
+                            switchSheet(to: .lyricsSearch(song))
                         }
                     },
                     onOpenQueue: {
@@ -234,10 +233,7 @@ struct PlayerView: View {
             List {
                 Section {
                     Button {
-                        activeSheet = nil
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            activeSheet = .sleepTimer
-                        }
+                        switchSheet(to: .sleepTimer)
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: playback.sleepTimerRemaining != nil ? "moon.zzz.fill" : "moon.zzz")
@@ -263,10 +259,7 @@ struct PlayerView: View {
                     .listRowBackground(palette.surface)
 
                     Button {
-                        activeSheet = nil
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            activeSheet = .speedPicker
-                        }
+                        switchSheet(to: .speedPicker)
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "speedometer")
@@ -293,10 +286,7 @@ struct PlayerView: View {
                 if let song = playback.currentSong {
                     Section {
                         Button {
-                            activeSheet = nil
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                activeSheet = .addToPlaylist(songIds: [song.id])
-                            }
+                            switchSheet(to: .addToPlaylist(songIds: [song.id]))
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "text.badge.plus")
@@ -317,20 +307,14 @@ struct PlayerView: View {
 
                     Section {
                         Button {
-                            activeSheet = nil
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                activeSheet = .lyricsSearch(song)
-                            }
+                            switchSheet(to: .lyricsSearch(song))
                         } label: {
                             moreActionRow(icon: "magnifyingglass", title: "搜索歌词")
                         }
                         .listRowBackground(palette.surface)
 
                         Button {
-                            activeSheet = nil
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                showLyricsImporter = true
-                            }
+                            scheduleAfterSheetDismiss { showLyricsImporter = true }
                         } label: {
                             moreActionRow(icon: "doc.text", title: "导入歌词")
                         }
@@ -338,10 +322,7 @@ struct PlayerView: View {
 
                         if lyricsData != nil {
                             Button {
-                                activeSheet = nil
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    showDeleteLyricsConfirm = true
-                                }
+                                scheduleAfterSheetDismiss { showDeleteLyricsConfirm = true }
                             } label: {
                                 moreActionRow(icon: "trash", title: "删除歌词", destructive: true)
                             }
@@ -591,5 +572,21 @@ struct PlayerView: View {
     private func loadLyrics() async {
         guard let song = playback.currentSong else { lyricsData = nil; return }
         lyricsData = await LyricsService.shared.loadLyrics(for: song)
+    }
+
+    private func switchSheet(to newSheet: ActiveSheet, delay: TimeInterval = 0.3) {
+        pendingSheetWork?.cancel()
+        activeSheet = nil
+        let work = DispatchWorkItem { activeSheet = newSheet }
+        pendingSheetWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    private func scheduleAfterSheetDismiss(_ action: @escaping () -> Void, delay: TimeInterval = 0.3) {
+        pendingSheetWork?.cancel()
+        activeSheet = nil
+        let work = DispatchWorkItem(block: action)
+        pendingSheetWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 }

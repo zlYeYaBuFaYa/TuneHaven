@@ -48,7 +48,10 @@ struct AlbumGridCell: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            CoverImageView(path: album.coverImagePath, size: (UIScreen.main.bounds.width - 48) / 2, cornerRadius: 10)
+            GeometryReader { geo in
+                CoverImageView(path: album.coverImagePath, size: geo.size.width, cornerRadius: 10)
+            }
+            .aspectRatio(1, contentMode: .fit)
             Text(album.name)
                 .font(.subheadline.weight(.medium))
                 .foregroundColor(palette.textPrimary)

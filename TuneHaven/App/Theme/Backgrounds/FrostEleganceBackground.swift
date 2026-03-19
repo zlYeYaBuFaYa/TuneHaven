@@ -13,6 +13,7 @@ struct FrostEleganceBackground: View {
                 frostedEdge(size: geo.size)
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 冰霜渐变底色
@@ -112,6 +113,7 @@ struct FrostEleganceBackground: View {
                 context.fill(path, with: .color(shardColor))
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 霜花结晶
@@ -175,6 +177,7 @@ struct FrostEleganceBackground: View {
                 }
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 边缘霜雾

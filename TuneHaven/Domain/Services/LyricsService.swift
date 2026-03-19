@@ -41,7 +41,7 @@ final class LyricsService {
         if let data = loadExternalLRC(songTitle: song.title) { return data }
 
         // Step 4: Online auto-match
-        let autoMatch = UserDefaults.standard.object(forKey: "auto_match_lyrics") as? Bool ?? true
+        let autoMatch = UserDefaults.standard.object(forKey: AppStorageKey.autoMatchLyrics) as? Bool ?? true
         if autoMatch {
             if let data = await autoMatchOnline(for: song) { return data }
         }

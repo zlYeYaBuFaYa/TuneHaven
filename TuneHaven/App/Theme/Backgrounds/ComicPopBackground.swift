@@ -12,6 +12,7 @@ struct ComicPopBackground: View {
                 sparkles(size: geo.size)
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 渐变天空 (日漫夕阳风)
@@ -61,6 +62,7 @@ struct ComicPopBackground: View {
                 }
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 云朵层

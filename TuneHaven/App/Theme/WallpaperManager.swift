@@ -10,7 +10,7 @@ final class WallpaperManager: ObservableObject {
     private let wallpaperFileName = "user_wallpaper.jpg"
 
     init() {
-        useCustomWallpaper = UserDefaults.standard.bool(forKey: "use_custom_wallpaper")
+        useCustomWallpaper = UserDefaults.standard.bool(forKey: AppStorageKey.useCustomWallpaper)
         if useCustomWallpaper {
             currentWallpaper = loadFromDisk()
         }
@@ -19,14 +19,14 @@ final class WallpaperManager: ObservableObject {
     func setWallpaper(_ image: UIImage) {
         currentWallpaper = image
         useCustomWallpaper = true
-        UserDefaults.standard.set(true, forKey: "use_custom_wallpaper")
+        UserDefaults.standard.set(true, forKey: AppStorageKey.useCustomWallpaper)
         saveToDisk(image)
     }
 
     func removeWallpaper() {
         currentWallpaper = nil
         useCustomWallpaper = false
-        UserDefaults.standard.set(false, forKey: "use_custom_wallpaper")
+        UserDefaults.standard.set(false, forKey: AppStorageKey.useCustomWallpaper)
         deleteFromDisk()
     }
 

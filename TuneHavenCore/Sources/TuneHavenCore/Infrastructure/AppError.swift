@@ -113,7 +113,13 @@ final class ErrorLogger {
         }
     }
 
+    private static let dateFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
     private func isoDate() -> String {
-        ISO8601DateFormatter().string(from: Date())
+        Self.dateFormatter.string(from: Date())
     }
 }

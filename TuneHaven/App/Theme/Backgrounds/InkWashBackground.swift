@@ -12,6 +12,7 @@ struct InkWashBackground: View {
                 paperTexture(size: geo.size)
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 宣纸底色
@@ -106,6 +107,7 @@ struct InkWashBackground: View {
 
             context.fill(path, with: .color(inkColor))
         }
+        .drawingGroup()
     }
 
     // MARK: - 墨迹飞白
@@ -143,6 +145,7 @@ struct InkWashBackground: View {
                 context.stroke(path, with: .color(strokeColor), lineWidth: stroke.width)
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 纸纹理 (细微噪点效果)
@@ -163,5 +166,6 @@ struct InkWashBackground: View {
                 }
             }
         }
+        .drawingGroup()
     }
 }

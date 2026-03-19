@@ -3,6 +3,24 @@ import Combine
 import Foundation
 import UIKit
 
+enum AppStorageKey {
+    static let playMode = "play_mode"
+    static let playbackSpeed = "playback_speed"
+    static let speedMemoryMode = "speed_memory_mode"
+    static let perSongSpeeds = "per_song_speeds"
+    static let songDislikes = "song_dislikes"
+    static let lastPlayedSongId = "last_played_song_id"
+    static let colorMode = "color_mode"
+    static let themeStyle = "theme_style"
+    static let useCustomWallpaper = "use_custom_wallpaper"
+    static let recentPlayRange = "recent_play_range"
+    static let wifiPasswordEnabled = "wifi_password_enabled"
+    static let sleepTimerNotification = "sleep_timer_notification"
+    static let cacheLimitMB = "cache_limit_mb"
+    static let autoMatchLyrics = "auto_match_lyrics"
+    static let hasCompletedOnboarding = "has_completed_onboarding"
+}
+
 @MainActor
 final class PlaybackService: ObservableObject {
     static let shared = PlaybackService()
@@ -10,13 +28,13 @@ final class PlaybackService: ObservableObject {
 
     @Published private(set) var currentSong: Song?
     @Published private(set) var isPlaying = false
-    @Published var playMode: PlayMode = PlayMode(rawValue: UserDefaults.standard.integer(forKey: "play_mode")) ?? .sequential
-    @Published var playbackSpeed: Float = UserDefaults.standard.float(forKey: "playback_speed") == 0 ? 1.0 : UserDefaults.standard.float(forKey: "playback_speed")
+    @Published var playMode: PlayMode = PlayMode(rawValue: UserDefaults.standard.integer(forKey: AppStorageKey.playMode)) ?? .sequential
+    @Published var playbackSpeed: Float = UserDefaults.standard.float(forKey: AppStorageKey.playbackSpeed) == 0 ? 1.0 : UserDefaults.standard.float(forKey: AppStorageKey.playbackSpeed)
     @Published var sleepTimerRemaining: TimeInterval? = nil
 
     private let engine = AudioEngine.shared
     private let queueService: PlayQueueService
-    private let libraryService: MusicLibraryService
+    private var libraryService: MusicLibraryService
     private let playlistRepo = CoreDataPlaylistRepository()
     private let songRepo = CoreDataSongRepository()
     private let imageCacheManager = ImageCacheManager.shared
@@ -25,10 +43,10 @@ final class PlaybackService: ObservableObject {
     private var sleepTimerTimer: Timer?
     private var currentCover: UIImage?
     private var dislikes: [String: Int] {
-        UserDefaults.standard.dictionary(forKey: "song_dislikes") as? [String: Int] ?? [:]
+        UserDefaults.standard.dictionary(forKey: AppStorageKey.songDislikes) as? [String: Int] ?? [:]
     }
 
-    private static let lastPlayedSongIdKey = "last_played_song_id"
+    private static let lastPlayedSongIdKey = AppStorageKey.lastPlayedSongId
 
     private init() {
         self.queueService = PlayQueueService()
@@ -43,6 +61,10 @@ final class PlaybackService: ObservableObject {
         guard let song = await songRepo.fetchSong(id: songId) else { return }
         currentSong = song
         queueService.replaceQueue(with: [song], startAt: 0)
+    }
+
+    func configure(libraryService: MusicLibraryService) {
+        self.libraryService = libraryService
     }
 
     var queue: PlayQueueService { queueService }
@@ -156,7 +178,7 @@ final class PlaybackService: ObservableObject {
         let current = modes.firstIndex(of: playMode) ?? 0
         playMode = modes[(current + 1) % modes.count]
         log.info("切换播放模式: \(playMode.rawValue)")
-        UserDefaults.standard.set(playMode.rawValue, forKey: "play_mode")
+        UserDefaults.standard.set(playMode.rawValue, forKey: AppStorageKey.playMode)
     }
 
     // MARK: - Speed
@@ -166,25 +188,25 @@ final class PlaybackService: ObservableObject {
         playbackSpeed = speed
         engine.setSpeed(speed)
 
-        let memMode = UserDefaults.standard.integer(forKey: "speed_memory_mode")
+        let memMode = UserDefaults.standard.integer(forKey: AppStorageKey.speedMemoryMode)
         if memMode == 1, let song = currentSong {
-            var perSongSpeeds = UserDefaults.standard.dictionary(forKey: "per_song_speeds") as? [String: Float] ?? [:]
+            var perSongSpeeds = UserDefaults.standard.dictionary(forKey: AppStorageKey.perSongSpeeds) as? [String: Float] ?? [:]
             perSongSpeeds[song.id.uuidString] = speed
-            UserDefaults.standard.set(perSongSpeeds, forKey: "per_song_speeds")
+            UserDefaults.standard.set(perSongSpeeds, forKey: AppStorageKey.perSongSpeeds)
         } else {
-            UserDefaults.standard.set(speed, forKey: "playback_speed")
+            UserDefaults.standard.set(speed, forKey: AppStorageKey.playbackSpeed)
         }
     }
 
     private func applySpeedForSong(_ song: Song) {
-        let memMode = UserDefaults.standard.integer(forKey: "speed_memory_mode")
+        let memMode = UserDefaults.standard.integer(forKey: AppStorageKey.speedMemoryMode)
         if memMode == 1 {
-            let perSongSpeeds = UserDefaults.standard.dictionary(forKey: "per_song_speeds") as? [String: Float] ?? [:]
+            let perSongSpeeds = UserDefaults.standard.dictionary(forKey: AppStorageKey.perSongSpeeds) as? [String: Float] ?? [:]
             let speed = perSongSpeeds[song.id.uuidString] ?? 1.0
             playbackSpeed = speed
             engine.setSpeed(speed)
         } else {
-            let speed = UserDefaults.standard.float(forKey: "playback_speed")
+            let speed = UserDefaults.standard.float(forKey: AppStorageKey.playbackSpeed)
             let effective: Float = speed == 0 ? 1.0 : speed
             if playbackSpeed != effective {
                 playbackSpeed = effective
@@ -216,7 +238,7 @@ final class PlaybackService: ObservableObject {
         var dislikes = self.dislikes
         let count = min((dislikes[song.id.uuidString] ?? 0) + 1, 5)
         dislikes[song.id.uuidString] = count
-        UserDefaults.standard.set(dislikes, forKey: "song_dislikes")
+        UserDefaults.standard.set(dislikes, forKey: AppStorageKey.songDislikes)
         playNext()
     }
 

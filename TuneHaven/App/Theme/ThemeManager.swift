@@ -20,8 +20,8 @@ final class ThemeManager: ObservableObject {
     @Published private(set) var colorMode: ColorMode
     @Published private(set) var currentStyle: ThemeStyle
 
-    @AppStorage("color_mode")   private var storedColorMode: Int = 0
-    @AppStorage("theme_style")  private var storedThemeStyle: String = "meadow_breeze"
+    @AppStorage(AppStorageKey.colorMode)   private var storedColorMode: Int = 0
+    @AppStorage(AppStorageKey.themeStyle)  private var storedThemeStyle: String = "meadow_breeze"
 
     private let registry = ThemeRegistry.shared
 
@@ -37,12 +37,12 @@ final class ThemeManager: ObservableObject {
     init() {
         registry.bootstrap()
 
-        let mode = ColorMode(rawValue: UserDefaults.standard.integer(forKey: "color_mode")) ?? .system
-        var styleId = UserDefaults.standard.string(forKey: "theme_style") ?? "meadow_breeze"
+        let mode = ColorMode(rawValue: UserDefaults.standard.integer(forKey: AppStorageKey.colorMode)) ?? .system
+        var styleId = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) ?? "meadow_breeze"
 
         if let migrated = Self.legacyThemeMapping[styleId] {
             styleId = migrated
-            UserDefaults.standard.set(migrated, forKey: "theme_style")
+            UserDefaults.standard.set(migrated, forKey: AppStorageKey.themeStyle)
         }
 
         colorMode = mode
@@ -59,14 +59,7 @@ final class ThemeManager: ObservableObject {
             AppLogger.shared.debug("[ThemeManager] applyToWindows — no foreground windowScene yet")
             return
         }
-        let style = colorMode.uiInterfaceStyle
-        let effectiveScheme: ColorScheme
-        switch colorMode {
-        case .light: effectiveScheme = .light
-        case .dark: effectiveScheme = .dark
-        case .system:
-            effectiveScheme = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
-        }
+        let effectiveScheme = effectiveSchemeFromScene(windowScene)
         let palette = effectiveScheme == .dark ? currentStyle.darkPalette : currentStyle.lightPalette
         let bgColor = UIColor(palette.background)
         let surfaceColor = UIColor(palette.surface)
@@ -76,35 +69,36 @@ final class ThemeManager: ObservableObject {
         AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
 
         windowScene.windows.forEach { window in
-            window.overrideUserInterfaceStyle = style
             window.backgroundColor = bgColor
             Self.setNavigationControllerBackgrounds(on: window.rootViewController, color: bgColor)
         }
     }
 
-    /// 轻量刷新：仅更新已有窗口的背景色和 interface style，不触碰 appearance proxy。
-    /// 用于前台恢复等场景，避免与 SwiftUI 渲染管线冲突。
+    /// 轻量刷新：仅更新已有窗口的背景色，不触碰 trait 或 appearance proxy。
+    /// 色彩模式完全由 SwiftUI .preferredColorScheme() 控制。
     func refreshWindows() {
         guard let windowScene = Self.foregroundWindowScene else {
             AppLogger.shared.debug("[ThemeManager] refreshWindows — no foreground windowScene")
             return
         }
-        let style = colorMode.uiInterfaceStyle
-        let effectiveScheme: ColorScheme
-        switch colorMode {
-        case .light: effectiveScheme = .light
-        case .dark: effectiveScheme = .dark
-        case .system:
-            effectiveScheme = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .light
-        }
+        let effectiveScheme = effectiveSchemeFromScene(windowScene)
         let palette = effectiveScheme == .dark ? currentStyle.darkPalette : currentStyle.lightPalette
         let bgColor = UIColor(palette.background)
 
         windowScene.windows.forEach { window in
-            window.overrideUserInterfaceStyle = style
             window.backgroundColor = bgColor
         }
         AppLogger.shared.debug("[ThemeManager] refreshWindows done — scheme=\(effectiveScheme)")
+    }
+
+    private func effectiveSchemeFromScene(_ windowScene: UIWindowScene) -> ColorScheme {
+        switch colorMode {
+        case .light: return .light
+        case .dark: return .dark
+        case .system:
+            let style = windowScene.windows.first?.traitCollection.userInterfaceStyle ?? .light
+            return style == .dark ? .dark : .light
+        }
     }
 
     private static var foregroundWindowScene: UIWindowScene? {

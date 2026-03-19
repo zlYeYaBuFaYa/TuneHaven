@@ -13,6 +13,7 @@ struct CrimsonTechBackground: View {
                 hexOverlay(size: geo.size)
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 深色基底（带微妙渐变）
@@ -62,6 +63,7 @@ struct CrimsonTechBackground: View {
                 context.stroke(path, with: .color(lineColor), lineWidth: 0.5)
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 电路走线
@@ -111,6 +113,7 @@ struct CrimsonTechBackground: View {
                 context.fill(nodePath, with: .color(traceColor))
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 霓虹光点
@@ -164,6 +167,7 @@ struct CrimsonTechBackground: View {
                 context.stroke(path, with: .color(hexColor), lineWidth: 1)
             }
         }
+        .drawingGroup()
     }
 
     private func hexagonPath(center: CGPoint, radius: CGFloat) -> Path {

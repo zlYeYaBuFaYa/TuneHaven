@@ -9,12 +9,12 @@ struct SettingsView: View {
     @EnvironmentObject private var wallpaperManager: WallpaperManager
     @Environment(\.themePalette) private var palette
 
-    @AppStorage("recent_play_range")       private var recentPlayRange: Int = 7
-    @AppStorage("speed_memory_mode")       private var speedMemoryMode: Int = 0
-    @AppStorage("wifi_password_enabled")   private var wifiPasswordEnabled: Bool = false
-    @AppStorage("sleep_timer_notification") private var sleepTimerNotification: Bool = true
-    @AppStorage("cache_limit_mb")          private var cacheLimitMB: Int = 100
-    @AppStorage("auto_match_lyrics")       private var autoMatchLyrics: Bool = true
+    @AppStorage(AppStorageKey.recentPlayRange)       private var recentPlayRange: Int = 7
+    @AppStorage(AppStorageKey.speedMemoryMode)       private var speedMemoryMode: Int = 0
+    @AppStorage(AppStorageKey.wifiPasswordEnabled)   private var wifiPasswordEnabled: Bool = false
+    @AppStorage(AppStorageKey.sleepTimerNotification) private var sleepTimerNotification: Bool = true
+    @AppStorage(AppStorageKey.cacheLimitMB)          private var cacheLimitMB: Int = 100
+    @AppStorage(AppStorageKey.autoMatchLyrics)       private var autoMatchLyrics: Bool = true
 
     @State private var currentCacheSize: String = "计算中..."
     @State private var showClearCacheConfirm = false

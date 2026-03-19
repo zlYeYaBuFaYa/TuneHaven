@@ -13,6 +13,7 @@ struct DeepSpaceNeonBackground: View {
                 scanLine(size: geo.size)
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 深空渐变基底
@@ -63,6 +64,7 @@ struct DeepSpaceNeonBackground: View {
                 }
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 电路走线
@@ -115,6 +117,7 @@ struct DeepSpaceNeonBackground: View {
                 context.fill(nodePath, with: .color(nodeColor))
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 霓虹光晕
@@ -166,6 +169,7 @@ struct DeepSpaceNeonBackground: View {
                 context.stroke(path, with: .color(lineColor), lineWidth: 0.5)
             }
         }
+        .drawingGroup()
     }
 
     // MARK: - 六边形路径

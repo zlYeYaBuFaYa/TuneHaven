@@ -55,8 +55,7 @@ final class MusicLibraryService: ObservableObject {
     }
 
     func fetchArtistDetail(artist: String) async -> ArtistDetail {
-        let all = await songRepo.fetchAll(sortBy: .album, ascending: true)
-        let artistSongs = all.filter { $0.artist == artist }
+        let artistSongs = await songRepo.fetchSongs(byArtist: artist, sortBy: .album, ascending: true)
         var albumMap: [String: [Song]] = [:]
         for song in artistSongs { albumMap[song.album, default: []].append(song) }
         let albums = albumMap.map { AlbumGroup(name: $0.key, artist: artist, year: $0.value.first?.metadata.year, songCount: $0.value.count, coverImagePath: $0.value.first?.coverImagePath) }.sorted { $0.name < $1.name }
@@ -64,17 +63,17 @@ final class MusicLibraryService: ObservableObject {
     }
 
     func fetchAlbumDetail(album: String, artist: String) async -> AlbumDetail {
-        let all = await songRepo.fetchAll(sortBy: .title, ascending: true)
-        let songs = all.filter { $0.album == album && $0.artist == artist }
-                       .sorted { ($0.metadata.trackNumber ?? 999) < ($1.metadata.trackNumber ?? 999) }
-        return AlbumDetail(name: album, artist: artist, year: songs.first?.metadata.year, songs: songs, coverImagePath: songs.first?.coverImagePath)
+        let albumSongs = await songRepo.fetchSongs(byAlbum: album, artist: artist, sortBy: .title, ascending: true)
+        let sorted = albumSongs.sorted { ($0.metadata.trackNumber ?? 999) < ($1.metadata.trackNumber ?? 999) }
+        return AlbumDetail(name: album, artist: artist, year: sorted.first?.metadata.year, songs: sorted, coverImagePath: sorted.first?.coverImagePath)
     }
 
     func softDelete(songIds: [UUID]) async throws -> UndoToken {
         log.info("软删除歌曲: \(songIds.count) 首")
         let token = try await songRepo.softDelete(ids: songIds)
         pendingUndoTokens.append(token)
-        await loadSongs()
+        let idSet = Set(songIds)
+        songs.removeAll { idSet.contains($0.id) }
         scheduleCommit(token: token)
         return token
     }
@@ -90,7 +89,12 @@ final class MusicLibraryService: ObservableObject {
     func toggleFavorite(songId: UUID) async throws {
         log.info("切换收藏状态: \(songId)")
         try await songRepo.toggleFavorite(id: songId)
-        await loadSongs()
+        if let index = songs.firstIndex(where: { $0.id == songId }) {
+            var updated = songs[index]
+            updated.isFavorite.toggle()
+            updated.favoriteDate = updated.isFavorite ? Date() : nil
+            songs[index] = updated
+        }
     }
 
     func recordPlay(songId: UUID) async throws {
@@ -108,7 +112,8 @@ final class MusicLibraryService: ObservableObject {
     }
 
     private func scheduleCommit(token: UndoToken) {
-        let tokenId = UUID()
+        guard let tokenKey = token.songIds.first else { return }
+        undoTimers[tokenKey]?.invalidate()
         let timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -118,16 +123,15 @@ final class MusicLibraryService: ObservableObject {
                     self.log.error(error, context: "commitDelete 失败，songIds=\(token.songIds)")
                 }
                 self.pendingUndoTokens.removeAll { $0.songIds == token.songIds }
-                self.undoTimers.removeValue(forKey: tokenId)
+                self.undoTimers.removeValue(forKey: tokenKey)
             }
         }
-        undoTimers[tokenId] = timer
+        undoTimers[tokenKey] = timer
     }
 
     private func invalidateTimer(for token: UndoToken) {
-        if let id = token.songIds.first {
-            undoTimers[id]?.invalidate()
-            undoTimers.removeValue(forKey: id)
-        }
+        guard let tokenKey = token.songIds.first else { return }
+        undoTimers[tokenKey]?.invalidate()
+        undoTimers.removeValue(forKey: tokenKey)
     }
 }

@@ -11,11 +11,7 @@ struct AllSongsView: View {
 
     @EnvironmentObject private var playback: PlaybackService
     @State private var pendingDeleteToken: UndoToken?
-
-    private var displaySongs: [Song] {
-        let base = libraryService.songs
-        return formatFilter == .all ? base : base.filter { $0.metadata.format.lowercased() == formatFilter.rawValue }
-    }
+    @State private var displaySongs: [Song] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,6 +22,14 @@ struct AllSongsView: View {
                 songList
             }
         }
+        .onAppear { recomputeDisplaySongs() }
+        .onChange(of: libraryService.songs) { _, _ in recomputeDisplaySongs() }
+        .onChange(of: formatFilter) { _, _ in recomputeDisplaySongs() }
+    }
+
+    private func recomputeDisplaySongs() {
+        let base = libraryService.songs
+        displaySongs = formatFilter == .all ? base : base.filter { $0.metadata.format.lowercased() == formatFilter.rawValue }
     }
 
     private var toolbar: some View {
