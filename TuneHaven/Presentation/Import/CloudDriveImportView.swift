@@ -1,6 +1,16 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+private extension UTType {
+    static let flac = UTType(filenameExtension: "flac") ?? .audio
+    static let alac = UTType(filenameExtension: "alac") ?? .audio
+    static let caf = UTType(filenameExtension: "caf") ?? .audio
+
+    static let allSupportedAudio: [UTType] = [
+        .audio, .mp3, .mpeg4Audio, .flac, .alac, .wav, .aiff, .caf
+    ]
+}
+
 struct CloudDriveImportView: View {
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
@@ -43,7 +53,7 @@ struct CloudDriveImportView: View {
         }
         .fileImporter(
             isPresented: $showDocumentPicker,
-            allowedContentTypes: [.audio, .mpeg4Audio],
+            allowedContentTypes: UTType.allSupportedAudio,
             allowsMultipleSelection: true
         ) { result in
             if case .success(let urls) = result {

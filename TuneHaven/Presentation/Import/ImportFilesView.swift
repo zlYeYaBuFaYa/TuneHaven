@@ -5,6 +5,11 @@ private extension UTType {
     static let mp3 = UTType(filenameExtension: "mp3") ?? .audio
     static let alac = UTType(filenameExtension: "alac") ?? .audio
     static let flac = UTType(filenameExtension: "flac") ?? .audio
+    static let caf = UTType(filenameExtension: "caf") ?? .audio
+
+    static let allSupportedAudio: [UTType] = [
+        .audio, .mp3, .mpeg4Audio, .flac, .alac, .wav, .aiff, .caf
+    ]
 }
 
 struct ImportFilesView: View {
@@ -34,7 +39,7 @@ struct ImportFilesView: View {
                                 Text("从文件导入")
                                     .font(.subheadline.weight(.medium))
                                     .foregroundColor(palette.textPrimary)
-                                Text("支持 MP3, M4A, AAC, WAV, ALAC，单文件不超过 500MB")
+                                Text("支持 MP3, M4A, AAC, WAV, FLAC, ALAC, AIFF, CAF，单文件不超过 500MB")
                                     .font(.caption)
                                     .foregroundColor(palette.textSecondary)
                             }
@@ -157,7 +162,7 @@ struct ImportFilesView: View {
         }
         .fileImporter(
             isPresented: $showDocumentPicker,
-            allowedContentTypes: [.audio, .mp3, .mpeg4Audio],
+            allowedContentTypes: UTType.allSupportedAudio,
             allowsMultipleSelection: true
         ) { result in
             if case .success(let urls) = result {
