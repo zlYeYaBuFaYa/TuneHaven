@@ -14,6 +14,8 @@ struct PlayerView: View {
         case sleepTimer
         case speedPicker
         case addToPlaylist(songIds: [UUID])
+        case lyricsSearch(Song)
+        case lyricsImport
 
         var id: String {
             switch self {
@@ -21,6 +23,8 @@ struct PlayerView: View {
             case .sleepTimer: return "sleepTimer"
             case .speedPicker: return "speedPicker"
             case .addToPlaylist(let ids): return "addToPlaylist_\(ids.first?.uuidString ?? "")"
+            case .lyricsSearch: return "lyricsSearch"
+            case .lyricsImport: return "lyricsImport"
             }
         }
     }
@@ -29,6 +33,8 @@ struct PlayerView: View {
     @State private var showQueue = false
     @State private var activeSheet: ActiveSheet?
     @State private var dragOffset: CGFloat = 0
+    @State private var showDeleteLyricsConfirm = false
+    @State private var showLyricsImporter = false
 
     private var palette: ThemeColorPalette {
         themeManager.resolvedPalette(for: colorScheme)
@@ -67,10 +73,41 @@ struct PlayerView: View {
                     PlaybackSpeedSheet()
                 case .addToPlaylist(let ids):
                     AddToPlaylistSheet(songIds: ids)
+                case .lyricsSearch(let song):
+                    LyricsSearchView(song: song) {
+                        Task { await loadLyrics() }
+                    }
+                case .lyricsImport:
+                    EmptyView()
                 }
             }
             .environment(\.themePalette, palette)
             .environmentObject(playlistService)
+        }
+        .fileImporter(
+            isPresented: $showLyricsImporter,
+            allowedContentTypes: [.plainText],
+            allowsMultipleSelection: false
+        ) { result in
+            guard case .success(let urls) = result,
+                  let url = urls.first,
+                  let song = playback.currentSong else { return }
+            Task {
+                try? await LyricsService.shared.importLyricsFile(url: url, for: song)
+                await loadLyrics()
+            }
+        }
+        .alert("删除歌词", isPresented: $showDeleteLyricsConfirm) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) {
+                guard let song = playback.currentSong else { return }
+                Task {
+                    try? await LyricsService.shared.deleteLyrics(for: song)
+                    lyricsData = nil
+                }
+            }
+        } message: {
+            Text("确定要删除当前歌曲的歌词吗？")
         }
         .onChange(of: playback.currentSong?.id) { _, newValue in
             if newValue == nil {
@@ -228,12 +265,12 @@ struct PlayerView: View {
                     .listRowBackground(palette.surface)
                 }
 
-                if let songId = playback.currentSong?.id {
+                if let song = playback.currentSong {
                     Section {
                         Button {
                             activeSheet = nil
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                activeSheet = .addToPlaylist(songIds: [songId])
+                                activeSheet = .addToPlaylist(songIds: [song.id])
                             }
                         } label: {
                             HStack(spacing: 12) {
@@ -251,6 +288,40 @@ struct PlayerView: View {
                             }
                         }
                         .listRowBackground(palette.surface)
+                    }
+
+                    Section {
+                        Button {
+                            activeSheet = nil
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                activeSheet = .lyricsSearch(song)
+                            }
+                        } label: {
+                            moreActionRow(icon: "magnifyingglass", title: "搜索歌词")
+                        }
+                        .listRowBackground(palette.surface)
+
+                        Button {
+                            activeSheet = nil
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                showLyricsImporter = true
+                            }
+                        } label: {
+                            moreActionRow(icon: "doc.text", title: "导入歌词")
+                        }
+                        .listRowBackground(palette.surface)
+
+                        if lyricsData != nil {
+                            Button {
+                                activeSheet = nil
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    showDeleteLyricsConfirm = true
+                                }
+                            } label: {
+                                moreActionRow(icon: "trash", title: "删除歌词", destructive: true)
+                            }
+                            .listRowBackground(palette.surface)
+                        }
                     }
                 }
             }
@@ -280,10 +351,28 @@ struct PlayerView: View {
                         LyricsView(lyricsData: lData, currentTime: engine.currentTime)
                             .frame(width: coverSize, height: coverSize)
                     } else {
-                        CoverImageView(path: song.coverImagePath,
-                                       size: coverSize,
-                                       cornerRadius: 16)
-                            .shadow(color: palette.gradientStart.opacity(0.35), radius: 20, y: 8)
+                        ZStack(alignment: .bottom) {
+                            CoverImageView(path: song.coverImagePath,
+                                           size: coverSize,
+                                           cornerRadius: 16)
+                                .shadow(color: palette.gradientStart.opacity(0.35), radius: 20, y: 8)
+
+                            Button {
+                                activeSheet = .lyricsSearch(song)
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "magnifyingglass")
+                                    Text("搜索歌词")
+                                }
+                                .font(.caption.weight(.medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(.ultraThinMaterial)
+                                .clipShape(Capsule())
+                            }
+                            .padding(.bottom, 16)
+                        }
                     }
                 } else {
                     PlaceholderCoverView(size: coverSize)
@@ -413,6 +502,19 @@ struct PlayerView: View {
             .frame(maxWidth: .infinity)
         }
         .padding(.vertical, 12)
+    }
+
+    private func moreActionRow(icon: String, title: String, destructive: Bool = false) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundColor(destructive ? SemanticColor.danger : palette.primary)
+                .frame(width: 28)
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(destructive ? SemanticColor.danger : palette.textPrimary)
+            Spacer()
+        }
     }
 
     private func loadLyrics() async {

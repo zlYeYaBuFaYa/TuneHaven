@@ -205,7 +205,6 @@ struct LyricsServiceTests {
 
     @Test("同一时间戳的多行歌词都被解析")
     func testParseLRCSameTimestamp() {
-        // 某些 LRC 文件中同一时间可能有多行（虽然不常见）
         let lrc = """
         [00:10.00]行一
         [00:10.00]行二（相同时间）
@@ -214,5 +213,174 @@ struct LyricsServiceTests {
 
         let lines = service.parseLRC(lrc)
         #expect(lines.count == 3)
+    }
+}
+
+// MARK: - LRCLibTrack Tests
+
+@Suite("LRCLibTrack 模型测试")
+struct LRCLibTrackTests {
+
+    @Test("hasSyncedLyrics — syncedLyrics 非空时返回 true")
+    func testHasSyncedLyricsTrue() {
+        let track = makeLRCLibTrack(syncedLyrics: "[00:01.00]hello")
+        #expect(track.hasSyncedLyrics == true)
+    }
+
+    @Test("hasSyncedLyrics — syncedLyrics 为 nil 时返回 false")
+    func testHasSyncedLyricsNil() {
+        let track = makeLRCLibTrack(syncedLyrics: nil)
+        #expect(track.hasSyncedLyrics == false)
+    }
+
+    @Test("hasSyncedLyrics — syncedLyrics 为空字符串时返回 false")
+    func testHasSyncedLyricsEmpty() {
+        let track = makeLRCLibTrack(syncedLyrics: "")
+        #expect(track.hasSyncedLyrics == false)
+    }
+
+    @Test("hasAnyLyrics — 仅有 plainLyrics 时返回 true")
+    func testHasAnyLyricsPlainOnly() {
+        let track = makeLRCLibTrack(plainLyrics: "some text", syncedLyrics: nil)
+        #expect(track.hasAnyLyrics == true)
+    }
+
+    @Test("hasAnyLyrics — 全为 nil 时返回 false")
+    func testHasAnyLyricsNone() {
+        let track = makeLRCLibTrack(plainLyrics: nil, syncedLyrics: nil)
+        #expect(track.hasAnyLyrics == false)
+    }
+
+    @Test("bestLyrics — 优先返回 syncedLyrics")
+    func testBestLyricsPrefersSynced() {
+        let track = makeLRCLibTrack(plainLyrics: "plain", syncedLyrics: "[00:01.00]synced")
+        #expect(track.bestLyrics == "[00:01.00]synced")
+    }
+
+    @Test("bestLyrics — syncedLyrics 为空时回退到 plainLyrics")
+    func testBestLyricsFallbackToPlain() {
+        let track = makeLRCLibTrack(plainLyrics: "plain text", syncedLyrics: nil)
+        #expect(track.bestLyrics == "plain text")
+    }
+
+    @Test("bestLyrics — 全为 nil 时返回 nil")
+    func testBestLyricsNil() {
+        let track = makeLRCLibTrack(plainLyrics: nil, syncedLyrics: nil)
+        #expect(track.bestLyrics == nil)
+    }
+
+    @Test("durationText 格式化正确")
+    func testDurationText() {
+        let track = makeLRCLibTrack(duration: 219)
+        #expect(track.durationText == "3:39")
+    }
+
+    @Test("durationText 秒数不足两位时补零")
+    func testDurationTextPadded() {
+        let track = makeLRCLibTrack(duration: 65)
+        #expect(track.durationText == "1:05")
+    }
+
+    @Test("instrumental 标记正确识别")
+    func testInstrumental() {
+        let track = makeLRCLibTrack(instrumental: true)
+        #expect(track.instrumental == true)
+        #expect(track.hasAnyLyrics == false)
+    }
+
+    @Test("JSON 解码正确")
+    func testJSONDecoding() throws {
+        let json = """
+        {
+            "id": 123,
+            "trackName": "Test Song",
+            "artistName": "Test Artist",
+            "albumName": "Test Album",
+            "duration": 180.5,
+            "instrumental": false,
+            "plainLyrics": "hello world",
+            "syncedLyrics": "[00:01.00]hello world"
+        }
+        """.data(using: .utf8)!
+
+        let track = try JSONDecoder().decode(LRCLibTrack.self, from: json)
+        #expect(track.id == 123)
+        #expect(track.trackName == "Test Song")
+        #expect(track.artistName == "Test Artist")
+        #expect(track.duration == 180.5)
+        #expect(track.instrumental == false)
+        #expect(track.plainLyrics == "hello world")
+        #expect(track.hasSyncedLyrics == true)
+    }
+
+    @Test("JSON 解码 — syncedLyrics 和 plainLyrics 为 null")
+    func testJSONDecodingNullLyrics() throws {
+        let json = """
+        {
+            "id": 456,
+            "trackName": "Instrumental",
+            "artistName": "Artist",
+            "albumName": "Album",
+            "duration": 120,
+            "instrumental": true,
+            "plainLyrics": null,
+            "syncedLyrics": null
+        }
+        """.data(using: .utf8)!
+
+        let track = try JSONDecoder().decode(LRCLibTrack.self, from: json)
+        #expect(track.plainLyrics == nil)
+        #expect(track.syncedLyrics == nil)
+        #expect(track.instrumental == true)
+        #expect(track.bestLyrics == nil)
+    }
+
+    private func makeLRCLibTrack(
+        plainLyrics: String? = nil,
+        syncedLyrics: String? = nil,
+        duration: Double = 180,
+        instrumental: Bool = false
+    ) -> LRCLibTrack {
+        LRCLibTrack(
+            id: 1,
+            trackName: "Test",
+            artistName: "Artist",
+            albumName: "Album",
+            duration: duration,
+            instrumental: instrumental,
+            plainLyrics: plainLyrics,
+            syncedLyrics: syncedLyrics
+        )
+    }
+}
+
+// MARK: - AppError 歌词错误码测试
+
+@Suite("AppError 歌词错误码测试")
+struct LyricsAppErrorTests {
+
+    @Test("LYR001 错误码正确")
+    func testLYR001() {
+        let error = AppError.lyricsSearchFailed("timeout")
+        #expect(error.errorCode == "LYR001")
+        #expect(error.errorDescription != nil)
+    }
+
+    @Test("LYR002 错误码正确")
+    func testLYR002() {
+        let error = AppError.lyricsSaveFailed("disk full")
+        #expect(error.errorCode == "LYR002")
+    }
+
+    @Test("LYR003 错误码正确")
+    func testLYR003() {
+        let error = AppError.lyricsImportFailed("invalid format")
+        #expect(error.errorCode == "LYR003")
+    }
+
+    @Test("LYR004 错误码正确")
+    func testLYR004() {
+        let error = AppError.lyricsDeleteFailed("file in use")
+        #expect(error.errorCode == "LYR004")
     }
 }

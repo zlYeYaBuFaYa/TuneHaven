@@ -10,6 +10,7 @@ struct SettingsPlaybackSection: View {
     @Binding var speedMemoryMode: Int
     @Binding var sleepTimerNotification: Bool
     @Binding var wifiPasswordEnabled: Bool
+    @Binding var autoMatchLyrics: Bool
     @Binding var notificationPermissionStatus: UNAuthorizationStatus
 
     var body: some View {
@@ -17,6 +18,7 @@ struct SettingsPlaybackSection: View {
             DisclosureGroup(isExpanded: $isExpanded) {
                 recentPlayRow
                 speedMemoryRow
+                autoMatchLyricsRow
                 sleepTimerRow
                 notificationWarning
                 wifiPasswordRow
@@ -135,6 +137,26 @@ struct SettingsPlaybackSection: View {
                 }
             } icon: {
                 Image(systemName: "lock.shield")
+                    .foregroundColor(palette.primary)
+            }
+        }
+        .tint(palette.primary)
+        .listRowBackground(listRowBg)
+    }
+
+    private var autoMatchLyricsRow: some View {
+        Toggle(isOn: $autoMatchLyrics) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("自动匹配在线歌词")
+                        .font(.subheadline)
+                        .foregroundColor(palette.textPrimary)
+                    Text("播放时自动搜索并下载歌词")
+                        .font(.caption)
+                        .foregroundColor(palette.textSecondary)
+                }
+            } icon: {
+                Image(systemName: "text.magnifyingglass")
                     .foregroundColor(palette.primary)
             }
         }

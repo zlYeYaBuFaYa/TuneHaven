@@ -26,6 +26,10 @@ enum AppError: LocalizedError {
     case webdavServerNotSupported
     case webdavDownloadFailed(String)
     case webdavCertificateError
+    case lyricsSearchFailed(String)
+    case lyricsSaveFailed(String)
+    case lyricsImportFailed(String)
+    case lyricsDeleteFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -54,6 +58,10 @@ enum AppError: LocalizedError {
         case .webdavServerNotSupported: return "服务器不支持 WebDAV 协议"
         case .webdavDownloadFailed(let msg): return "WebDAV 下载失败：\(msg)"
         case .webdavCertificateError: return "SSL 证书验证失败"
+        case .lyricsSearchFailed: return "歌词搜索失败，请检查网络连接"
+        case .lyricsSaveFailed: return "歌词保存失败"
+        case .lyricsImportFailed: return "歌词导入失败，请确认文件格式正确"
+        case .lyricsDeleteFailed: return "歌词删除失败"
         }
     }
 
@@ -84,6 +92,10 @@ enum AppError: LocalizedError {
         case .webdavServerNotSupported: return "DAV003"
         case .webdavDownloadFailed: return "DAV004"
         case .webdavCertificateError: return "DAV005"
+        case .lyricsSearchFailed: return "LYR001"
+        case .lyricsSaveFailed: return "LYR002"
+        case .lyricsImportFailed: return "LYR003"
+        case .lyricsDeleteFailed: return "LYR004"
         }
     }
 }

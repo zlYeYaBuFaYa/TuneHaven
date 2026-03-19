@@ -185,6 +185,17 @@ final class CoreDataSongRepository {
         }
     }
 
+    func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws {
+        try await stack.performBackground { ctx in
+            let request = SongEntity.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", songId as CVarArg)
+            request.fetchLimit = 1
+            guard let entity = try ctx.fetch(request).first else { return }
+            entity.lyricsPath = lyricsPath
+            entity.lyricsSource = lyricsSource?.rawValue ?? 0
+        }
+    }
+
     func cleanupPendingDeletes() async {
         try? await stack.performBackground { ctx in
             let cutoff = Date().addingTimeInterval(-30)

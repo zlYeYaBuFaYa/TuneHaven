@@ -13,6 +13,14 @@ struct LyricsView: View {
     }
 
     var body: some View {
+        if !lyricsData.lines.isEmpty {
+            syncedLyricsView
+        } else if !lyricsData.rawText.isEmpty {
+            plainTextView
+        }
+    }
+
+    private var syncedLyricsView: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 12) {
@@ -36,6 +44,18 @@ struct LyricsView: View {
                     }
                 }
             }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var plainTextView: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            Text(lyricsData.rawText)
+                .font(.subheadline)
+                .foregroundColor(palette.playerSubtext)
+                .multilineTextAlignment(.center)
+                .padding(.vertical, 40)
+                .padding(.horizontal, 16)
         }
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }

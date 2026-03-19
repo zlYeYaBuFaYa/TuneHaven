@@ -13,6 +13,9 @@ struct SongInfoEditView: View {
     @State private var album = ""
     @State private var isSaving = false
     @State private var saved = false
+    @State private var showLyricsSearch = false
+    @State private var showLyricsImporter = false
+    @State private var showDeleteLyricsConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -25,6 +28,8 @@ struct SongInfoEditView: View {
                             labeledField("专辑", text: $album)
                         }
                         .listRowBackground(palette.surface)
+
+                        lyricsSection(song)
 
                         Section("文件信息") {
                             infoRow("格式", song.metadata.format.uppercased())
@@ -84,6 +89,102 @@ struct SongInfoEditView: View {
                 .foregroundColor(palette.textPrimary)
                 .multilineTextAlignment(.trailing)
         }
+    }
+
+    private func lyricsSection(_ song: Song) -> some View {
+        Section("歌词") {
+            infoRow("状态", lyricsStatusText(song))
+            if song.lyricsSource != nil {
+                infoRow("来源", lyricsSourceText(song))
+            }
+
+            Button {
+                showLyricsSearch = true
+            } label: {
+                Label("搜索歌词", systemImage: "magnifyingglass")
+                    .font(.subheadline)
+                    .foregroundColor(palette.primary)
+            }
+
+            Button {
+                showLyricsImporter = true
+            } label: {
+                Label("导入歌词", systemImage: "doc.text")
+                    .font(.subheadline)
+                    .foregroundColor(palette.primary)
+            }
+
+            if song.lyricsSource != nil || song.lyricsPath != nil {
+                Button(role: .destructive) {
+                    showDeleteLyricsConfirm = true
+                } label: {
+                    Label("删除歌词", systemImage: "trash")
+                        .font(.subheadline)
+                        .foregroundColor(SemanticColor.danger)
+                }
+            }
+        }
+        .listRowBackground(palette.surface)
+        .sheet(isPresented: $showLyricsSearch) {
+            if let song = self.song {
+                LyricsSearchView(song: song) {
+                    Task { await reloadSong() }
+                }
+                .environment(\.themePalette, palette)
+            }
+        }
+        .fileImporter(
+            isPresented: $showLyricsImporter,
+            allowedContentTypes: [.plainText],
+            allowsMultipleSelection: false
+        ) { result in
+            guard case .success(let urls) = result,
+                  let url = urls.first,
+                  let song = self.song else { return }
+            Task {
+                try? await LyricsService.shared.importLyricsFile(url: url, for: song)
+                await reloadSong()
+            }
+        }
+        .alert("删除歌词", isPresented: $showDeleteLyricsConfirm) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) {
+                guard let song = self.song else { return }
+                Task {
+                    try? await LyricsService.shared.deleteLyrics(for: song)
+                    await reloadSong()
+                }
+            }
+        } message: {
+            Text("确定要删除当前歌曲的歌词吗？")
+        }
+    }
+
+    private func lyricsStatusText(_ song: Song) -> String {
+        switch song.lyricsSource {
+        case .embedded: return "内嵌歌词"
+        case .file: return "已有歌词（LRC 文件）"
+        case .manual: return "手动导入歌词"
+        case nil:
+            let hasExternal = FileManager.default.fileExists(
+                atPath: SandboxPathManager.lyricsFileURL(relativePath: "\(song.id.uuidString).lrc").path
+            )
+            return hasExternal ? "已有歌词（LRC 文件）" : "暂无歌词"
+        }
+    }
+
+    private func lyricsSourceText(_ song: Song) -> String {
+        switch song.lyricsSource {
+        case .embedded: return "内嵌"
+        case .file: return "本地文件"
+        case .manual: return "手动导入"
+        case nil: return "—"
+        }
+    }
+
+    private func reloadSong() async {
+        let repo = CoreDataSongRepository()
+        song = await repo.fetchSong(id: songId)
     }
 
     private func loadSong() async {
