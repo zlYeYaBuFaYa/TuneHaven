@@ -21,6 +21,11 @@ enum AppError: LocalizedError {
     case playlistNameDuplicate
     case playlistNameEmpty
     case playQueueFull
+    case webdavConnectionFailed(String)
+    case webdavAuthFailed
+    case webdavServerNotSupported
+    case webdavDownloadFailed(String)
+    case webdavCertificateError
 
     var errorDescription: String? {
         switch self {
@@ -44,6 +49,11 @@ enum AppError: LocalizedError {
         case .playlistNameDuplicate: return "歌单名称已存在"
         case .playlistNameEmpty: return "歌单名称不能为空"
         case .playQueueFull: return "播放队列已满（999首）"
+        case .webdavConnectionFailed(let msg): return "WebDAV 连接失败：\(msg)"
+        case .webdavAuthFailed: return "WebDAV 用户名或密码错误"
+        case .webdavServerNotSupported: return "服务器不支持 WebDAV 协议"
+        case .webdavDownloadFailed(let msg): return "WebDAV 下载失败：\(msg)"
+        case .webdavCertificateError: return "SSL 证书验证失败"
         }
     }
 
@@ -69,6 +79,11 @@ enum AppError: LocalizedError {
         case .playlistNameDuplicate: return "PLT001"
         case .playlistNameEmpty: return "PLT002"
         case .playQueueFull: return "QUE001"
+        case .webdavConnectionFailed: return "DAV001"
+        case .webdavAuthFailed: return "DAV002"
+        case .webdavServerNotSupported: return "DAV003"
+        case .webdavDownloadFailed: return "DAV004"
+        case .webdavCertificateError: return "DAV005"
         }
     }
 }

@@ -11,6 +11,7 @@ struct SettingsImportSection: View {
     @Binding var showAppleMusicImport: Bool
     @Binding var showCloudDriveImport: Bool
     @Binding var showWifiTransfer: Bool
+    @Binding var showWebDAVImport: Bool
 
     var body: some View {
         Section {
@@ -29,6 +30,10 @@ struct SettingsImportSection: View {
 
                 importRow(icon: "wifi", title: "WiFi 传输", subtitle: "通过浏览器从电脑无线传输音乐") {
                     showWifiTransfer = true
+                }
+
+                importRow(icon: "server.rack", title: "WebDAV 导入", subtitle: "从坚果云、NAS 等 WebDAV 服务器导入") {
+                    showWebDAVImport = true
                 }
             } label: {
                 Label {

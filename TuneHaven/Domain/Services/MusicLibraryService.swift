@@ -104,6 +104,7 @@ final class MusicLibraryService: ObservableObject {
     func cleanupOnLaunch() async {
         log.info("启动清理：清除待删除歌曲")
         await songRepo.cleanupPendingDeletes()
+        OpenInImportHandler.cleanupInbox()
     }
 
     private func scheduleCommit(token: UndoToken) {

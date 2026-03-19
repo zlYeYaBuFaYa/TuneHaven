@@ -30,6 +30,7 @@ struct SettingsView: View {
     @State private var showWifiTransfer = false
     @State private var showAppleMusicImport = false
     @State private var showCloudDriveImport = false
+    @State private var showWebDAVImport = false
     @State private var selectedPhotoItem: PhotosPickerItem?
 
     private var hasCustomBg: Bool {
@@ -47,7 +48,8 @@ struct SettingsView: View {
                 showDocumentPicker: $showDocumentPicker,
                 showAppleMusicImport: $showAppleMusicImport,
                 showCloudDriveImport: $showCloudDriveImport,
-                showWifiTransfer: $showWifiTransfer
+                showWifiTransfer: $showWifiTransfer,
+                showWebDAVImport: $showWebDAVImport
             )
 
             SettingsAppearanceSection(
@@ -111,6 +113,12 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showCloudDriveImport) {
             CloudDriveImportView()
+                .environment(\.themePalette, palette)
+                .environmentObject(importService)
+                .environmentObject(libraryService)
+        }
+        .sheet(isPresented: $showWebDAVImport) {
+            WebDAVAccountListView()
                 .environment(\.themePalette, palette)
                 .environmentObject(importService)
                 .environmentObject(libraryService)

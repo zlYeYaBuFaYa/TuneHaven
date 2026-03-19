@@ -12,6 +12,7 @@ struct CloudDriveImportView: View {
     @State private var progress: ImportProgress?
     @State private var importResult: ImportResult?
     @State private var selectedProvider: (any CloudDriveProvider)?
+    @State private var showBaiduGuide = false
 
     private let providers = CloudDriveRegistry.allProviders
 
@@ -49,6 +50,14 @@ struct CloudDriveImportView: View {
                 startImport(urls: urls)
             }
         }
+        .alert("即将跳转到百度网盘", isPresented: $showBaiduGuide) {
+            Button("取消", role: .cancel) { }
+            Button("打开百度网盘") {
+                ExternalAppLauncher.openBaiduNetdisk()
+            }
+        } message: {
+            Text("在百度网盘中：\n1. 找到并下载要导入的音乐文件\n2. 长按文件 → 打开方式\n3. 选择 TuneHaven\n文件将自动导入到音乐库")
+        }
     }
 
     // MARK: - Providers Section
@@ -66,8 +75,12 @@ struct CloudDriveImportView: View {
 
     private func providerRow(_ provider: any CloudDriveProvider) -> some View {
         Button {
-            selectedProvider = provider
-            showDocumentPicker = true
+            if provider.id == "baidu_netdisk" {
+                showBaiduGuide = true
+            } else {
+                selectedProvider = provider
+                showDocumentPicker = true
+            }
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: provider.iconName)
@@ -109,22 +122,32 @@ struct CloudDriveImportView: View {
 
     private var guideSection: some View {
         Section {
-            guideRow(step: "1", text: "确保已安装对应的云盘 App 并登录账号")
-            guideRow(step: "2", text: "点击上方云盘，在弹出的文件选择器中找到云盘目录")
-            guideRow(step: "3", text: "选择要导入的音乐文件，支持多选")
-            guideRow(step: "4", text: "等待文件从云端下载完成后自动导入")
+            guideRow(step: "1", text: "点击上方百度网盘，跳转到 App")
+            guideRow(step: "2", text: "找到音乐文件，先下载到手机本地")
+            guideRow(step: "3", text: "下载完成后长按文件 → 打开方式")
+            guideRow(step: "4", text: "选择 TuneHaven，文件将自动导入")
 
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(SemanticColor.warning)
                     .font(.caption)
-                Text("云盘文件需要网络下载，大文件可能耗时较长，请保持网络畅通")
+                Text("百度网盘中的云端文件需先下载到手机本地，才能通过「打开方式」分享")
+                    .font(.caption)
+                    .foregroundColor(palette.textSecondary)
+            }
+            .listRowBackground(palette.surfaceSecondary)
+
+            HStack(spacing: 8) {
+                Image(systemName: "lightbulb.fill")
+                    .foregroundColor(palette.primary)
+                    .font(.caption)
+                Text("也支持从微信、QQ、AirDrop 等 App 直接分享音频文件到本 App")
                     .font(.caption)
                     .foregroundColor(palette.textSecondary)
             }
             .listRowBackground(palette.surfaceSecondary)
         } header: {
-            Text("使用说明")
+            Text("操作步骤")
                 .foregroundColor(palette.textSecondary)
         }
     }

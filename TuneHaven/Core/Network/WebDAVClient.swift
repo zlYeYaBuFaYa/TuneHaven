@@ -1,0 +1,223 @@
+import Foundation
+
+actor WebDAVClient {
+    struct Configuration {
+        let baseURL: URL
+        let username: String
+        let password: String
+        let trustSelfSignedCert: Bool
+        let timeoutInterval: TimeInterval
+
+        init(baseURL: URL, username: String, password: String,
+             trustSelfSignedCert: Bool = false, timeoutInterval: TimeInterval = 30) {
+            self.baseURL = baseURL
+            self.username = username
+            self.password = password
+            self.trustSelfSignedCert = trustSelfSignedCert
+            self.timeoutInterval = timeoutInterval
+        }
+    }
+
+    private let config: Configuration
+    private let session: URLSession
+    private let sessionDelegate: WebDAVSessionDelegate
+    private var currentDownloadTask: URLSessionDownloadTask?
+    private var isCancelled = false
+
+    init(configuration: Configuration) {
+        self.config = configuration
+        let delegate = WebDAVSessionDelegate()
+        delegate.trustSelfSignedCert = configuration.trustSelfSignedCert
+        self.sessionDelegate = delegate
+
+        let urlConfig = URLSessionConfiguration.default
+        urlConfig.timeoutIntervalForRequest = configuration.timeoutInterval
+        self.session = URLSession(configuration: urlConfig, delegate: delegate, delegateQueue: nil)
+    }
+
+    func testConnection() async throws -> Bool {
+        let optionsURL = config.baseURL
+        var optionsReq = URLRequest(url: optionsURL)
+        optionsReq.httpMethod = "OPTIONS"
+        addAuth(to: &optionsReq)
+
+        let (_, optionsResp) = try await session.data(for: optionsReq)
+        guard let http = optionsResp as? HTTPURLResponse else {
+            throw WebDAVError.connectionFailed("无法连接到服务器")
+        }
+
+        if http.statusCode == 401 {
+            throw WebDAVError.authFailed
+        }
+
+        let allow = http.value(forHTTPHeaderField: "Allow") ?? ""
+        let dav = http.value(forHTTPHeaderField: "DAV") ?? ""
+        guard allow.contains("PROPFIND") || !dav.isEmpty else {
+            throw WebDAVError.serverNotSupported
+        }
+
+        let propfindBody = propfindXML()
+        var propReq = URLRequest(url: config.baseURL)
+        propReq.httpMethod = "PROPFIND"
+        propReq.setValue("0", forHTTPHeaderField: "Depth")
+        propReq.setValue("application/xml; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        propReq.httpBody = propfindBody
+        addAuth(to: &propReq)
+
+        let (_, propResp) = try await session.data(for: propReq)
+        guard let propHttp = propResp as? HTTPURLResponse else {
+            throw WebDAVError.connectionFailed("PROPFIND 请求失败")
+        }
+
+        switch propHttp.statusCode {
+        case 200, 207: return true
+        case 401: throw WebDAVError.authFailed
+        case 403: throw WebDAVError.connectionFailed("无权访问，请检查权限")
+        case 404: throw WebDAVError.connectionFailed("路径不存在，请检查服务器地址")
+        default: throw WebDAVError.connectionFailed("服务器返回 \(propHttp.statusCode)")
+        }
+    }
+
+    func listDirectory(path: String) async throws -> [WebDAVFile] {
+        let encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path
+        guard let url = URL(string: encodedPath, relativeTo: config.baseURL) else {
+            throw WebDAVError.connectionFailed("无效的目录路径")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PROPFIND"
+        request.setValue("1", forHTTPHeaderField: "Depth")
+        request.setValue("application/xml; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.httpBody = propfindXML()
+        addAuth(to: &request)
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw WebDAVError.connectionFailed("请求失败")
+        }
+
+        switch http.statusCode {
+        case 207:
+            let requestFullPath = url.path
+            return try WebDAVXMLParser.parseMultiStatus(data, requestPath: requestFullPath)
+        case 401:
+            throw WebDAVError.authFailed
+        case 404:
+            throw WebDAVError.connectionFailed("目录不存在: \(path)")
+        default:
+            throw WebDAVError.connectionFailed("服务器返回 \(http.statusCode)")
+        }
+    }
+
+    func downloadFile(
+        remotePath: String,
+        to destination: URL,
+        progress: @escaping @Sendable (Int64, Int64) -> Void
+    ) async throws -> URL {
+        let encodedPath = remotePath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? remotePath
+        guard let url = URL(string: encodedPath, relativeTo: config.baseURL) else {
+            throw WebDAVError.downloadFailed("无效的文件路径")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        addAuth(to: &request)
+
+        isCancelled = false
+        let (asyncBytes, response) = try await session.bytes(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            throw WebDAVError.downloadFailed("下载失败 (HTTP \(code))")
+        }
+
+        let totalBytes = http.expectedContentLength
+        var receivedBytes: Int64 = 0
+
+        FileManager.default.createFile(atPath: destination.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: destination)
+        defer { try? handle.close() }
+
+        for try await byte in asyncBytes {
+            if isCancelled { throw WebDAVError.downloadFailed("下载已取消") }
+            handle.write(Data([byte]))
+            receivedBytes += 1
+            if receivedBytes % 65536 == 0 {
+                progress(receivedBytes, totalBytes)
+            }
+        }
+        progress(receivedBytes, totalBytes)
+
+        return destination
+    }
+
+    func fileInfo(path: String) async throws -> (size: Int64, etag: String?) {
+        let encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path
+        guard let url = URL(string: encodedPath, relativeTo: config.baseURL) else {
+            throw WebDAVError.connectionFailed("无效路径")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        addAuth(to: &request)
+
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw WebDAVError.connectionFailed("HEAD 请求失败")
+        }
+
+        let size = http.expectedContentLength
+        let etag = http.value(forHTTPHeaderField: "ETag")
+        return (size, etag)
+    }
+
+    func cancelDownload() {
+        isCancelled = true
+        currentDownloadTask?.cancel()
+    }
+
+    // MARK: - Private
+
+    private func addAuth(to request: inout URLRequest) {
+        guard !config.username.isEmpty else { return }
+        let credentials = "\(config.username):\(config.password)"
+        if let data = credentials.data(using: .utf8) {
+            let base64 = data.base64EncodedString()
+            request.setValue("Basic \(base64)", forHTTPHeaderField: "Authorization")
+        }
+    }
+
+    private func propfindXML() -> Data {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <d:propfind xmlns:d="DAV:">
+          <d:prop>
+            <d:displayname/>
+            <d:getcontentlength/>
+            <d:getcontenttype/>
+            <d:getlastmodified/>
+            <d:resourcetype/>
+            <d:getetag/>
+          </d:prop>
+        </d:propfind>
+        """
+        return Data(xml.utf8)
+    }
+}
+
+enum WebDAVError: LocalizedError {
+    case connectionFailed(String)
+    case authFailed
+    case serverNotSupported
+    case downloadFailed(String)
+    case certificateError
+
+    var errorDescription: String? {
+        switch self {
+        case .connectionFailed(let msg): return msg
+        case .authFailed: return "用户名或密码错误"
+        case .serverNotSupported: return "服务器不支持 WebDAV 协议"
+        case .downloadFailed(let msg): return msg
+        case .certificateError: return "SSL 证书验证失败"
+        }
+    }
+}
