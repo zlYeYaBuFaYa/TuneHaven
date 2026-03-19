@@ -52,7 +52,6 @@ final class ThemeManager: ObservableObject {
     func setColorMode(_ mode: ColorMode) {
         colorMode = mode
         storedColorMode = mode.rawValue
-        applyToWindows()
     }
 
     func applyToWindows() {
@@ -117,6 +116,27 @@ final class ThemeManager: ObservableObject {
         return foreground ?? allScenes.first
     }
 
+    // MARK: - 延后刷新机制
+
+    private var pendingRefreshWork: DispatchWorkItem?
+    private var pendingFullApply: Bool = false
+
+    func scheduleWindowRefresh(delay: TimeInterval = 0.05, fullApply: Bool = true) {
+        if fullApply { pendingFullApply = true }
+        pendingRefreshWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            if self.pendingFullApply {
+                self.applyToWindows()
+            } else {
+                self.refreshWindows()
+            }
+            self.pendingFullApply = false
+        }
+        pendingRefreshWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
     private static func setNavigationControllerBackgrounds(on vc: UIViewController?, color: UIColor) {
         guard let vc = vc else { return }
         if let nav = vc as? UINavigationController {
@@ -134,7 +154,7 @@ final class ThemeManager: ObservableObject {
     func setTheme(_ style: ThemeStyle) {
         currentStyle = style
         storedThemeStyle = style.id
-        applyToWindows()
+        scheduleWindowRefresh(fullApply: true)
     }
 
     func resolvedPalette(for systemColorScheme: ColorScheme) -> ThemeColorPalette {

@@ -80,15 +80,13 @@ struct TuneHavenApp: App {
             }
             .onAppear {
                 AppLogger.shared.debug("[App] onAppear — applying window theme")
-                themeManager.applyToWindows()
                 refreshPaletteScheme()
+                themeManager.scheduleWindowRefresh(delay: 0.1, fullApply: true)
             }
             .onChange(of: themeManager.colorMode) { _, newMode in
                 AppLogger.shared.debug("[App] colorMode changed → \(newMode)")
-                themeManager.applyToWindows()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    refreshPaletteScheme()
-                }
+                refreshPaletteScheme()
+                themeManager.scheduleWindowRefresh(delay: 0.1, fullApply: true)
             }
             .onChange(of: scenePhase) { _, phase in
                 AppLogger.shared.debug("[App] scenePhase → \(phase)")
@@ -96,10 +94,7 @@ struct TuneHavenApp: App {
                 case .active:
                     playbackService.checkSleepTimerOnForeground()
                     refreshPaletteScheme()
-                    themeManager.refreshWindows()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        themeManager.refreshWindows()
-                    }
+                    themeManager.scheduleWindowRefresh(delay: 0.3, fullApply: false)
                 case .inactive:
                     refreshPaletteScheme()
                 case .background:
@@ -171,9 +166,7 @@ struct TuneHavenApp: App {
                 ensureOpenInHandler().enqueue(urls: urls)
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                themeManager.applyToWindows()
-            }
+            themeManager.scheduleWindowRefresh(delay: 0.15, fullApply: true)
         } catch {
             initError = error.localizedDescription
             AppLogger.shared.error("[App] initialize FAILED: \(error)")

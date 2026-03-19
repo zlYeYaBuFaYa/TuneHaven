@@ -59,12 +59,18 @@ struct ThemeBackgroundView: View {
 
     var body: some View {
         ZStack {
+            palette.background
+
             if wallpaperManager.useCustomWallpaper, let image = wallpaperManager.currentWallpaper {
                 userWallpaperBackground(image)
+                    .transition(.opacity)
             } else {
                 themeBackground
+                    .id(themeManager.currentStyle.id)
+                    .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: themeManager.currentStyle.id)
         .ignoresSafeArea()
     }
 
@@ -98,6 +104,9 @@ struct ThemeBackgroundView: View {
                 .environment(\.colorScheme, colorScheme)
         case .frostAurora:
             FrostEleganceBackground()
+                .environment(\.colorScheme, colorScheme)
+        case .spaceNeon:
+            DeepSpaceNeonBackground()
                 .environment(\.colorScheme, colorScheme)
         }
     }
