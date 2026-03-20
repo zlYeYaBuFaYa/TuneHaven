@@ -18,9 +18,9 @@ final class SearchService: ObservableObject {
 
         log.debug("搜索: query=\(q), tab=\(tab)")
         let matched = allSongs.filter {
-            $0.title.lowercased().hasPrefix(q) ||
-            $0.artist.lowercased().hasPrefix(q) ||
-            $0.album.lowercased().hasPrefix(q)
+            $0.title.lowercased().contains(q) ||
+            $0.artist.lowercased().contains(q) ||
+            $0.album.lowercased().contains(q)
         }
 
         var artistNames = Set<String>()

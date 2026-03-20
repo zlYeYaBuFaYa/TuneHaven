@@ -1,7 +1,7 @@
 import UniformTypeIdentifiers
 
 extension UTType {
-    static let flac = UTType(filenameExtension: "flac") ?? .audio
+    static let flac = UTType("org.xiph.flac") ?? UTType(filenameExtension: "flac") ?? .audio
     static let alac = UTType(filenameExtension: "alac") ?? .audio
     static let caf = UTType(filenameExtension: "caf") ?? .audio
 

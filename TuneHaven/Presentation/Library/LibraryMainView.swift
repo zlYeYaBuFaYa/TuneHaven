@@ -25,6 +25,7 @@ struct LibraryMainView: View {
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var searchService: SearchService
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
     @Environment(\.hasCustomBackground) private var hasCustomBg
 
@@ -44,7 +45,14 @@ struct LibraryMainView: View {
                 .background(palette.separator)
 
             if isSearchActive && !searchDebouncer.debouncedQuery.isEmpty {
-                SearchResultView(result: searchResult, query: searchDebouncer.debouncedQuery, tab: selectedTab)
+                SearchResultView(
+                    result: searchResult,
+                    query: searchDebouncer.debouncedQuery,
+                    tab: selectedTab,
+                    onDeleteSong: { song in searchDeleteSong(song) },
+                    onFavoriteSong: { song in searchFavoriteSong(song) },
+                    onAddToPlaylist: { song in router.present(.addToPlaylist(songIds: [song.id])) }
+                )
             } else {
                 libraryContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -145,6 +153,39 @@ struct LibraryMainView: View {
         guard !query.isEmpty else { return }
         Task {
             searchResult = await searchService.search(query: query, tab: selectedTab, allSongs: libraryService.songs)
+        }
+    }
+
+    private func refreshSearch() {
+        let query = searchDebouncer.debouncedQuery
+        guard !query.isEmpty else { return }
+        Task {
+            searchResult = await searchService.search(query: query, tab: selectedTab, allSongs: libraryService.songs)
+        }
+    }
+
+    private func searchDeleteSong(_ song: Song) {
+        Task {
+            guard let token = try? await libraryService.softDelete(songIds: [song.id]) else { return }
+            refreshSearch()
+            snackbar.show(
+                message: "已删除《\(song.title)》",
+                actionTitle: "撤销",
+                action: {
+                    Task {
+                        try? await libraryService.undoDelete(token: token)
+                        refreshSearch()
+                    }
+                },
+                duration: 30
+            )
+        }
+    }
+
+    private func searchFavoriteSong(_ song: Song) {
+        Task {
+            try? await libraryService.toggleFavorite(songId: song.id)
+            refreshSearch()
         }
     }
 }

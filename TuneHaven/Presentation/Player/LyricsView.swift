@@ -265,33 +265,60 @@ struct LyricsPageView: View {
         }
     }
 
+    private func lineProgress(for index: Int) -> CGFloat {
+        guard let lines = lyricsData?.lines,
+              currentLineIndex == index else { return 0 }
+        let lineStart = lines[index].timestamp
+        let lineEnd = index + 1 < lines.count ? lines[index + 1].timestamp : engine.duration
+        let lineDuration = lineEnd - lineStart
+        guard lineDuration > 0 else { return 1 }
+        return min(max(CGFloat((engine.currentTime - lineStart) / lineDuration), 0), 1)
+    }
+
     private func lyricsLineButton(line: LyricsLine, index: Int) -> some View {
         let isCurrent = currentLineIndex == index
+        let fontSize = (isCurrent ? 28 : 20) * effectiveScale
+        let fontWeight: Font.Weight = isCurrent ? .black : .regular
 
         return Button {
             playback.seek(to: line.timestamp)
         } label: {
-            Text(line.text)
-                .font(.system(size: (isCurrent ? 28 : 20) * effectiveScale, weight: isCurrent ? .bold : .regular))
-                .foregroundStyle(
-                    isCurrent
-                        ? AnyShapeStyle(LinearGradient(
-                            colors: [palette.gradientStart, palette.gradientEnd],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                          ))
-                        : AnyShapeStyle(palette.playerSubtext)
-                )
-                .opacity(lineOpacity(for: index))
-                .shadow(color: isCurrent ? palette.gradientStart.opacity(0.6) : .clear, radius: isCurrent ? 10 : 0)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .scaleEffect(isCurrent ? 1.05 : 1.0)
-                .contentShape(Rectangle())
-                .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isCurrent)
+            if isCurrent {
+                karaokeText(line.text, fontSize: fontSize, fontWeight: fontWeight, progress: lineProgress(for: index))
+            } else {
+                Text(line.text)
+                    .font(.system(size: fontSize, weight: fontWeight))
+                    .foregroundColor(palette.textPrimary)
+            }
         }
+        .opacity(lineOpacity(for: index))
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .scaleEffect(isCurrent ? 1.02 : 1.0)
+        .contentShape(Rectangle())
+        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isCurrent)
         .buttonStyle(.plain)
         .id(line.id)
+    }
+
+    private func karaokeText(_ text: String, fontSize: CGFloat, fontWeight: Font.Weight, progress: CGFloat) -> some View {
+        Text(text)
+            .font(.system(size: fontSize, weight: fontWeight))
+            .multilineTextAlignment(.center)
+            .foregroundColor(palette.textPrimary)
+            .overlay(alignment: .leading) {
+                GeometryReader { geo in
+                    Text(text)
+                        .font(.system(size: fontSize, weight: fontWeight))
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(palette.primary)
+                        .frame(width: geo.size.width, height: geo.size.height, alignment: .center)
+                        .mask(alignment: .leading) {
+                            Rectangle()
+                                .frame(width: geo.size.width * progress)
+                        }
+                }
+            }
     }
 
     // MARK: - Plain Text

@@ -84,30 +84,40 @@ final class ImportService: ObservableObject {
     private func processFile(url: URL, overrideName: String? = nil, titleOverride: String? = nil, artistOverride: String? = nil, albumOverride: String? = nil, coverOverride: UIImage? = nil) async -> SingleImportResult {
         let fileName = overrideName ?? url.lastPathComponent
         let ext = (fileName as NSString).pathExtension.lowercased()
+        log.info("[Import] processFile start: \(fileName) ext=\(ext)")
 
         guard FileStorageService.supportedExtensions.contains(ext) else {
+            log.info("[Import] 格式不支持: \(ext)")
             return SingleImportResult(fileName: fileName, status: .skippedUnsupportedFormat, song: nil, errorMessage: "格式不支持：\(ext)")
         }
 
         let hasAccess = url.startAccessingSecurityScopedResource()
+        log.info("[Import] securityScopedAccess=\(hasAccess) url=\(url.path)")
         defer { if hasAccess { url.stopAccessingSecurityScopedResource() } }
 
         let fileSize = fileService.fileSize(at: url)
+        log.info("[Import] fileSize=\(fileSize) bytes")
         guard fileSize <= FileStorageService.maxFileSizeBytes else {
             return SingleImportResult(fileName: fileName, status: .skippedOversize, song: nil, errorMessage: "文件过大（超过500MB）")
         }
 
         let hash: String
-        do { hash = try fileService.sha256(of: url) } catch {
-            log.error(error, context: "文件哈希计算失败: \(fileName)")
+        do {
+            hash = try fileService.sha256(of: url)
+            log.info("[Import] sha256 done: \(hash.prefix(12))...")
+        } catch {
+            log.error(error, context: "[Import] 文件哈希计算失败: \(fileName)")
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "文件读取失败")
         }
 
         if let existing = await songRepo.fetchByHash(hash) {
+            log.info("[Import] 跳过重复: \(fileName)")
             return SingleImportResult(fileName: fileName, status: .skippedDuplicate, song: existing, errorMessage: nil)
         }
 
+        log.info("[Import] 开始解析元数据: \(fileName)")
         let parsed = await AudioMetadataParser.shared.parse(url: url)
+        log.info("[Import] 元数据解析完成: title=\(parsed.title) artist=\(parsed.artist) duration=\(parsed.duration)")
 
         let finalTitle = titleOverride ?? parsed.title
         let finalArtist = artistOverride ?? parsed.artist
@@ -116,8 +126,11 @@ final class ImportService: ObservableObject {
         let isIncomplete = parsed.isIncomplete && titleOverride == nil
 
         let relPath: String
-        do { relPath = try fileService.copyToMusic(from: url, fileHash: hash, originalFileName: fileName) } catch {
-            log.error(error, context: "文件复制失败: \(fileName)")
+        do {
+            relPath = try fileService.copyToMusic(from: url, fileHash: hash, originalFileName: fileName)
+            log.info("[Import] 文件复制完成: \(relPath)")
+        } catch {
+            log.error(error, context: "[Import] 文件复制失败: \(fileName)")
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "文件复制失败")
         }
 
@@ -164,9 +177,10 @@ final class ImportService: ObservableObject {
 
         do {
             try await songRepo.insert(song: song)
+            log.info("[Import] 入库成功: \(song.title) id=\(song.id)")
             return SingleImportResult(fileName: fileName, status: isIncomplete ? .successIncompleteMetadata : .success, song: song, errorMessage: nil)
         } catch {
-            log.error(error, context: "歌曲入库失败: \(fileName)")
+            log.error(error, context: "[Import] 歌曲入库失败: \(fileName)")
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: error.localizedDescription)
         }
     }

@@ -15,6 +15,8 @@ struct ImportFilesView: View {
     @State private var importResult: ImportResult?
     @State private var isImporting = false
     @State private var progress: ImportProgress?
+    @State private var filePickerError: String?
+    @State private var showResultAlert = false
 
     var body: some View {
         NavigationStack {
@@ -135,6 +137,19 @@ struct ImportFilesView: View {
                 if let result = importResult {
                     importResultSection(result)
                 }
+
+                if let error = filePickerError {
+                    Section {
+                        HStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(SemanticColor.warning)
+                            Text(error)
+                                .font(.subheadline)
+                                .foregroundColor(palette.textPrimary)
+                        }
+                        .listRowBackground(palette.surface)
+                    }
+                }
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
@@ -154,8 +169,13 @@ struct ImportFilesView: View {
             allowedContentTypes: UTType.allSupportedAudio,
             allowsMultipleSelection: true
         ) { result in
-            if case .success(let urls) = result {
+            switch result {
+            case .success(let urls):
+                filePickerError = nil
                 startImport(urls: urls)
+            case .failure(let error):
+                AppLogger.shared.error("[ImportFiles] fileImporter failure: \(error.localizedDescription)")
+                filePickerError = "文件选择失败：\(error.localizedDescription)"
             }
         }
         .sheet(isPresented: $showWifiTransfer) {
@@ -176,6 +196,13 @@ struct ImportFilesView: View {
                 .environmentObject(importService)
                 .environmentObject(libraryService)
         }
+        .alert(resultAlertTitle, isPresented: $showResultAlert) {
+            Button("好的") {}
+        } message: {
+            if let result = importResult {
+                Text(resultAlertMessage(result))
+            }
+        }
     }
 
     private func startImport(urls: [URL]) {
@@ -187,6 +214,7 @@ struct ImportFilesView: View {
             }
             isImporting = false
             importResult = result
+            showResultAlert = true
             await libraryService.loadSongs()
         }
     }
@@ -211,6 +239,36 @@ struct ImportFilesView: View {
                 resultRow("失败", count: result.failedCount, color: SemanticColor.danger, icon: "xmark.circle")
             }
         }
+    }
+
+    private var resultAlertTitle: String {
+        guard let result = importResult else { return "导入完成" }
+        if result.failedCount > 0 && result.successCount == 0 { return "导入失败" }
+        if result.successCount > 0 { return "导入成功" }
+        return "导入完成"
+    }
+
+    private func resultAlertMessage(_ result: ImportResult) -> String {
+        var parts: [String] = []
+        if result.successCount > 0 {
+            parts.append("成功导入 \(result.successCount) 首")
+        }
+        if result.skippedDuplicateCount > 0 {
+            parts.append("跳过重复 \(result.skippedDuplicateCount) 首")
+        }
+        if result.skippedFormatCount > 0 {
+            parts.append("格式不支持 \(result.skippedFormatCount) 首")
+        }
+        if result.skippedOversizeCount > 0 {
+            parts.append("超过大小限制 \(result.skippedOversizeCount) 首")
+        }
+        if result.failedCount > 0 {
+            parts.append("失败 \(result.failedCount) 首")
+        }
+        if result.incompleteMetadataCount > 0 {
+            parts.append("其中 \(result.incompleteMetadataCount) 首元数据不完整")
+        }
+        return parts.isEmpty ? "没有可导入的文件" : parts.joined(separator: "，")
     }
 
     private func resultRow(_ title: String, count: Int, color: Color, icon: String) -> some View {

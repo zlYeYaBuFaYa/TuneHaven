@@ -4,6 +4,9 @@ struct SearchResultView: View {
     let result: SearchResult
     let query: String
     let tab: LibraryTab
+    var onDeleteSong: ((Song) -> Void)? = nil
+    var onFavoriteSong: ((Song) -> Void)? = nil
+    var onAddToPlaylist: ((Song) -> Void)? = nil
 
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playback: PlaybackService
@@ -22,7 +25,11 @@ struct SearchResultView: View {
                                     await playback.prepare(song: song, in: .allSongs(sortBy: .title))
                                     router.openPlayer()
                                 }
-                            }
+                            },
+                            onFavorite: onFavoriteSong != nil ? { onFavoriteSong?(song) } : nil,
+                            onDelete: onDeleteSong != nil ? { onDeleteSong?(song) } : nil,
+                            onAddToPlaylist: onAddToPlaylist != nil ? { onAddToPlaylist?(song) } : nil,
+                            onInsertNext: { _ = playback.queue.insertNext(song) }
                         )
                         .listRowBackground(palette.surface)
                     }
