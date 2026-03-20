@@ -16,6 +16,8 @@ struct LyricsSearchView: View {
     @State private var searchError: String?
     @State private var saveError: String?
     @State private var hasSearched = false
+    @State private var showManualInput = false
+    @State private var manualLyricsText = ""
 
     init(song: Song, onSaved: (() -> Void)? = nil) {
         self.song = song
@@ -49,6 +51,72 @@ struct LyricsSearchView: View {
             } message: {
                 Text(saveError ?? "")
             }
+            .sheet(isPresented: $showManualInput) {
+                manualInputView
+                    .environment(\.themePalette, palette)
+            }
+        }
+    }
+
+    // MARK: - Manual Input
+
+    private var manualInputView: some View {
+        NavigationStack {
+            VStack(spacing: 12) {
+                Text("粘贴 LRC 格式歌词或纯文本歌词")
+                    .font(.caption)
+                    .foregroundColor(palette.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+
+                TextEditor(text: $manualLyricsText)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundColor(palette.textPrimary)
+                    .scrollContentBackground(.hidden)
+                    .padding(12)
+                    .background(palette.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 16)
+            }
+            .padding(.top, 8)
+            .adaptiveBackground()
+            .navigationTitle("手动输入歌词")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(palette.surface, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { showManualInput = false }
+                        .foregroundColor(palette.primary)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") { saveManualLyrics() }
+                        .foregroundColor(palette.primary)
+                        .disabled(manualLyricsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
+                }
+            }
+        }
+    }
+
+    private func saveManualLyrics() {
+        let content = manualLyricsText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty else { return }
+        isSaving = true
+
+        Task {
+            do {
+                try await LyricsService.shared.saveLyrics(content, for: song)
+                await MainActor.run {
+                    isSaving = false
+                    showManualInput = false
+                    onSaved?()
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    isSaving = false
+                    saveError = "歌词保存失败，请重试"
+                }
+            }
         }
     }
 
@@ -80,26 +148,45 @@ struct LyricsSearchView: View {
             .background(palette.surface)
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            Button {
-                performSearch()
-            } label: {
-                HStack {
-                    if isSearching {
-                        ProgressView()
-                            .tint(.white)
+            HStack(spacing: 12) {
+                Button {
+                    performSearch()
+                } label: {
+                    HStack {
+                        if isSearching {
+                            ProgressView()
+                                .tint(.white)
+                        }
+                        Text("搜索")
                     }
-                    Text("搜索")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(searchDisabled ? palette.textTertiary : palette.primary)
+                    )
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(searchDisabled ? palette.textTertiary : palette.primary)
-                )
+                .disabled(searchDisabled)
+
+                Button {
+                    showManualInput = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.and.pencil")
+                        Text("手动输入")
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(palette.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(palette.primary, lineWidth: 1)
+                    )
+                }
             }
-            .disabled(searchDisabled)
         }
         .padding(16)
     }

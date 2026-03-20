@@ -10,6 +10,7 @@ struct LyricsPageView: View {
     @EnvironmentObject private var engine: AudioEngine
     @Environment(\.themePalette) private var palette
 
+    @AppStorage("lyrics_simplified") private var preferSimplified: Bool = false
     @State private var isUserScrolling = false
     @State private var scrollResumeTask: Task<Void, Never>?
     @State private var hasPerformedInitialScroll = false
@@ -190,6 +191,16 @@ struct LyricsPageView: View {
                 }
                 Spacer()
                 Button {
+                    preferSimplified.toggle()
+                } label: {
+                    Text(preferSimplified ? "繁" : "简")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(palette.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .background(palette.surfaceSecondary)
+                        .clipShape(Circle())
+                }
+                Button {
                     Task { await playback.toggleCurrentSongFavorite() }
                 } label: {
                     Image(systemName: playback.currentSong?.isFavorite == true ? "heart.fill" : "heart")
@@ -280,13 +291,14 @@ struct LyricsPageView: View {
         let fontSize = (isCurrent ? 28 : 20) * effectiveScale
         let fontWeight: Font.Weight = isCurrent ? .black : .regular
 
+        let text = displayText(line.text)
         return Button {
             playback.seek(to: line.timestamp)
         } label: {
             if isCurrent {
-                karaokeText(line.text, fontSize: fontSize, fontWeight: fontWeight, progress: lineProgress(for: index))
+                karaokeText(text, fontSize: fontSize, fontWeight: fontWeight, progress: lineProgress(for: index))
             } else {
-                Text(line.text)
+                Text(text)
                     .font(.system(size: fontSize, weight: fontWeight))
                     .foregroundColor(palette.textPrimary)
             }
@@ -325,7 +337,7 @@ struct LyricsPageView: View {
 
     private func plainTextSection(text: String) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
-            Text(text)
+            Text(displayText(text))
                 .font(.system(size: 20 * effectiveScale))
                 .foregroundColor(palette.playerSubtext)
                 .multilineTextAlignment(.center)
@@ -484,5 +496,12 @@ struct LyricsPageView: View {
             guard !Task.isCancelled else { return }
             await MainActor.run { isUserScrolling = false }
         }
+    }
+
+    private func displayText(_ text: String) -> String {
+        guard preferSimplified else { return text }
+        let mutable = NSMutableString(string: text)
+        CFStringTransform(mutable, nil, "Traditional-Simplified" as CFString, false)
+        return mutable as String
     }
 }

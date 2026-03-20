@@ -30,12 +30,21 @@ struct LibraryMainView: View {
     @Environment(\.hasCustomBackground) private var hasCustomBg
 
     @StateObject private var searchDebouncer = SearchDebouncer()
+    @FocusState private var isSearchFieldFocused: Bool
     @State private var selectedTab: LibraryTab = .all
     @State private var searchText = ""
     @State private var isSearchActive = false
     @State private var searchResult = SearchResult(songs: [], artists: [], albums: [], totalSongCount: 0, totalArtistCount: 0, totalAlbumCount: 0)
-    @State private var sortOption: SongSortOption = .title
+    @AppStorage("song_sort_option") private var sortOptionRaw: Int = SongSortOption.title.rawValue
+    @AppStorage("song_sort_ascending") private var isAscending: Bool = true
     @State private var formatFilter: AudioFormat = .all
+
+    private var sortOptionBinding: Binding<SongSortOption> {
+        Binding(
+            get: { SongSortOption(rawValue: sortOptionRaw) ?? .title },
+            set: { sortOptionRaw = $0.rawValue }
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,6 +62,8 @@ struct LibraryMainView: View {
                     onFavoriteSong: { song in searchFavoriteSong(song) },
                     onAddToPlaylist: { song in router.present(.addToPlaylist(songIds: [song.id])) }
                 )
+            } else if isSearchFieldFocused && searchText.isEmpty {
+                searchHistoryView
             } else {
                 libraryContent
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -75,6 +86,16 @@ struct LibraryMainView: View {
                 isSearchActive = true
             }
         }
+        .onChange(of: isSearchFieldFocused) { _, focused in
+            if focused && searchText.isEmpty {
+                Task { await searchService.fetchHistory(tab: selectedTab) }
+            }
+        }
+        .onChange(of: selectedTab) { _, newTab in
+            if isSearchFieldFocused && searchText.isEmpty {
+                Task { await searchService.fetchHistory(tab: newTab) }
+            }
+        }
     }
 
     private var searchBar: some View {
@@ -82,12 +103,23 @@ struct LibraryMainView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(palette.textTertiary)
             TextField("搜索歌曲、艺术家或专辑", text: $searchText)
+                .focused($isSearchFieldFocused)
                 .textFieldStyle(.plain)
                 .foregroundColor(palette.textPrimary)
-            if !searchText.isEmpty {
-                Button { searchText = ""; isSearchActive = false } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(palette.textTertiary)
+            if !searchText.isEmpty || isSearchFieldFocused {
+                Button {
+                    searchText = ""
+                    isSearchActive = false
+                    isSearchFieldFocused = false
+                } label: {
+                    if searchText.isEmpty {
+                        Text("取消")
+                            .font(.subheadline)
+                            .foregroundColor(palette.accent)
+                    } else {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(palette.textTertiary)
+                    }
                 }
             }
         }
@@ -138,7 +170,7 @@ struct LibraryMainView: View {
         Group {
             switch selectedTab {
             case .all:
-                AllSongsView(sortOption: $sortOption, formatFilter: $formatFilter)
+                AllSongsView(sortOption: sortOptionBinding, isAscending: $isAscending, formatFilter: $formatFilter)
             case .artist:
                 ArtistListView()
             case .album:
@@ -149,10 +181,89 @@ struct LibraryMainView: View {
         .transition(.opacity.animation(.easeInOut(duration: 0.2)))
     }
 
+    private var searchHistoryView: some View {
+        List {
+            if searchService.history.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 36))
+                        .foregroundColor(palette.iconSecondary)
+                    Text("暂无搜索历史")
+                        .foregroundColor(palette.textSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            } else {
+                Section {
+                    ForEach(searchService.history) { item in
+                        Button {
+                            searchText = item.keyword
+                            isSearchActive = true
+                            isSearchFieldFocused = false
+                            Task {
+                                searchResult = await searchService.search(
+                                    query: item.keyword, tab: selectedTab, allSongs: libraryService.songs
+                                )
+                                await searchService.saveHistory(keyword: item.keyword, tab: selectedTab)
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "clock")
+                                    .foregroundColor(palette.iconSecondary)
+                                    .font(.subheadline)
+                                Text(item.keyword)
+                                    .foregroundColor(palette.textPrimary)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(item.searchedAt.relativeDescription)
+                                    .font(.caption)
+                                    .foregroundColor(palette.textTertiary)
+                            }
+                        }
+                        .listRowBackground(palette.surface)
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                Task {
+                                    await searchService.deleteHistory(id: item.id)
+                                    await searchService.fetchHistory(tab: selectedTab)
+                                }
+                            } label: {
+                                Label("删除", systemImage: "trash")
+                            }
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Text("搜索历史")
+                            .font(.subheadline)
+                            .foregroundColor(palette.textSecondary)
+                        Spacer()
+                        Button {
+                            Task {
+                                await searchService.clearHistory(tab: selectedTab)
+                                await searchService.fetchHistory(tab: selectedTab)
+                            }
+                        } label: {
+                            Text("清空")
+                                .font(.caption)
+                                .foregroundColor(palette.accent)
+                        }
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .adaptiveBackground()
+    }
+
     private func performSearch(query: String) {
         guard !query.isEmpty else { return }
         Task {
             searchResult = await searchService.search(query: query, tab: selectedTab, allSongs: libraryService.songs)
+            await searchService.saveHistory(keyword: query, tab: selectedTab)
         }
     }
 
@@ -192,4 +303,17 @@ struct LibraryMainView: View {
 
 extension SearchResult {
     static let empty = SearchResult(songs: [], artists: [], albums: [], totalSongCount: 0, totalArtistCount: 0, totalAlbumCount: 0)
+}
+
+private extension Date {
+    var relativeDescription: String {
+        let interval = -timeIntervalSinceNow
+        if interval < 60 { return "刚刚" }
+        if interval < 3600 { return "\(Int(interval / 60))分钟前" }
+        if interval < 86400 { return "\(Int(interval / 3600))小时前" }
+        if interval < 604800 { return "\(Int(interval / 86400))天前" }
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MM-dd"
+        return fmt.string(from: self)
+    }
 }

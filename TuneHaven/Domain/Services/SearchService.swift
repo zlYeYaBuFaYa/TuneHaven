@@ -119,4 +119,14 @@ final class SearchService: ObservableObject {
             all.forEach { ctx.delete($0) }
         }
     }
+
+    func clearHistory(tab: LibraryTab) async {
+        log.info("清除搜索历史: tab=\(tab.rawValue)")
+        try? await stack.performBackground { ctx in
+            let request = SearchHistoryEntity.fetchRequest()
+            request.predicate = NSPredicate(format: "tabContext == %@", tab.rawValue)
+            let results = try ctx.fetch(request)
+            results.forEach { ctx.delete($0) }
+        }
+    }
 }

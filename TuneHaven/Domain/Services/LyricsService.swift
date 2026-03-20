@@ -51,48 +51,86 @@ final class LyricsService {
         return nil
     }
 
-    // MARK: - Online Auto Match
+    // MARK: - Online Auto Match (degraded search chain)
 
     func autoMatchOnline(for song: Song) async -> LyricsData? {
         guard !isCooldownActive(for: song.id) else { return nil }
 
+        // Level 1: 精确匹配（歌名+艺术家+专辑+时长）
+        if let data = try? await exactMatch(song: song) { return data }
+
         do {
-            let track = try await api.get(
-                trackName: song.title,
-                artistName: song.artist,
-                albumName: song.album,
-                duration: Int(song.duration)
-            )
-
-            guard let track else {
-                markCooldown(for: song.id)
-                return nil
+            // Level 2: search API — 歌名 + 艺术家
+            if let data = try await searchMatch(title: song.title, artist: song.artist, songId: song.id, songTitle: song.title) {
+                return data
             }
 
-            if track.instrumental {
-                markCooldown(for: song.id)
-                return nil
+            // Level 3: search API — 仅歌名（跳过已知艺术家为空的情况）
+            if song.artist != "未知艺术家" {
+                if let data = try await searchMatch(title: song.title, artist: nil, songId: song.id, songTitle: song.title) {
+                    return data
+                }
             }
 
-            guard let lyrics = track.bestLyrics else {
-                markCooldown(for: song.id)
-                return nil
+            // Level 4: search API — 简化歌名（去除括号、feat. 等）
+            let simplified = simplifyTitle(song.title)
+            if simplified != song.title && !simplified.isEmpty {
+                if let data = try await searchMatch(title: simplified, artist: nil, songId: song.id, songTitle: song.title) {
+                    return data
+                }
             }
-
-            cleanupOldLRC(songTitle: song.title)
-            try await saveLyricsFile(lyrics, for: song.id)
-            let lines = parseLRC(lyrics)
-            if lines.isEmpty {
-                let plainLines = buildPlainLines(from: lyrics)
-                return LyricsData(source: .file, lines: plainLines, rawText: lyrics)
-            }
-            return LyricsData(source: .file, lines: lines, rawText: lyrics)
-
         } catch {
-            log.debug("自动匹配失败: \(song.title) - \(error.localizedDescription)")
-            markCooldown(for: song.id)
+            log.debug("降级搜索网络错误: \(song.title) - \(error.localizedDescription)")
             return nil
         }
+
+        markCooldown(for: song.id)
+        return nil
+    }
+
+    private func exactMatch(song: Song) async throws -> LyricsData? {
+        let track = try await api.get(
+            trackName: song.title,
+            artistName: song.artist,
+            albumName: song.album,
+            duration: Int(song.duration)
+        )
+        return try await processTrack(track, songId: song.id, songTitle: song.title)
+    }
+
+    private func searchMatch(title: String, artist: String?, songId: UUID, songTitle: String) async throws -> LyricsData? {
+        let results = try await api.search(trackName: title, artistName: artist)
+        let candidates = results.filter { !$0.instrumental && $0.hasAnyLyrics }
+        let best = candidates.first(where: { $0.hasSyncedLyrics }) ?? candidates.first
+        guard let best else { return nil }
+        return try await processTrack(best, songId: songId, songTitle: songTitle)
+    }
+
+    private func processTrack(_ track: LRCLibTrack?, songId: UUID, songTitle: String) async throws -> LyricsData? {
+        guard let track, !track.instrumental, let lyrics = track.bestLyrics else { return nil }
+        cleanupOldLRC(songTitle: songTitle)
+        try await saveLyricsFile(lyrics, for: songId)
+        let lines = parseLRC(lyrics)
+        if lines.isEmpty {
+            return LyricsData(source: .file, lines: buildPlainLines(from: lyrics), rawText: lyrics)
+        }
+        return LyricsData(source: .file, lines: lines, rawText: lyrics)
+    }
+
+    private func simplifyTitle(_ title: String) -> String {
+        var result = title
+        let patterns = [#"\(.*?\)"#, #"（.*?）"#, #"\[.*?\]"#]
+        for pattern in patterns {
+            result = result.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
+        }
+        let lower = result.lowercased()
+        let suffixes = ["feat.", "ft.", "remix", "live", "acoustic", "version", "remastered"]
+        for suffix in suffixes {
+            if let range = lower.range(of: suffix) {
+                result = String(result[result.startIndex..<range.lowerBound])
+            }
+        }
+        return result.trimmingCharacters(in: .whitespaces)
     }
 
     // MARK: - Online Search (manual)

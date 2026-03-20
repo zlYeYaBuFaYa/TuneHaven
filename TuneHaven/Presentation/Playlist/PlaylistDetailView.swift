@@ -13,52 +13,21 @@ struct PlaylistDetailView: View {
     @State private var showDeleteConfirm = false
     @State private var showBatchAdd = false
     @State private var isDeleted = false
+    @State private var searchText = ""
 
     var body: some View {
         List {
             if let detail {
-                Section {
-                    PlaylistHeaderSection(playlist: detail.playlist, songs: detail.songs) {
-                        if let first = detail.songs.first {
-                            Task { await playback.play(song: first, in: .playlist(id: playlistId)) }
-                        }
-                    }
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-
-                Section {
-                    if detail.songs.isEmpty {
-                        Text("暂无歌曲，长按歌曲可添加到此歌单")
-                            .font(.subheadline)
-                            .foregroundColor(palette.textTertiary)
-                            .listRowBackground(Color.clear)
-                    } else {
-                        ForEach(detail.songs) { song in
-                            SongRow(
-                                song: song,
-                                isPlaying: playback.currentSong?.id == song.id,
-                                onTap: {
-                                    Task {
-                                        await playback.prepare(song: song, in: .playlist(id: playlistId))
-                                        router.openPlayer()
-                                    }
-                                },
-                                onFavorite: {
-                                    Task { try? await libraryService.toggleFavorite(songId: song.id) }
-                                },
-                                onDelete: detail.playlist.isSystem ? nil : {
-                                    Task { try? await playlistService.removeSongs([song.id], from: playlistId) }
-                                }
-                            )
-                            .listRowBackground(palette.surface)
-                        }
-                    }
-                }
+                PlaylistContentView(
+                    detail: detail,
+                    playlistId: playlistId,
+                    searchText: searchText
+                )
             }
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
+        .searchable(text: $searchText, prompt: "搜索歌单内歌曲")
         .overlay {
             if detail == nil {
                 ProgressView()
@@ -117,6 +86,86 @@ struct PlaylistDetailView: View {
             BatchAddSongsView(playlistId: playlistId)
                 .environment(\.themePalette, palette)
                 .environmentObject(playlistService)
+        }
+    }
+}
+
+private struct PlaylistContentView: View {
+    let detail: PlaylistDetail
+    let playlistId: UUID
+    let searchText: String
+
+    @EnvironmentObject private var playback: PlaybackService
+    @EnvironmentObject private var libraryService: MusicLibraryService
+    @EnvironmentObject private var playlistService: PlaylistService
+    @EnvironmentObject private var router: AppRouter
+    @Environment(\.themePalette) private var palette
+    @Environment(\.isSearching) private var isSearching
+
+    private var filteredSongs: [Song] {
+        guard !searchText.isEmpty else { return detail.songs }
+        let q = searchText.lowercased()
+        return detail.songs.filter {
+            $0.title.lowercased().contains(q) ||
+            $0.artist.lowercased().contains(q) ||
+            $0.album.lowercased().contains(q)
+        }
+    }
+
+    var body: some View {
+        if !isSearching {
+            Section {
+                PlaylistHeaderSection(playlist: detail.playlist, songs: detail.songs) {
+                    if let first = detail.songs.first {
+                        Task { await playback.play(song: first, in: .playlist(id: playlistId)) }
+                    }
+                }
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+        }
+
+        Section {
+            let songs = isSearching ? filteredSongs : detail.songs
+            if songs.isEmpty {
+                if isSearching && !searchText.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 36))
+                            .foregroundColor(palette.iconSecondary)
+                        Text("未找到匹配的歌曲")
+                            .foregroundColor(palette.textSecondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                    .listRowBackground(Color.clear)
+                } else {
+                    Text("暂无歌曲，长按歌曲可添加到此歌单")
+                        .font(.subheadline)
+                        .foregroundColor(palette.textTertiary)
+                        .listRowBackground(Color.clear)
+                }
+            } else {
+                ForEach(songs) { song in
+                    SongRow(
+                        song: song,
+                        isPlaying: playback.currentSong?.id == song.id,
+                        onTap: {
+                            Task {
+                                await playback.prepare(song: song, in: .playlist(id: playlistId))
+                                router.openPlayer()
+                            }
+                        },
+                        onFavorite: {
+                            Task { try? await libraryService.toggleFavorite(songId: song.id) }
+                        },
+                        onDelete: detail.playlist.isSystem ? nil : {
+                            Task { try? await playlistService.removeSongs([song.id], from: playlistId) }
+                        }
+                    )
+                    .listRowBackground(palette.surface)
+                }
+            }
         }
     }
 }

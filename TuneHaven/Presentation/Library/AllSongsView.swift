@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AllSongsView: View {
     @Binding var sortOption: SongSortOption
+    @Binding var isAscending: Bool
     @Binding var formatFilter: AudioFormat
 
     @EnvironmentObject private var libraryService: MusicLibraryService
@@ -22,7 +23,10 @@ struct AllSongsView: View {
                 songList
             }
         }
-        .onAppear { recomputeDisplaySongs() }
+        .onAppear {
+            recomputeDisplaySongs()
+            Task { await libraryService.loadSongs(sortBy: sortOption, ascending: isAscending) }
+        }
         .onChange(of: libraryService.songs) { _, _ in recomputeDisplaySongs() }
         .onChange(of: formatFilter) { _, _ in recomputeDisplaySongs() }
     }
@@ -58,19 +62,29 @@ struct AllSongsView: View {
             Menu {
                 ForEach(SongSortOption.allCases, id: \.self) { opt in
                     Button {
-                        sortOption = opt
-                        Task { await libraryService.loadSongs(sortBy: opt, ascending: true) }
+                        if sortOption == opt {
+                            isAscending.toggle()
+                        } else {
+                            sortOption = opt
+                            isAscending = true
+                        }
+                        Task { await libraryService.loadSongs(sortBy: sortOption, ascending: isAscending) }
                     } label: {
                         HStack {
                             Text(opt.displayName)
-                            if sortOption == opt { Image(systemName: "checkmark") }
+                            if sortOption == opt {
+                                Image(systemName: isAscending ? "chevron.up" : "chevron.down")
+                            }
                         }
                     }
                 }
             } label: {
-                Label(sortOption.displayName, systemImage: "arrow.up.arrow.down")
-                    .font(.caption)
-                    .foregroundColor(palette.textSecondary)
+                HStack(spacing: 4) {
+                    Image(systemName: isAscending ? "arrow.up" : "arrow.down")
+                    Text(sortOption.displayName)
+                }
+                .font(.caption)
+                .foregroundColor(palette.textSecondary)
             }
         }
         .padding(.horizontal, 16)
