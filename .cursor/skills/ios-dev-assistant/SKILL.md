@@ -36,8 +36,6 @@ description: iOS 开发助手，辅助 TuneHaven 项目的 SwiftUI/Clean Archite
 | `项目文档.md` | 不熟悉项目整体架构时 |
 | `技术设计文档.md` | 涉及架构或模块设计时 |
 | `需求文档.md` | 涉及功能需求、迭代规划时 |
-| `测试bug.md` / `Bug测试分析报告.md` | 修复 Bug 时 |
-| `待办事项.md` | 需要了解当前进度时 |
 
 同时浏览相关源码目录，了解现有实现。
 
@@ -105,8 +103,6 @@ description: iOS 开发助手，辅助 TuneHaven 项目的 SwiftUI/Clean Archite
 | `技术设计文档.md` | 架构变更、新增模块、技术方案调整时 |
 | `项目文档.md` | 功能变更、项目结构调整时 |
 | `需求文档.md` | 需求完成、需求变更时 |
-| `待办事项.md` | 任务完成或新增待办时 |
-| `测试bug.md` | Bug 修复完成时 |
 
 更新要点：
 - 保持文档与代码实际状态一致
@@ -133,19 +129,6 @@ description: iOS 开发助手，辅助 TuneHaven 项目的 SwiftUI/Clean Archite
 - Core Data 操作通过 Repository 模式隔离
 - 错误处理使用项目中的 `AppError` 类型
 
-### 主题系统
-
-- 所有颜色通过 `ThemeColorPalette` 获取，禁止硬编码颜色值
-- 新增 UI 组件必须适配主题系统
-
-### 测试规范
-
-- 测试文件统一放在 `TuneHavenTests/` 目录
-- 命名格式：`XxxTests.swift`，与被测模块对应
-- 使用 XCTest 框架，必要时使用 Mock/Stub 隔离依赖
-- 每个公开方法至少覆盖：正常路径、边界情况、错误处理
-
----
 
 ## 注意事项
 
