@@ -16,18 +16,22 @@ struct PlaylistDetailView: View {
     @State private var searchText = ""
 
     var body: some View {
-        List {
-            if let detail {
-                PlaylistContentView(
-                    detail: detail,
-                    playlistId: playlistId,
-                    searchText: searchText
-                )
+        VStack(spacing: 0) {
+            playlistSearchBar
+            Divider()
+                .background(palette.separator)
+            List {
+                if let detail {
+                    PlaylistContentView(
+                        detail: detail,
+                        playlistId: playlistId,
+                        searchText: searchText
+                    )
+                }
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .searchable(text: $searchText, prompt: "搜索歌单内歌曲")
         .overlay {
             if detail == nil {
                 ProgressView()
@@ -88,6 +92,30 @@ struct PlaylistDetailView: View {
                 .environmentObject(playlistService)
         }
     }
+
+    private var playlistSearchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(palette.textTertiary)
+            TextField("搜索歌单内歌曲", text: $searchText)
+                .textFieldStyle(.plain)
+                .foregroundColor(palette.textPrimary)
+            if !searchText.isEmpty {
+                Button {
+                    searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(palette.textTertiary)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(palette.surfaceSecondary)
+        .clipShape(Capsule())
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
 }
 
 private struct PlaylistContentView: View {
@@ -100,11 +128,14 @@ private struct PlaylistContentView: View {
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
-    @Environment(\.isSearching) private var isSearching
+
+    private var isFiltering: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     private var filteredSongs: [Song] {
-        guard !searchText.isEmpty else { return detail.songs }
-        let q = searchText.lowercased()
+        guard isFiltering else { return detail.songs }
+        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return detail.songs.filter {
             $0.title.lowercased().contains(q) ||
             $0.artist.lowercased().contains(q) ||
@@ -113,7 +144,7 @@ private struct PlaylistContentView: View {
     }
 
     var body: some View {
-        if !isSearching {
+        if !isFiltering {
             Section {
                 PlaylistHeaderSection(playlist: detail.playlist, songs: detail.songs) {
                     if let first = detail.songs.first {
@@ -126,9 +157,9 @@ private struct PlaylistContentView: View {
         }
 
         Section {
-            let songs = isSearching ? filteredSongs : detail.songs
+            let songs = isFiltering ? filteredSongs : detail.songs
             if songs.isEmpty {
-                if isSearching && !searchText.isEmpty {
+                if isFiltering {
                     VStack(spacing: 12) {
                         Image(systemName: "magnifyingglass")
                             .font(.system(size: 36))

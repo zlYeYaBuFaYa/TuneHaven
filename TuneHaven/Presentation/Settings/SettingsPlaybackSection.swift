@@ -11,6 +11,7 @@ struct SettingsPlaybackSection: View {
     @Binding var sleepTimerNotification: Bool
     @Binding var wifiPasswordEnabled: Bool
     @Binding var autoMatchLyrics: Bool
+    @Binding var lyricsPreferSimplified: Bool
     @Binding var notificationPermissionStatus: UNAuthorizationStatus
 
     var body: some View {
@@ -19,6 +20,7 @@ struct SettingsPlaybackSection: View {
                 recentPlayRow
                 speedMemoryRow
                 autoMatchLyricsRow
+                lyricsScriptRow
                 sleepTimerRow
                 notificationWarning
                 wifiPasswordRow
@@ -161,6 +163,32 @@ struct SettingsPlaybackSection: View {
             }
         }
         .tint(palette.primary)
+        .listRowBackground(listRowBg)
+    }
+
+    private var lyricsScriptRow: some View {
+        HStack {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("歌词字形")
+                        .font(.subheadline)
+                        .foregroundColor(palette.textPrimary)
+                    Text("默认简体；原文保留文件中的繁简")
+                        .font(.caption)
+                        .foregroundColor(palette.textSecondary)
+                }
+            } icon: {
+                Image(systemName: "character.textbox")
+                    .foregroundColor(palette.primary)
+            }
+            Spacer(minLength: 8)
+            Picker("", selection: $lyricsPreferSimplified) {
+                Text("简体").tag(true)
+                Text("原文").tag(false)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 140)
+        }
         .listRowBackground(listRowBg)
     }
 

@@ -10,7 +10,7 @@ struct LyricsPageView: View {
     @EnvironmentObject private var engine: AudioEngine
     @Environment(\.themePalette) private var palette
 
-    @AppStorage("lyrics_simplified") private var preferSimplified: Bool = false
+    @AppStorage(AppStorageKey.lyricsPreferSimplified) private var preferSimplified: Bool = true
     @State private var isUserScrolling = false
     @State private var scrollResumeTask: Task<Void, Never>?
     @State private var hasPerformedInitialScroll = false
@@ -190,16 +190,6 @@ struct LyricsPageView: View {
                         .lineLimit(1)
                 }
                 Spacer()
-                Button {
-                    preferSimplified.toggle()
-                } label: {
-                    Text(preferSimplified ? "繁" : "简")
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(palette.textSecondary)
-                        .frame(width: 28, height: 28)
-                        .background(palette.surfaceSecondary)
-                        .clipShape(Circle())
-                }
                 Button {
                     Task { await playback.toggleCurrentSongFavorite() }
                 } label: {
@@ -499,9 +489,6 @@ struct LyricsPageView: View {
     }
 
     private func displayText(_ text: String) -> String {
-        guard preferSimplified else { return text }
-        let mutable = NSMutableString(string: text)
-        CFStringTransform(mutable, nil, "Traditional-Simplified" as CFString, false)
-        return mutable as String
+        LyricsTextTransform.displayText(text, preferSimplified: preferSimplified)
     }
 }

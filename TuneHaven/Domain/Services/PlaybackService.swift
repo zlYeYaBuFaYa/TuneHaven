@@ -18,6 +18,8 @@ enum AppStorageKey {
     static let sleepTimerNotification = "sleep_timer_notification"
     static let cacheLimitMB = "cache_limit_mb"
     static let autoMatchLyrics = "auto_match_lyrics"
+    /// `true`：歌词以简体显示；`false`：按原文显示（含繁体）。
+    static let lyricsPreferSimplified = "lyrics_simplified"
     static let hasCompletedOnboarding = "has_completed_onboarding"
 }
 

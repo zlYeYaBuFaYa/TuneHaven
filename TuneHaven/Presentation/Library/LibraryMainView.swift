@@ -209,18 +209,24 @@ struct LibraryMainView: View {
                                 await searchService.saveHistory(keyword: item.keyword, tab: selectedTab)
                             }
                         } label: {
-                            HStack {
+                            HStack(alignment: .center, spacing: 12) {
                                 Image(systemName: "clock")
                                     .foregroundColor(palette.iconSecondary)
                                     .font(.subheadline)
-                                Text(item.keyword)
-                                    .foregroundColor(palette.textPrimary)
-                                    .lineLimit(1)
-                                Spacer()
-                                Text(item.searchedAt.relativeDescription)
-                                    .font(.caption)
-                                    .foregroundColor(palette.textTertiary)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.keyword)
+                                        .font(.body)
+                                        .foregroundColor(palette.textPrimary)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
+                                    Text(item.searchedAt.relativeDescription)
+                                        .font(.caption)
+                                        .foregroundColor(palette.textTertiary)
+                                }
+                                Spacer(minLength: 0)
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                         }
                         .listRowBackground(palette.surface)
                         .swipeActions(edge: .trailing) {
@@ -251,6 +257,10 @@ struct LibraryMainView: View {
                                 .foregroundColor(palette.accent)
                         }
                     }
+                } footer: {
+                    Text("历史记录按当前标签页（全部、艺术家、专辑）分别保存。")
+                        .font(.caption2)
+                        .foregroundColor(palette.textTertiary)
                 }
             }
         }

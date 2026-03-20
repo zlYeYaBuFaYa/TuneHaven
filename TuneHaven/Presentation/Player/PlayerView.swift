@@ -36,6 +36,8 @@ struct PlayerView: View {
     @State private var showLyricsPage = false
     @State private var pendingSheetWork: DispatchWorkItem?
 
+    @AppStorage(AppStorageKey.lyricsPreferSimplified) private var lyricsPreferSimplified: Bool = true
+
     private var palette: ThemeColorPalette {
         themeManager.palette
     }
@@ -505,10 +507,13 @@ struct PlayerView: View {
     }
 
     private func currentLyricsText(from data: LyricsData) -> String? {
-        for line in data.lines.reversed() {
-            if engine.currentTime >= line.timestamp { return line.text }
-        }
-        return data.lines.first?.text
+        let raw: String? = {
+            for line in data.lines.reversed() {
+                if engine.currentTime >= line.timestamp { return line.text }
+            }
+            return data.lines.first?.text
+        }()
+        return raw.map { LyricsTextTransform.displayText($0, preferSimplified: lyricsPreferSimplified) }
     }
 
     private var progressBar: some View {

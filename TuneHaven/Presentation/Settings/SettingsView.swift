@@ -15,6 +15,7 @@ struct SettingsView: View {
     @AppStorage(AppStorageKey.sleepTimerNotification) private var sleepTimerNotification: Bool = true
     @AppStorage(AppStorageKey.cacheLimitMB)          private var cacheLimitMB: Int = 100
     @AppStorage(AppStorageKey.autoMatchLyrics)       private var autoMatchLyrics: Bool = true
+    @AppStorage(AppStorageKey.lyricsPreferSimplified) private var lyricsPreferSimplified: Bool = true
 
     @State private var currentCacheSize: String = "计算中..."
     @State private var showClearCacheConfirm = false
@@ -65,6 +66,7 @@ struct SettingsView: View {
                 sleepTimerNotification: $sleepTimerNotification,
                 wifiPasswordEnabled: $wifiPasswordEnabled,
                 autoMatchLyrics: $autoMatchLyrics,
+                lyricsPreferSimplified: $lyricsPreferSimplified,
                 notificationPermissionStatus: $notificationPermissionStatus
             )
 
