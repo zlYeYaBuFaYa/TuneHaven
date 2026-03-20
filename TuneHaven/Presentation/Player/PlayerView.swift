@@ -51,40 +51,42 @@ struct PlayerView: View {
             )
             .ignoresSafeArea()
 
-            if showLyricsPage {
-                LyricsPageView(
-                    lyricsData: lyricsData,
-                    onDismiss: {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                            showLyricsPage = false
-                        }
-                    },
-                    onSearchLyrics: {
-                        if let song = playback.currentSong {
+            Group {
+                if showLyricsPage {
+                    LyricsPageView(
+                        lyricsData: lyricsData,
+                        onDismiss: {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                                 showLyricsPage = false
                             }
-                            switchSheet(to: .lyricsSearch(song))
+                        },
+                        onSearchLyrics: {
+                            if let song = playback.currentSong {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                                    showLyricsPage = false
+                                }
+                                switchSheet(to: .lyricsSearch(song))
+                            }
+                        },
+                        onOpenQueue: {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                                showLyricsPage = false
+                                showQueue = true
+                            }
                         }
-                    },
-                    onOpenQueue: {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                            showLyricsPage = false
-                            showQueue = true
-                        }
-                    }
-                )
-                .id(playback.currentSong?.id)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            } else if showQueue {
-                PlayQueueView(onClose: { withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { showQueue = false } })
+                    )
+                    .id(playback.currentSong?.id)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
-            } else {
-                mainPlayerContent
-                    .transition(.opacity)
+                } else if showQueue {
+                    PlayQueueView(onClose: { withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { showQueue = false } })
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else {
+                    mainPlayerContent
+                        .transition(.opacity)
+                }
             }
+            .offset(x: dragOffsetX, y: dragOffset)
         }
-        .offset(x: dragOffsetX, y: dragOffset)
         .environment(\.themePalette, palette)
         .onAppear { dragOffset = 0; dragOffsetX = 0 }
         .sheet(item: $activeSheet) { sheet in

@@ -44,6 +44,13 @@ struct RootTabView: View {
             set:  { router.isPlayerPresented = $0 }
         )) {
             PlayerView()
+                .presentationBackground(
+                    LinearGradient(
+                        colors: [themeManager.palette.background, themeManager.palette.surfaceSecondary, themeManager.palette.highlight],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .environment(\.themePalette, themeManager.palette)
                 .environmentObject(themeManager)
                 .environmentObject(router)
