@@ -284,7 +284,10 @@ struct WebDAVAccountEditView: View {
 
     private func save() {
         guard canSave else { return }
-        if isHTTPPublicAddress { return }
+        guard !isHTTPPublicAddress else {
+            testResult = .failure("公网地址必须使用 HTTPS，请将地址改为 https:// 开头")
+            return
+        }
 
         let account: WebDAVAccount
         if case .edit(let existing) = mode {

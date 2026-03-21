@@ -62,7 +62,7 @@ struct SongListView: View {
         case .recentlyPlayed:
             songs = await libraryService.fetchRecentlyPlayed(days: 30, page: 0).items
         case .allSongs:
-            songs = await makeSongRepo().fetchAll(sortBy: .title, ascending: true)
+            songs = await libraryService.fetchAllSongs(sortBy: .title, ascending: true)
         default:
             songs = []
         }
@@ -84,5 +84,3 @@ struct SongListView: View {
         await playback.prepare(song: song, in: ctx)
     }
 }
-
-private func makeSongRepo() -> CoreDataSongRepository { CoreDataSongRepository() }

@@ -9,6 +9,8 @@ enum AppError: LocalizedError {
     case playbackFileNotFound(UUID)
     case playbackFileCorrupted(UUID)
     case playbackUnsupportedFormat(String)
+    case playbackSessionFailed
+    case playbackLoadFailed(String)
     case wifiServerStartFailed
     case wifiNotConnected
     case wifiPasswordWrong
@@ -41,6 +43,8 @@ enum AppError: LocalizedError {
         case .playbackFileNotFound: return "文件不存在，该文件已被删除或移动"
         case .playbackFileCorrupted: return "无法播放歌曲，文件已损坏"
         case .playbackUnsupportedFormat(let f): return "格式不支持：\(f)"
+        case .playbackSessionFailed: return "音频会话激活失败，请重试"
+        case .playbackLoadFailed(let msg): return "音频加载失败：\(msg)"
         case .wifiServerStartFailed: return "WiFi传输服务启动失败"
         case .wifiNotConnected: return "请确保手机和电脑在同一WiFi网络"
         case .wifiPasswordWrong: return "密码错误，请检查密码是否正确"
@@ -75,6 +79,8 @@ enum AppError: LocalizedError {
         case .playbackFileNotFound: return "PLY001"
         case .playbackFileCorrupted: return "PLY002"
         case .playbackUnsupportedFormat: return "PLY003"
+        case .playbackSessionFailed: return "PLY004"
+        case .playbackLoadFailed: return "PLY005"
         case .wifiServerStartFailed: return "WIF001"
         case .wifiNotConnected: return "WIF002"
         case .wifiPasswordWrong: return "WIF003"
@@ -147,7 +153,9 @@ final class ErrorLogger {
     private func rotateIfNeeded() {
         let size = (try? FileManager.default.attributesOfItem(atPath: logFileURL.path)[.size] as? Int64) ?? 0
         if size > maxFileSize {
-            try? FileManager.default.removeItem(at: logFileURL)
+            let backupURL = logFileURL.deletingLastPathComponent().appendingPathComponent("error.log.old")
+            try? FileManager.default.removeItem(at: backupURL)
+            try? FileManager.default.moveItem(at: logFileURL, to: backupURL)
         }
     }
 
@@ -204,10 +212,10 @@ final class AppLogger {
         writeLog(level: .error, message: msg, file: file, function: function)
     }
 
-    func error(_ err: AppError, context: String, file: String = #file, function: String = #function) {
+    func error(_ err: AppError, context: String, file: String = #file, function: String = #function, line: Int = #line) {
         let msg = "[\(err.errorCode)] \(context) - \(err.localizedDescription)"
         writeLog(level: .error, message: msg, file: file, function: function)
-        ErrorLogger.shared.log(err, context: context, file: file)
+        ErrorLogger.shared.log(err, context: context, file: file, line: line)
     }
 
     private func writeLog(level: LogLevel, message: String, file: String, function: String) {

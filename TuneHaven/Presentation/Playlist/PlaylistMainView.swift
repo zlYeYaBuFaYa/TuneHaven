@@ -95,15 +95,7 @@ struct PlaylistMainView: View {
             }
         }
         .task { await playlistService.loadPlaylists() }
-        .onAppear {
-            Task { await playlistService.loadPlaylists() }
-        }
-        .onChange(of: router.selectedTab) { _, newTab in
-            if newTab == .playlist {
-                Task { await playlistService.loadPlaylists() }
-            }
-        }
-        .onReceive(libraryService.$songs) { _ in
+        .onReceive(libraryService.$songs.dropFirst()) { _ in
             Task { await playlistService.loadPlaylists() }
         }
         .sheet(isPresented: $showGroupManage) {

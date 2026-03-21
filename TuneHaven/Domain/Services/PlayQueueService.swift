@@ -65,26 +65,29 @@ final class PlayQueueService: ObservableObject {
         currentIndex = nil
     }
 
-    /// 将当前队列保存为新歌单（TDD Section 3.6）
     @discardableResult
-    func saveQueueAsPlaylist(name: String, playlistService: PlaylistService) async throws -> Playlist {
+    func saveQueueAsPlaylist(
+        name: String,
+        createPlaylist: (String) async throws -> Playlist,
+        addSongs: ([UUID], UUID) async throws -> Void
+    ) async throws -> Playlist {
         let songIds = queue.map { $0.song.id }
-        let playlist = try await playlistService.createPlaylist(name: name, description: nil)
-        try await playlistService.addSongs(songIds, to: playlist.id)
+        let playlist = try await createPlaylist(name)
+        try await addSongs(songIds, playlist.id)
         return playlist
     }
 
     func nextSong(for mode: PlayMode, dislikes: [String: Int]) -> QueueItem? {
         switch mode {
         case .sequential:
-            return nextUnplayed(from: (currentIndex ?? -1) + 1)
+            return nextUnplayed(from: (currentIndex ?? -1) + 1, dislikes: dislikes)
         case .repeatOne:
             return currentItem
         case .repeatAll:
-            if let item = nextUnplayed(from: (currentIndex ?? -1) + 1) { return item }
+            if let item = nextUnplayed(from: (currentIndex ?? -1) + 1, dislikes: dislikes) { return item }
             guard !queue.isEmpty else { return nil }
             resetAllPlayedMarks()
-            return queue.first
+            return nextUnplayed(from: 0, dislikes: dislikes) ?? queue.first
         case .shuffle:
             return weightedRandom(dislikes: dislikes)
         }
@@ -115,9 +118,12 @@ final class PlayQueueService: ObservableObject {
         }
     }
 
-    private func nextUnplayed(from start: Int) -> QueueItem? {
+    private func nextUnplayed(from start: Int, dislikes: [String: Int] = [:]) -> QueueItem? {
         for i in start..<queue.count {
-            if !queue[i].isPlayed { return queue[i] }
+            guard !queue[i].isPlayed else { continue }
+            let dislikeCount = dislikes[queue[i].song.id.uuidString] ?? 0
+            if dislikeCount >= PlayQueueConstants.dislikeSkipThreshold { continue }
+            return queue[i]
         }
         return nil
     }

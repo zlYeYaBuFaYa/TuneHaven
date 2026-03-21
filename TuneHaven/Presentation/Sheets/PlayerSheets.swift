@@ -30,7 +30,7 @@ struct SleepTimerSheet: View {
                             if minutes == nil && playback.sleepTimerRemaining == nil {
                                 Image(systemName: "checkmark").foregroundColor(palette.primary)
                             } else if let m = minutes, let remaining = playback.sleepTimerRemaining,
-                                      Int(remaining / 60) == m {
+                                      Int((remaining / 60).rounded(.up)) == m {
                                 Image(systemName: "checkmark").foregroundColor(palette.primary)
                             }
                         }
@@ -115,7 +115,9 @@ struct PlaylistCoverPickerSheet: View {
                 Button {
                     if let detail = playlistService.playlists.first(where: { $0.id == playlistId }) {
                         Task {
-                            await playlistService.regenerateAutoCover(for: detail, songs: [])
+                            let playlistDetail = await playlistService.fetchDetail(playlistId: playlistId)
+                            let songs = playlistDetail?.songs ?? []
+                            await playlistService.regenerateAutoCover(for: detail, songs: songs)
                             dismiss()
                         }
                     }

@@ -10,30 +10,10 @@ enum PlaybackState: Equatable {
         switch (lhs, rhs) {
         case (.idle, .idle), (.loading, .loading), (.playing, .playing), (.paused, .paused):
             return true
-        case (.error(let a), .error(let b)):
-            return a.localizedDescription == b.localizedDescription
+        case (.error, .error):
+            return true
         default:
             return false
-        }
-    }
-}
-
-enum AudioEngineError: Error, LocalizedError {
-    case fileNotFound(URL)
-    case unsupportedFormat(String)
-    case assetNotPlayable(URL)
-    case loadFailed(underlying: Error)
-
-    var errorDescription: String? {
-        switch self {
-        case .fileNotFound(let url):
-            return "文件不存在：\(url.lastPathComponent)"
-        case .unsupportedFormat(let ext):
-            return "不支持的音频格式：\(ext)"
-        case .assetNotPlayable(let url):
-            return "无法播放：\(url.lastPathComponent)"
-        case .loadFailed(let error):
-            return "加载失败：\(error.localizedDescription)"
         }
     }
 }
@@ -62,6 +42,7 @@ final class AudioEngine: ObservableObject {
 
     private var interruptionObserver: Any?
     private var routeChangeObserver: Any?
+    private var playbackEndedObserver: Any?
 
     private static let playableExtensions: Set<String> = [
         "mp3", "m4a", "aac", "alac", "wav", "flac", "aiff", "aif", "caf"
@@ -85,31 +66,35 @@ final class AudioEngine: ObservableObject {
         log.info("加载音频: \(url.lastPathComponent)")
 
         guard FileManager.default.fileExists(atPath: url.path) else {
-            state = .error(AudioEngineError.fileNotFound(url))
+            state = .error(AppError.playbackFileNotFound(UUID()))
             log.error("音频文件不存在: \(url.path)")
             return
         }
 
         let ext = url.pathExtension.lowercased()
         guard Self.playableExtensions.contains(ext) else {
-            state = .error(AudioEngineError.unsupportedFormat(ext))
+            state = .error(AppError.playbackUnsupportedFormat(ext))
             log.error("不支持的音频格式: \(ext)")
             return
         }
 
-        AudioSessionManager.shared.ensureActive()
+        guard AudioSessionManager.shared.ensureActive() else {
+            state = .error(AppError.playbackSessionFailed)
+            log.error("音频会话激活失败，无法加载: \(url.lastPathComponent)")
+            return
+        }
 
         let asset = AVURLAsset(url: url)
 
         do {
             let isPlayable = try await asset.load(.isPlayable)
             guard isPlayable else {
-                state = .error(AudioEngineError.assetNotPlayable(url))
+                state = .error(AppError.playbackLoadFailed(url.lastPathComponent))
                 log.error("音频资源不可播放: \(url.lastPathComponent)")
                 return
             }
         } catch {
-            state = .error(AudioEngineError.loadFailed(underlying: error))
+            state = .error(AppError.playbackLoadFailed(error.localizedDescription))
             log.error(error, context: "音频资源加载失败: \(url.lastPathComponent)")
             return
         }
@@ -129,7 +114,7 @@ final class AudioEngine: ObservableObject {
                     self?.isBuffering = false
                 case .failed:
                     if let err = error {
-                        self?.state = .error(AudioEngineError.loadFailed(underlying: err))
+                        self?.state = .error(AppError.playbackUnsupportedFormat("加载失败：\(err.localizedDescription)"))
                     }
                 default: break
                 }
@@ -146,15 +131,16 @@ final class AudioEngine: ObservableObject {
         player.replaceCurrentItem(with: item)
         addTimeObserver()
 
-        Task { @MainActor [weak self] in
-            if let dur = try? await asset.load(.duration) {
-                self?.duration = dur.seconds.isNaN ? 0 : dur.seconds
-            }
+        if let dur = try? await asset.load(.duration) {
+            duration = dur.seconds.isNaN ? 0 : dur.seconds
         }
     }
 
     func play() {
-        AudioSessionManager.shared.ensureActive()
+        guard AudioSessionManager.shared.ensureActive() else {
+            log.error("音频会话激活失败，无法播放")
+            return
+        }
         player.play()
         if playbackSpeed != 1.0 {
             player.rate = playbackSpeed
@@ -204,8 +190,10 @@ final class AudioEngine: ObservableObject {
         }
     }
 
-    let playbackEndedSubject = PassthroughSubject<Void, Never>()
-    let timeUpdateSubject = PassthroughSubject<(currentTime: TimeInterval, duration: TimeInterval), Never>()
+    private let _playbackEndedSubject = PassthroughSubject<Void, Never>()
+    private let _timeUpdateSubject = PassthroughSubject<(currentTime: TimeInterval, duration: TimeInterval), Never>()
+    var playbackEndedSubject: AnyPublisher<Void, Never> { _playbackEndedSubject.eraseToAnyPublisher() }
+    var timeUpdateSubject: AnyPublisher<(currentTime: TimeInterval, duration: TimeInterval), Never> { _timeUpdateSubject.eraseToAnyPublisher() }
 
     private func addTimeObserver() {
         removeTimeObserver()
@@ -215,13 +203,22 @@ final class AudioEngine: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.currentTime = seconds
-                self.timeUpdateSubject.send((currentTime: seconds, duration: self.duration))
+                self._timeUpdateSubject.send((currentTime: seconds, duration: self.duration))
             }
         }
-        NotificationCenter.default.addObserver(self,
-            selector: #selector(playerItemDidFinish),
-            name: .AVPlayerItemDidPlayToEndTime,
-            object: playerItem)
+        playbackEndedObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: playerItem,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.state = .paused
+                self.log.info("当前曲目播放结束")
+                self.currentTime = self.duration
+                self._playbackEndedSubject.send()
+            }
+        }
     }
 
     private func removeTimeObserver() {
@@ -229,17 +226,7 @@ final class AudioEngine: ObservableObject {
             player.removeTimeObserver(obs)
             timeObserver = nil
         }
-        NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: nil)
-    }
-
-    @objc private func playerItemDidFinish() {
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            self.state = .paused
-            self.log.info("当前曲目播放结束")
-            self.currentTime = self.duration
-            self.playbackEndedSubject.send()
-        }
+        if let o = playbackEndedObserver { NotificationCenter.default.removeObserver(o); playbackEndedObserver = nil }
     }
 
     private func setupNotifications() {

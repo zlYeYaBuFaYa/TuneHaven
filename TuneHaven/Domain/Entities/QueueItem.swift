@@ -22,6 +22,7 @@ enum PlayQueueConstants {
     static let persist = false
     static let removePlayed = false
     static let markAsPlayed = true
+    static let dislikeSkipThreshold = 3
 }
 
 enum QueueAddResult: Equatable {

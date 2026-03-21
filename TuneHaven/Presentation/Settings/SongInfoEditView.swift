@@ -183,7 +183,7 @@ struct SongInfoEditView: View {
     }
 
     private func reloadSong() async {
-        song = await CoreDataSongRepository().fetchSong(id: songId)
+        song = await libraryService.fetchSong(id: songId)
     }
 
     private func loadSong() async {
@@ -199,16 +199,12 @@ struct SongInfoEditView: View {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         isSaving = true
         Task {
-            try? await CoreDataStack.shared.performBackground { ctx in
-                let request = SongEntity.fetchRequest()
-                request.predicate = NSPredicate(format: "id == %@", self.songId as CVarArg)
-                request.fetchLimit = 1
-                guard let entity = try ctx.fetch(request).first else { return }
-                entity.title = self.title.trimmingCharacters(in: .whitespaces)
-                entity.artist = self.artist.trimmingCharacters(in: .whitespaces)
-                entity.album = self.album.trimmingCharacters(in: .whitespaces)
-            }
-            await libraryService.loadSongs()
+            try? await libraryService.updateSongInfo(
+                id: songId,
+                title: title.trimmingCharacters(in: .whitespaces),
+                artist: artist.trimmingCharacters(in: .whitespaces),
+                album: album.trimmingCharacters(in: .whitespaces)
+            )
             isSaving = false
             dismiss()
         }

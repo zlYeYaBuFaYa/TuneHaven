@@ -7,7 +7,11 @@ final class PlaylistGroupService: ObservableObject {
 
     @Published private(set) var groupDetails: [PlaylistGroupDetail] = []
 
-    private let repo = CoreDataPlaylistGroupRepository()
+    private let repo: PlaylistGroupRepository
+
+    init(repo: PlaylistGroupRepository = CoreDataPlaylistGroupRepository()) {
+        self.repo = repo
+    }
 
     func loadGroups() async {
         groupDetails = await repo.fetchGroupDetails()

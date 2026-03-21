@@ -8,13 +8,18 @@ final class ImageCacheManager {
     private let fileManager = FileManager.default
     private var cacheLimitMB: Int = 100
     private let log = AppLogger.shared
+    private var trackedCacheSize: Int64 = -1
+    private let fileQueue = DispatchQueue(label: "com.tunehaven.imagecache.file", qos: .utility)
 
     private init() {
         memoryCache.totalCostLimit = 50 * 1024 * 1024
-        NotificationCenter.default.addObserver(self,
-            selector: #selector(didReceiveMemoryWarning),
-            name: UIApplication.didReceiveMemoryWarningNotification,
-            object: nil)
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.memoryCache.removeAllObjects()
+        }
     }
 
     func setCacheLimit(_ megabytes: Int) {
@@ -34,16 +39,24 @@ final class ImageCacheManager {
     }
 
     func store(image: UIImage, forKey key: String) {
-        memoryCache.setObject(image, forKey: key as NSString)
-        if let data = image.jpegData(compressionQuality: 0.85) {
-            try? data.write(to: cacheFileURL(key: key))
+        guard let data = image.jpegData(compressionQuality: 0.85) else { return }
+        memoryCache.setObject(image, forKey: key as NSString, cost: data.count)
+        let url = cacheFileURL(key: key)
+        fileQueue.async { [weak self] in
+            try? data.write(to: url)
+            if let self, self.trackedCacheSize >= 0 {
+                self.trackedCacheSize += Int64(data.count)
+            }
+            self?.evictIfNeeded()
         }
-        evictIfNeeded()
     }
 
     func removeImage(forKey key: String) {
         memoryCache.removeObject(forKey: key as NSString)
-        try? fileManager.removeItem(at: cacheFileURL(key: key))
+        let url = cacheFileURL(key: key)
+        fileQueue.async { [weak self] in
+            try? self?.fileManager.removeItem(at: url)
+        }
     }
 
     func clearAll() async {
@@ -58,6 +71,9 @@ final class ImageCacheManager {
         guard let plFiles = try? fileManager.contentsOfDirectory(atPath: plUrl.path) else { return }
         for file in plFiles {
             try? fileManager.removeItem(at: plUrl.appendingPathComponent(file))
+        }
+        fileQueue.async { [weak self] in
+            self?.trackedCacheSize = 0
         }
     }
 
@@ -80,21 +96,39 @@ final class ImageCacheManager {
 
     private func evictIfNeeded() {
         let limitBytes = Int64(cacheLimitMB) * 1024 * 1024
-        guard cacheSize() > limitBytes else { return }
-        let url = SandboxPathManager.coverImagesURL
-        guard var files = try? fileManager.contentsOfDirectory(atPath: url.path) else { return }
-        files.sort {
-            let d1 = (try? fileManager.attributesOfItem(atPath: url.appendingPathComponent($0).path)[.modificationDate] as? Date) ?? Date.distantPast
-            let d2 = (try? fileManager.attributesOfItem(atPath: url.appendingPathComponent($1).path)[.modificationDate] as? Date) ?? Date.distantPast
-            return d1 < d2
+        let currentSize = trackedCacheSize >= 0 ? trackedCacheSize : cacheSize()
+        if trackedCacheSize < 0 { trackedCacheSize = currentSize }
+        guard currentSize > limitBytes else { return }
+
+        let dirs = [SandboxPathManager.coverImagesURL, SandboxPathManager.playlistCoversURL]
+        var allFiles: [(url: URL, date: Date, size: Int64)] = []
+        for dir in dirs {
+            guard let files = try? fileManager.contentsOfDirectory(atPath: dir.path) else { continue }
+            for file in files {
+                let fileURL = dir.appendingPathComponent(file)
+                let attrs = try? fileManager.attributesOfItem(atPath: fileURL.path)
+                let date = attrs?[.modificationDate] as? Date ?? Date.distantPast
+                let size = attrs?[.size] as? Int64 ?? 0
+                allFiles.append((url: fileURL, date: date, size: size))
+            }
         }
-        let toRemove = files.prefix(max(1, files.count / 5))
-        for file in toRemove {
-            try? fileManager.removeItem(at: url.appendingPathComponent(file))
+        allFiles.sort { $0.date < $1.date }
+
+        var freed: Int64 = 0
+        let target = currentSize - limitBytes + limitBytes / 10
+        for file in allFiles {
+            guard freed < target else { break }
+            try? fileManager.removeItem(at: file.url)
+            freed += file.size
         }
+        trackedCacheSize = max(0, currentSize - freed)
     }
 
-    @objc private func didReceiveMemoryWarning() {
-        memoryCache.removeAllObjects()
+    func formattedCacheSize() -> String {
+        let bytes = cacheSize()
+        let mb = Double(bytes) / 1024 / 1024
+        return mb < 1
+            ? String(format: "%.0f KB", Double(bytes) / 1024)
+            : String(format: "%.1f MB", mb)
     }
 }

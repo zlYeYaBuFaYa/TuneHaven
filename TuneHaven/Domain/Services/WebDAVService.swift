@@ -38,7 +38,7 @@ final class WebDAVService: ObservableObject {
 
     func testConnection(account: WebDAVAccount, password: String) async throws -> Bool {
         guard let baseURL = URL(string: account.serverURL) else {
-            throw WebDAVError.connectionFailed("无效的服务器地址")
+            throw AppError.webdavConnectionFailed("无效的服务器地址")
         }
         let client = WebDAVClient(configuration: .init(
             baseURL: baseURL,
@@ -53,10 +53,10 @@ final class WebDAVService: ObservableObject {
 
     func connect(to account: WebDAVAccount) async throws {
         guard let baseURL = URL(string: account.serverURL) else {
-            throw WebDAVError.connectionFailed("无效的服务器地址")
+            throw AppError.webdavConnectionFailed("无效的服务器地址")
         }
         guard let password = accountStore.password(for: account.id) else {
-            throw WebDAVError.authFailed
+            throw AppError.webdavAuthFailed
         }
         activeClient = WebDAVClient(configuration: .init(
             baseURL: baseURL,
@@ -71,7 +71,7 @@ final class WebDAVService: ObservableObject {
 
     func loadDirectory(_ path: String) async throws {
         guard let client = activeClient else {
-            throw WebDAVError.connectionFailed("未连接到服务器")
+            throw AppError.webdavConnectionFailed("未连接到服务器")
         }
         isLoading = true
         defer { isLoading = false }

@@ -102,7 +102,11 @@ struct PlayQueueView: View {
                 let name = savePlaylistName.trimmingCharacters(in: .whitespaces)
                 guard !name.isEmpty else { return }
                 Task {
-                    try? await playback.queue.saveQueueAsPlaylist(name: name, playlistService: playlistService)
+                    try? await playback.queue.saveQueueAsPlaylist(
+                        name: name,
+                        createPlaylist: { n in try await playlistService.createPlaylist(name: n, description: nil) },
+                        addSongs: { ids, pid in try await playlistService.addSongs(ids, to: pid) }
+                    )
                     savePlaylistName = ""
                 }
             }

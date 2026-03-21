@@ -170,6 +170,11 @@ final class WiFiTransferServer: ObservableObject {
             return
         }
 
+        if cooldownUntil != nil, Date() >= cooldownUntil! {
+            failedAttempts = 0
+            cooldownUntil = nil
+        }
+
         guard let body = extractBody(from: data),
               let pwd = extractField(body, key: "password") else {
             sendJSON(connection: connection, status: 400, body: #"{"error":"缺少密码"}"#)
@@ -221,7 +226,13 @@ final class WiFiTransferServer: ObservableObject {
             let rawFilename = extractFilenameFromHeader(headerStr) ?? "uploaded_file"
             let filename = URL(fileURLWithPath: rawFilename).lastPathComponent
             let destURL = SandboxPathManager.wifiUploadURL.appendingPathComponent(filename)
-            try? Data(fileData).write(to: destURL)
+            do {
+                try Data(fileData).write(to: destURL)
+            } catch {
+                AppLogger.shared.error(error, context: "WiFi上传文件写入失败: \(filename)")
+                sendJSON(connection: connection, status: 500, body: #"{"error":"文件写入失败"}"#)
+                return
+            }
 
             connectionState = .idle
             sendJSON(connection: connection, status: 200, body: #"{"success":true}"#)
@@ -252,7 +263,17 @@ final class WiFiTransferServer: ObservableObject {
     }
 
     private func buildHTTPResponse(status: Int, contentType: String, body: Data) -> Data {
-        let header = "HTTP/1.1 \(status) OK\r\nContent-Type: \(contentType)\r\nContent-Length: \(body.count)\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
+        let statusText: String
+        switch status {
+        case 200: statusText = "OK"
+        case 400: statusText = "Bad Request"
+        case 401: statusText = "Unauthorized"
+        case 404: statusText = "Not Found"
+        case 429: statusText = "Too Many Requests"
+        case 500: statusText = "Internal Server Error"
+        default: statusText = "OK"
+        }
+        let header = "HTTP/1.1 \(status) \(statusText)\r\nContent-Type: \(contentType)\r\nContent-Length: \(body.count)\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
         var response = header.data(using: .utf8)!
         response.append(body)
         return response

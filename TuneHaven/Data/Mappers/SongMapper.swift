@@ -2,6 +2,7 @@ import CoreData
 import Foundation
 
 enum SongMapper {
+    /// Creates a new SongEntity for initial import; sets softDeleted = false.
     static func toEntity(_ song: Song, context: NSManagedObjectContext) -> SongEntity {
         let entity = SongEntity(context: context)
         entity.id = song.id
@@ -13,14 +14,14 @@ enum SongMapper {
         entity.fileRelativePath = song.fileRelativePath
         entity.coverImagePath = song.coverImagePath
         entity.lyricsPath = song.lyricsPath
-        entity.lyricsSource = song.lyricsSource?.rawValue ?? -1
+        entity.lyricsSource = song.lyricsSource?.rawValue ?? Int16.min
         entity.format = song.metadata.format
         entity.sampleRate = Int32(song.metadata.sampleRate ?? 0)
         entity.bitRate = Int32(song.metadata.bitRate ?? 0)
         entity.channels = Int16(song.metadata.channels ?? 0)
         entity.encoder = song.metadata.encoder
-        entity.trackNumber = Int16(song.metadata.trackNumber ?? 0)
-        entity.year = Int16(song.metadata.year ?? 0)
+        entity.trackNumber = song.metadata.trackNumber.map { Int16($0) } ?? Int16.min
+        entity.year = song.metadata.year.map { Int16($0) } ?? Int16.min
         entity.genre = song.metadata.genre
         entity.importDate = song.importDate
         entity.fileSize = song.fileSize
@@ -48,8 +49,8 @@ enum SongMapper {
             bitRate: entity.bitRate != 0 ? Int(entity.bitRate) : nil,
             channels: entity.channels != 0 ? Int(entity.channels) : nil,
             encoder: entity.encoder,
-            trackNumber: entity.trackNumber != 0 ? Int(entity.trackNumber) : nil,
-            year: entity.year != 0 ? Int(entity.year) : nil,
+            trackNumber: Self.isValidOptionalInt16(entity.trackNumber) ? Int(entity.trackNumber) : nil,
+            year: Self.isValidOptionalInt16(entity.year) ? Int(entity.year) : nil,
             genre: entity.genre
         )
 
@@ -63,7 +64,7 @@ enum SongMapper {
             fileRelativePath: fileRelativePath,
             coverImagePath: entity.coverImagePath,
             lyricsPath: entity.lyricsPath,
-            lyricsSource: entity.lyricsSource >= 0 ? LyricsSource(rawValue: entity.lyricsSource) : nil,
+            lyricsSource: Self.isValidLyricsSource(entity.lyricsSource) ? LyricsSource(rawValue: entity.lyricsSource) : nil,
             metadata: metadata,
             importDate: importDate,
             fileSize: entity.fileSize,
@@ -72,5 +73,15 @@ enum SongMapper {
             favoriteDate: entity.favoriteDate,
             lastPlayedDate: entity.lastPlayedDate
         )
+    }
+
+    /// Handles both old sentinel (`0`) and new sentinel (`Int16.min`) for trackNumber/year.
+    private static func isValidOptionalInt16(_ value: Int16) -> Bool {
+        value != 0 && value != Int16.min
+    }
+
+    /// Handles both old sentinel (`-1`) and new sentinel (`Int16.min`) for lyricsSource.
+    private static func isValidLyricsSource(_ value: Int16) -> Bool {
+        value != -1 && value != Int16.min
     }
 }

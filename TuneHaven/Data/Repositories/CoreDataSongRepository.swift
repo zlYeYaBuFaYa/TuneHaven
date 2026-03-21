@@ -1,8 +1,9 @@
 import CoreData
 import Foundation
 
-final class CoreDataSongRepository {
+final class CoreDataSongRepository: SongRepository {
     private let stack: CoreDataStack
+    private let log = AppLogger.shared
 
     init(stack: CoreDataStack = .shared) {
         self.stack = stack
@@ -132,6 +133,7 @@ final class CoreDataSongRepository {
                 let tmpPath = try FileStorageService.shared.moveToPendingDelete(relativePath: file.relativePath)
                 movedFiles.append(UndoToken.MovedFile(tempPath: tmpPath, originalRelativePath: file.relativePath))
             } catch {
+                ErrorLogger.shared.log(.databaseError(error), context: "softDelete: 文件移动失败 \(file.relativePath)")
                 AppLogger.shared.error("softDelete: 文件移动失败 \(file.relativePath): \(error)")
                 movedFiles.append(UndoToken.MovedFile(tempPath: "", originalRelativePath: file.relativePath))
             }
@@ -157,7 +159,11 @@ final class CoreDataSongRepository {
                 continue
             }
             if !file.tempPath.isEmpty {
-                try? FileStorageService.shared.restoreFromPendingDelete(fileName: file.tempPath, originalRelativePath: file.originalRelativePath)
+                do {
+                    try FileStorageService.shared.restoreFromPendingDelete(fileName: file.tempPath, originalRelativePath: file.originalRelativePath)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "undoDelete: 文件恢复失败 \(file.originalRelativePath)")
+                }
             } else {
                 AppLogger.shared.error("undoDelete: 文件既不在待删除目录也不在原始位置: \(file.originalRelativePath)")
             }
@@ -187,22 +193,28 @@ final class CoreDataSongRepository {
     }
 
     func toggleFavorite(id: UUID) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", id as CVarArg)
             request.fetchLimit = 1
-            guard let entity = try ctx.fetch(request).first else { return }
+            guard let entity = try ctx.fetch(request).first else {
+                log.debug("toggleFavorite: entity not found id=\(id)")
+                return
+            }
             entity.isFavorite.toggle()
             entity.favoriteDate = entity.isFavorite ? Date() : nil
         }
     }
 
     func recordPlay(id: UUID) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", id as CVarArg)
             request.fetchLimit = 1
-            guard let entity = try ctx.fetch(request).first else { return }
+            guard let entity = try ctx.fetch(request).first else {
+                log.debug("recordPlay: entity not found id=\(id)")
+                return
+            }
             entity.playCount += 1
             entity.lastPlayedDate = Date()
 
@@ -213,42 +225,64 @@ final class CoreDataSongRepository {
         }
     }
 
+    func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws {
+        try await stack.performBackground { [log] ctx in
+            let request = SongEntity.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", id as CVarArg)
+            request.fetchLimit = 1
+            guard let entity = try ctx.fetch(request).first else {
+                log.debug("updateSongInfo: entity not found id=\(id)")
+                return
+            }
+            entity.title = title
+            entity.artist = artist
+            entity.album = album
+        }
+    }
+
     func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", songId as CVarArg)
             request.fetchLimit = 1
-            guard let entity = try ctx.fetch(request).first else { return }
+            guard let entity = try ctx.fetch(request).first else {
+                log.debug("updateLyrics: entity not found id=\(songId)")
+                return
+            }
             entity.lyricsPath = lyricsPath
-            entity.lyricsSource = lyricsSource?.rawValue ?? -1
+            entity.lyricsSource = lyricsSource?.rawValue ?? Int16.min
         }
     }
 
     func cleanupPendingDeletes() async {
-        try? await stack.performBackground { ctx in
-            let cutoff = Date().addingTimeInterval(-30)
-            let request = SongEntity.fetchRequest()
-            request.predicate = NSPredicate(format: "softDeleted == YES AND deletedAt < %@", cutoff as CVarArg)
-            let entities = try ctx.fetch(request)
-            for entity in entities {
-                if let hash = entity.fileHash, let path = entity.fileRelativePath {
-                    let refReq = SongEntity.fetchRequest()
-                    refReq.predicate = NSPredicate(format: "fileHash == %@ AND softDeleted == NO", hash)
-                    let count = (try? ctx.count(for: refReq)) ?? 0
-                    if count == 0 {
-                        let fm = FileManager.default
-                        let url = SandboxPathManager.musicFileURL(relativePath: path)
-                        try? fm.removeItem(at: url)
+        do {
+            try await stack.performBackground { ctx in
+                let cutoff = Date().addingTimeInterval(-30)
+                let request = SongEntity.fetchRequest()
+                request.predicate = NSPredicate(format: "softDeleted == YES AND deletedAt < %@", cutoff as CVarArg)
+                let entities = try ctx.fetch(request)
+                for entity in entities {
+                    if let hash = entity.fileHash, let path = entity.fileRelativePath {
+                        let refReq = SongEntity.fetchRequest()
+                        refReq.predicate = NSPredicate(format: "fileHash == %@ AND softDeleted == NO", hash)
+                        let count = (try? ctx.count(for: refReq)) ?? 0
+                        if count == 0 {
+                            let fm = FileManager.default
+                            let url = SandboxPathManager.musicFileURL(relativePath: path)
+                            try? fm.removeItem(at: url)
+                        }
                     }
+                    if let songId = entity.id {
+                        let psReq = PlaylistSongEntity.fetchRequest()
+                        psReq.predicate = NSPredicate(format: "songId == %@", songId as CVarArg)
+                        let links = try ctx.fetch(psReq)
+                        links.forEach { ctx.delete($0) }
+                    }
+                    ctx.delete(entity)
                 }
-                if let songId = entity.id {
-                    let psReq = PlaylistSongEntity.fetchRequest()
-                    psReq.predicate = NSPredicate(format: "songId == %@", songId as CVarArg)
-                    let links = try ctx.fetch(psReq)
-                    links.forEach { ctx.delete($0) }
-                }
-                ctx.delete(entity)
             }
+        } catch {
+            ErrorLogger.shared.log(.databaseError(error), context: "cleanupPendingDeletes: DB清理失败")
         }
         FileStorageService.shared.cleanupPendingDeleteDirectory()
     }
@@ -317,17 +351,59 @@ final class CoreDataSongRepository {
         }
     }
 
-    private func fetchDeletedSong(id: UUID) async -> Song? {
+    func fetchArtistGroups() async -> [ArtistGroup] {
         await withCheckedContinuation { continuation in
             stack.viewContext.perform {
                 let request = SongEntity.fetchRequest()
-                request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-                request.fetchLimit = 1
-                let result = try? self.stack.viewContext.fetch(request)
-                continuation.resume(returning: result?.first.flatMap { SongMapper.toDomain($0) })
+                request.predicate = NSPredicate(format: "softDeleted == NO")
+                request.propertiesToFetch = ["artist", "album"]
+                request.fetchBatchSize = 100
+                let results = (try? self.stack.viewContext.fetch(request)) ?? []
+
+                var groups: [String: (songCount: Int, albums: Set<String>)] = [:]
+                for entity in results {
+                    let artist = entity.artist ?? SongDefaults.unknownArtist
+                    var g = groups[artist] ?? (0, [])
+                    g.songCount += 1
+                    g.albums.insert(entity.album ?? SongDefaults.unknownAlbum)
+                    groups[artist] = g
+                }
+                let artistGroups = groups.map {
+                    ArtistGroup(name: $0.key, songCount: $0.value.songCount, albumCount: $0.value.albums.count)
+                }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                continuation.resume(returning: artistGroups)
             }
         }
     }
+
+    func fetchAlbumGroups() async -> [AlbumGroup] {
+        await withCheckedContinuation { continuation in
+            stack.viewContext.perform {
+                let request = SongEntity.fetchRequest()
+                request.predicate = NSPredicate(format: "softDeleted == NO")
+                request.propertiesToFetch = ["artist", "album", "year", "coverImagePath"]
+                request.fetchBatchSize = 100
+                let results = (try? self.stack.viewContext.fetch(request)) ?? []
+
+                struct AlbumKey: Hashable { let artist: String; let album: String }
+                var groups: [AlbumKey: (year: Int?, count: Int, cover: String?)] = [:]
+                for entity in results {
+                    let artist = entity.artist ?? SongDefaults.unknownArtist
+                    let album = entity.album ?? SongDefaults.unknownAlbum
+                    let key = AlbumKey(artist: artist, album: album)
+                    var g = groups[key] ?? (entity.year != 0 && entity.year != Int16.min ? Int(entity.year) : nil, 0, entity.coverImagePath)
+                    g.count += 1
+                    groups[key] = g
+                }
+                let albumGroups = groups.map {
+                    AlbumGroup(name: $0.key.album, artist: $0.key.artist, year: $0.value.year,
+                               songCount: $0.value.count, coverImagePath: $0.value.cover)
+                }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                continuation.resume(returning: albumGroups)
+            }
+        }
+    }
+
 }
 
 private extension SongSortOption {

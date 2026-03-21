@@ -1,8 +1,9 @@
 import CoreData
 import Foundation
 
-final class CoreDataPlaylistRepository {
+final class CoreDataPlaylistRepository: PlaylistRepository {
     private let stack: CoreDataStack
+    private let log = AppLogger.shared
     init(stack: CoreDataStack = .shared) { self.stack = stack }
 
     func fetchAll() async -> [Playlist] {
@@ -70,11 +71,14 @@ final class CoreDataPlaylistRepository {
     }
 
     func update(id: UUID, name: String?, description: String?) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = PlaylistEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
             request.fetchLimit = 1
-            guard let entity = try ctx.fetch(request).first else { return }
+            guard let entity = try ctx.fetch(request).first else {
+                log.debug("update playlist: entity not found id=\(id)")
+                return
+            }
             if let name { entity.name = name }
             if let description { entity.desc_ = description }
             entity.updatedAt = Date()
@@ -82,11 +86,14 @@ final class CoreDataPlaylistRepository {
     }
 
     func delete(id: UUID) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = PlaylistEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@ AND isSystem == NO", id as CVarArg)
             request.fetchLimit = 1
-            guard let entity = try ctx.fetch(request).first else { return }
+            guard let entity = try ctx.fetch(request).first else {
+                log.debug("delete playlist: entity not found id=\(id)")
+                return
+            }
 
             let psReq = PlaylistSongEntity.fetchRequest()
             psReq.predicate = NSPredicate(format: "playlistId == %@", id as CVarArg)
@@ -101,9 +108,16 @@ final class CoreDataPlaylistRepository {
         try await stack.performBackground { ctx in
             let existRequest = PlaylistSongEntity.fetchRequest()
             existRequest.predicate = NSPredicate(format: "playlistId == %@", playlistId as CVarArg)
+            existRequest.propertiesToFetch = ["songId", "sortOrder"]
             let existing = try ctx.fetch(existRequest)
             let existingIds = Set(existing.compactMap { $0.songId })
-            let maxOrder = existing.map { $0.sortOrder }.max() ?? -1
+
+            let maxOrderReq = PlaylistSongEntity.fetchRequest()
+            maxOrderReq.predicate = NSPredicate(format: "playlistId == %@", playlistId as CVarArg)
+            maxOrderReq.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: false)]
+            maxOrderReq.fetchLimit = 1
+            maxOrderReq.propertiesToFetch = ["sortOrder"]
+            let maxOrder = (try? ctx.fetch(maxOrderReq))?.first?.sortOrder ?? -1
 
             var addedCount: Int32 = 0
             for songId in songIds {
@@ -139,22 +153,28 @@ final class CoreDataPlaylistRepository {
     }
 
     func updateAutoCover(playlistId: UUID, path: String, hash: String) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = PlaylistEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@", playlistId as CVarArg)
             request.fetchLimit = 1
-            guard let entity = try ctx.fetch(request).first else { return }
+            guard let entity = try ctx.fetch(request).first else {
+                log.debug("updateAutoCover: entity not found id=\(playlistId)")
+                return
+            }
             entity.autoCoverPath = path
             entity.autoCoverHash = hash
         }
     }
 
     func setCustomCover(playlistId: UUID, imagePath: String) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = PlaylistEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@", playlistId as CVarArg)
             request.fetchLimit = 1
-            guard let entity = try ctx.fetch(request).first else { return }
+            guard let entity = try ctx.fetch(request).first else {
+                log.debug("setCustomCover: entity not found id=\(playlistId)")
+                return
+            }
             entity.customCoverPath = imagePath
         }
     }
@@ -197,22 +217,22 @@ final class CoreDataPlaylistRepository {
             let existing = try ctx.fetch(request)
             let existingTypes = Set(existing.map { $0.systemType })
 
-            if !existingTypes.contains(1) {
+            if !existingTypes.contains(SystemPlaylistType.favorites.rawValue) {
                 let favorites = PlaylistEntity(context: ctx)
                 favorites.id = UUID()
-                favorites.name = "我喜欢"
+                favorites.name = SystemPlaylistName.favorites
                 favorites.isSystem = true
-                favorites.systemType = 1
+                favorites.systemType = SystemPlaylistType.favorites.rawValue
                 favorites.sortOrder = -2
                 favorites.createdAt = Date()
                 favorites.updatedAt = Date()
             }
-            if !existingTypes.contains(2) {
+            if !existingTypes.contains(SystemPlaylistType.recentlyPlayed.rawValue) {
                 let recent = PlaylistEntity(context: ctx)
                 recent.id = UUID()
-                recent.name = "最近播放"
+                recent.name = SystemPlaylistName.recentlyPlayed
                 recent.isSystem = true
-                recent.systemType = 2
+                recent.systemType = SystemPlaylistType.recentlyPlayed.rawValue
                 recent.sortOrder = -1
                 recent.createdAt = Date()
                 recent.updatedAt = Date()

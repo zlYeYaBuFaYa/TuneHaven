@@ -43,15 +43,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     private func configureAudioSession() {
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(.playback, mode: .default, options: [])
-            try session.setActive(true, options: [])
-            AppLogger.shared.info("[AppDelegate] Audio session OK — category=\(session.category.rawValue)")
-        } catch {
-            AppLogger.shared.info("[AppDelegate] Audio session FAILED: \(error)")
-        }
-        AudioSessionManager.shared.configure()
+        let success = AudioSessionManager.shared.configure()
+        AppLogger.shared.info("[AppDelegate] Audio session \(success ? "OK" : "FAILED")")
     }
 
     private func verifyBackgroundAudioEntitlement() {

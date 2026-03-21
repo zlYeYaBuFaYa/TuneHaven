@@ -5,6 +5,7 @@ import Foundation
 // MARK: - LyricsService Tests
 
 @Suite("LyricsService Tests - LRC 解析")
+@MainActor
 struct LyricsServiceTests {
 
     private let service = LyricsService.shared

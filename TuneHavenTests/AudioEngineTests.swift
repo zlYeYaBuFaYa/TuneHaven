@@ -2,47 +2,44 @@ import Testing
 import Foundation
 @testable import TuneHaven
 
-// MARK: - AudioEngineError Tests
+// MARK: - AppError (playback) Tests
 
-@Suite("AudioEngineError Tests")
-struct AudioEngineErrorTests {
+@Suite("AppError Playback Tests")
+struct AppErrorPlaybackTests {
 
-    @Test("fileNotFound 错误包含文件名")
-    func testFileNotFoundDescription() {
-        let url = URL(fileURLWithPath: "/path/to/夜曲.mp3")
-        let error = AudioEngineError.fileNotFound(url)
-        #expect(error.errorDescription?.contains("夜曲.mp3") == true)
+    @Test("playbackFileNotFound 有非空描述")
+    func testPlaybackFileNotFoundDescription() {
+        let error = AppError.playbackFileNotFound(UUID())
+        #expect(error.errorDescription?.contains("文件") == true)
     }
 
-    @Test("unsupportedFormat 错误包含格式名")
+    @Test("playbackUnsupportedFormat 错误包含格式名")
     func testUnsupportedFormatDescription() {
-        let error = AudioEngineError.unsupportedFormat("ogg")
+        let error = AppError.playbackUnsupportedFormat("ogg")
         #expect(error.errorDescription?.contains("ogg") == true)
     }
 
-    @Test("assetNotPlayable 错误包含文件名")
-    func testAssetNotPlayableDescription() {
-        let url = URL(fileURLWithPath: "/path/to/damaged.flac")
-        let error = AudioEngineError.assetNotPlayable(url)
+    @Test("无法播放 描述包含文件名")
+    func testAssetNotPlayableStyleDescription() {
+        let error = AppError.playbackUnsupportedFormat("无法播放：damaged.flac")
         #expect(error.errorDescription?.contains("damaged.flac") == true)
     }
 
-    @Test("loadFailed 错误包含底层错误信息")
-    func testLoadFailedDescription() {
-        let underlying = NSError(domain: "test", code: -1, userInfo: [NSLocalizedDescriptionKey: "decode error"])
-        let error = AudioEngineError.loadFailed(underlying: underlying)
+    @Test("加载失败 描述包含底层错误信息")
+    func testLoadFailedStyleDescription() {
+        let error = AppError.playbackUnsupportedFormat("加载失败：decode error")
         #expect(error.errorDescription?.contains("decode error") == true)
     }
 
-    @Test("所有错误 case 都有非空描述")
-    func testAllCasesHaveDescription() {
+    @Test("相关 case 都有非空描述")
+    func testCasesHaveDescription() {
         let url = URL(fileURLWithPath: "/test.mp3")
         let underlying = NSError(domain: "test", code: 0)
-        let errors: [AudioEngineError] = [
-            .fileNotFound(url),
-            .unsupportedFormat("xyz"),
-            .assetNotPlayable(url),
-            .loadFailed(underlying: underlying)
+        let errors: [AppError] = [
+            .playbackFileNotFound(UUID()),
+            .playbackUnsupportedFormat("xyz"),
+            .playbackUnsupportedFormat("无法播放：\(url.lastPathComponent)"),
+            .playbackUnsupportedFormat("加载失败：\(underlying.localizedDescription)")
         ]
         for error in errors {
             #expect(error.errorDescription != nil)
@@ -98,7 +95,7 @@ struct PlaybackStateTests {
 
     @Test("error 状态携带错误信息")
     func testErrorState() {
-        let err = AudioEngineError.unsupportedFormat("ogg")
+        let err = AppError.playbackUnsupportedFormat("ogg")
         let state: PlaybackState = .error(err)
         if case .error(let e) = state {
             #expect(e.localizedDescription.contains("ogg"))

@@ -31,8 +31,6 @@ extension LRCLibTrack {
     }
 
     var durationText: String {
-        let mins = Int(duration) / 60
-        let secs = Int(duration) % 60
-        return "\(mins):\(String(format: "%02d", secs))"
+        DurationFormatter.format(duration)
     }
 }

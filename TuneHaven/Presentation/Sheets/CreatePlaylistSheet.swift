@@ -87,8 +87,12 @@ struct EditPlaylistSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
                         Task {
-                            try? await playlistService.updatePlaylist(id: playlistId, name: name, description: description.isEmpty ? nil : description)
-                            dismiss()
+                            do {
+                                try await playlistService.updatePlaylist(id: playlistId, name: name, description: description.isEmpty ? nil : description)
+                                dismiss()
+                            } catch {
+                                AppLogger.shared.error(error, context: "编辑歌单失败")
+                            }
                         }
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -126,8 +130,13 @@ struct AddToPlaylistSheet: View {
                 Button {
                     selectedId = playlist.id
                     Task {
-                        try? await playlistService.addSongs(songIds, to: playlist.id)
-                        dismiss()
+                        do {
+                            try await playlistService.addSongs(songIds, to: playlist.id)
+                            dismiss()
+                        } catch {
+                            AppLogger.shared.error(error, context: "添加歌曲到歌单失败")
+                            selectedId = nil
+                        }
                     }
                 } label: {
                     HStack(spacing: 12) {

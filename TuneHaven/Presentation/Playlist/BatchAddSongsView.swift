@@ -4,6 +4,7 @@ struct BatchAddSongsView: View {
     let playlistId: UUID
 
     @EnvironmentObject private var playlistService: PlaylistService
+    @EnvironmentObject private var libraryService: MusicLibraryService
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -240,8 +241,7 @@ struct BatchAddSongsView: View {
     }
 
     private func loadData() async {
-        let repo = CoreDataSongRepository()
-        allSongs = await repo.fetchAll(sortBy: .artist, ascending: true)
+        allSongs = await libraryService.fetchAllSongs(sortBy: .artist, ascending: true)
         if let detail = await playlistService.fetchDetail(playlistId: playlistId) {
             existingSongIds = Set(detail.songs.map(\.id))
         }

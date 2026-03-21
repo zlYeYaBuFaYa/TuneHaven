@@ -16,6 +16,7 @@ final class CoreDataStack {
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         let ctx = container.newBackgroundContext()
         ctx.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        ctx.automaticallyMergesChangesFromParent = true
         backgroundContext = ctx
     }
 
@@ -31,40 +32,15 @@ final class CoreDataStack {
         }
     }
 
-    func save(context: NSManagedObjectContext) {
-        guard context.hasChanges else { return }
-        do {
-            try context.save()
-        } catch {
-            ErrorLogger.shared.log(.databaseError(error), context: "CoreDataStack.save")
-        }
-    }
-
-    func performBackground<T>(_ block: @escaping (NSManagedObjectContext) throws -> T) async throws -> T {
+    func performBackground<T: Sendable>(_ block: @escaping (NSManagedObjectContext) throws -> T) async throws -> T {
         try await withCheckedThrowingContinuation { continuation in
             backgroundContext.perform {
                 do {
                     let result = try block(self.backgroundContext)
                     if self.backgroundContext.hasChanges {
-                        var notification: Notification?
-                        let token = NotificationCenter.default.addObserver(
-                            forName: .NSManagedObjectContextDidSave,
-                            object: self.backgroundContext,
-                            queue: nil
-                        ) { notification = $0 }
-                        defer { NotificationCenter.default.removeObserver(token) }
-
                         try self.backgroundContext.save()
-
-                        if let notification {
-                            self.viewContext.performAndWait {
-                                self.viewContext.mergeChanges(fromContextDidSave: notification)
-                            }
-                        }
                     }
-                    self.viewContext.perform {
-                        continuation.resume(returning: result)
-                    }
+                    continuation.resume(returning: result)
                 } catch {
                     self.backgroundContext.rollback()
                     continuation.resume(throwing: error)

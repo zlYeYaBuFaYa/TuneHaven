@@ -35,7 +35,9 @@ final class LRCLibAPIClient: LRCLibAPIClientProtocol {
         albumName: String,
         duration: Int
     ) async throws -> LRCLibTrack? {
-        var components = URLComponents(string: "\(baseURL)/get")!
+        guard var components = URLComponents(string: "\(baseURL)/get") else {
+            throw AppError.lyricsSearchFailed("无效的 API 地址")
+        }
         components.queryItems = [
             URLQueryItem(name: "track_name", value: trackName),
             URLQueryItem(name: "artist_name", value: artistName),
@@ -60,7 +62,9 @@ final class LRCLibAPIClient: LRCLibAPIClientProtocol {
         trackName: String,
         artistName: String?
     ) async throws -> [LRCLibTrack] {
-        var components = URLComponents(string: "\(baseURL)/search")!
+        guard var components = URLComponents(string: "\(baseURL)/search") else {
+            throw AppError.lyricsSearchFailed("无效的 API 地址")
+        }
         var items = [URLQueryItem(name: "track_name", value: trackName)]
         if let artist = artistName, !artist.isEmpty {
             items.append(URLQueryItem(name: "artist_name", value: artist))

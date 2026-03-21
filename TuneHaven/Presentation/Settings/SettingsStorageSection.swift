@@ -107,10 +107,6 @@ struct SettingsStorageSection: View {
     }
 
     private func calculateCacheSize() async {
-        let bytes = ImageCacheManager.shared.cacheSize()
-        let mb = Double(bytes) / 1024 / 1024
-        currentCacheSize = mb < 1
-            ? String(format: "%.0f KB", Double(bytes) / 1024)
-            : String(format: "%.1f MB", mb)
+        currentCacheSize = ImageCacheManager.shared.formattedCacheSize()
     }
 }

@@ -26,6 +26,11 @@ enum SystemPlaylistType: Int16 {
     case recentlyPlayed = 2
 }
 
+enum SystemPlaylistName {
+    static let favorites = "我喜欢"
+    static let recentlyPlayed = "最近播放"
+}
+
 struct PlaylistDetail {
     let playlist: Playlist
     let songs: [Song]

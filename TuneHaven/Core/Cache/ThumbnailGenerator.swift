@@ -1,5 +1,23 @@
 import UIKit
 
+enum ThumbnailSize: String {
+    case small = "small"
+    case medium = "medium"
+    case large = "large"
+    case original = "original"
+
+    var suffix: String { rawValue }
+
+    var dimension: CGFloat {
+        switch self {
+        case .small: return 100
+        case .medium: return 200
+        case .large: return 400
+        case .original: return 1024
+        }
+    }
+}
+
 final class ThumbnailGenerator {
     static func resize(_ image: UIImage, to size: ThumbnailSize) -> UIImage {
         let dim = size.dimension
@@ -7,7 +25,11 @@ final class ThumbnailGenerator {
         if image.size.width <= dim && image.size.height <= dim { return image }
         let renderer = UIGraphicsImageRenderer(size: targetSize)
         return renderer.image { _ in
-            image.draw(in: CGRect(origin: .zero, size: targetSize))
+            let scale = max(dim / image.size.width, dim / image.size.height)
+            let scaledW = image.size.width * scale
+            let scaledH = image.size.height * scale
+            let drawRect = CGRect(x: (dim - scaledW) / 2, y: (dim - scaledH) / 2, width: scaledW, height: scaledH)
+            image.draw(in: drawRect)
         }
     }
 

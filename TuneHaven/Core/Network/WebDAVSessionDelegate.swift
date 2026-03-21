@@ -1,7 +1,11 @@
 import Foundation
 
-final class WebDAVSessionDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
-    var trustSelfSignedCert: Bool = false
+final class WebDAVSessionDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate, @unchecked Sendable {
+    let trustSelfSignedCert: Bool
+
+    init(trustSelfSignedCert: Bool = false) {
+        self.trustSelfSignedCert = trustSelfSignedCert
+    }
 
     func urlSession(
         _ session: URLSession,

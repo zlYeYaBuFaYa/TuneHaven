@@ -142,10 +142,10 @@ struct AlbumRow: View {
                         Text(String(year))
                             .font(.caption)
                             .foregroundColor(palette.textTertiary)
+                        Text("·")
+                            .font(.caption)
+                            .foregroundColor(palette.textTertiary)
                     }
-                    Text("·")
-                        .font(.caption)
-                        .foregroundColor(palette.textTertiary)
                     Text("\(album.songCount) 首")
                         .font(.caption)
                         .foregroundColor(palette.textTertiary)

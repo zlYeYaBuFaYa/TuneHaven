@@ -21,18 +21,21 @@ actor WebDAVClient {
     private let config: Configuration
     private let session: URLSession
     private let sessionDelegate: WebDAVSessionDelegate
-    private var currentDownloadTask: URLSessionDownloadTask?
+    private var downloadTask: Task<URL, Error>?
     private var isCancelled = false
 
     init(configuration: Configuration) {
         self.config = configuration
-        let delegate = WebDAVSessionDelegate()
-        delegate.trustSelfSignedCert = configuration.trustSelfSignedCert
+        let delegate = WebDAVSessionDelegate(trustSelfSignedCert: configuration.trustSelfSignedCert)
         self.sessionDelegate = delegate
 
         let urlConfig = URLSessionConfiguration.default
         urlConfig.timeoutIntervalForRequest = configuration.timeoutInterval
         self.session = URLSession(configuration: urlConfig, delegate: delegate, delegateQueue: nil)
+    }
+
+    deinit {
+        session.invalidateAndCancel()
     }
 
     func testConnection() async throws -> Bool {
@@ -43,17 +46,17 @@ actor WebDAVClient {
 
         let (_, optionsResp) = try await session.data(for: optionsReq)
         guard let http = optionsResp as? HTTPURLResponse else {
-            throw WebDAVError.connectionFailed("无法连接到服务器")
+            throw AppError.webdavConnectionFailed("无法连接到服务器")
         }
 
         if http.statusCode == 401 {
-            throw WebDAVError.authFailed
+            throw AppError.webdavAuthFailed
         }
 
         let allow = http.value(forHTTPHeaderField: "Allow") ?? ""
         let dav = http.value(forHTTPHeaderField: "DAV") ?? ""
         guard allow.contains("PROPFIND") || !dav.isEmpty else {
-            throw WebDAVError.serverNotSupported
+            throw AppError.webdavServerNotSupported
         }
 
         let propfindBody = propfindXML()
@@ -66,22 +69,22 @@ actor WebDAVClient {
 
         let (_, propResp) = try await session.data(for: propReq)
         guard let propHttp = propResp as? HTTPURLResponse else {
-            throw WebDAVError.connectionFailed("PROPFIND 请求失败")
+            throw AppError.webdavConnectionFailed("PROPFIND 请求失败")
         }
 
         switch propHttp.statusCode {
         case 200, 207: return true
-        case 401: throw WebDAVError.authFailed
-        case 403: throw WebDAVError.connectionFailed("无权访问，请检查权限")
-        case 404: throw WebDAVError.connectionFailed("路径不存在，请检查服务器地址")
-        default: throw WebDAVError.connectionFailed("服务器返回 \(propHttp.statusCode)")
+        case 401: throw AppError.webdavAuthFailed
+        case 403: throw AppError.webdavConnectionFailed("无权访问，请检查权限")
+        case 404: throw AppError.webdavConnectionFailed("路径不存在，请检查服务器地址")
+        default: throw AppError.webdavConnectionFailed("服务器返回 \(propHttp.statusCode)")
         }
     }
 
     func listDirectory(path: String) async throws -> [WebDAVFile] {
         let encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path
         guard let url = URL(string: encodedPath, relativeTo: config.baseURL) else {
-            throw WebDAVError.connectionFailed("无效的目录路径")
+            throw AppError.webdavConnectionFailed("无效的目录路径")
         }
 
         var request = URLRequest(url: url)
@@ -93,7 +96,7 @@ actor WebDAVClient {
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
-            throw WebDAVError.connectionFailed("请求失败")
+            throw AppError.webdavConnectionFailed("请求失败")
         }
 
         switch http.statusCode {
@@ -101,11 +104,11 @@ actor WebDAVClient {
             let requestFullPath = url.path
             return try WebDAVXMLParser.parseMultiStatus(data, requestPath: requestFullPath)
         case 401:
-            throw WebDAVError.authFailed
+            throw AppError.webdavAuthFailed
         case 404:
-            throw WebDAVError.connectionFailed("目录不存在: \(path)")
+            throw AppError.webdavConnectionFailed("目录不存在: \(path)")
         default:
-            throw WebDAVError.connectionFailed("服务器返回 \(http.statusCode)")
+            throw AppError.webdavConnectionFailed("服务器返回 \(http.statusCode)")
         }
     }
 
@@ -114,20 +117,67 @@ actor WebDAVClient {
         to destination: URL,
         progress: @escaping @Sendable (Int64, Int64) -> Void
     ) async throws -> URL {
+        isCancelled = false
+        downloadTask?.cancel()
+
+        let task = Task<URL, Error> {
+            try await self.performDownload(remotePath: remotePath, to: destination, progress: progress)
+        }
+        downloadTask = task
+        defer { downloadTask = nil }
+        return try await task.value
+    }
+
+    func fileInfo(path: String) async throws -> (size: Int64, etag: String?) {
+        let encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path
+        guard let url = URL(string: encodedPath, relativeTo: config.baseURL) else {
+            throw AppError.webdavConnectionFailed("无效路径")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        addAuth(to: &request)
+
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw AppError.webdavConnectionFailed("HEAD 请求失败")
+        }
+
+        let size = http.expectedContentLength
+        let etag = http.value(forHTTPHeaderField: "ETag")
+        return (size, etag)
+    }
+
+    func cancelDownload() {
+        isCancelled = true
+        downloadTask?.cancel()
+    }
+
+    func cleanup() {
+        downloadTask?.cancel()
+        session.invalidateAndCancel()
+    }
+
+    // MARK: - Private
+
+    private func performDownload(
+        remotePath: String,
+        to destination: URL,
+        progress: @escaping @Sendable (Int64, Int64) -> Void
+    ) async throws -> URL {
         let encodedPath = remotePath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? remotePath
         guard let url = URL(string: encodedPath, relativeTo: config.baseURL) else {
-            throw WebDAVError.downloadFailed("无效的文件路径")
+            throw AppError.webdavDownloadFailed("无效的文件路径")
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         addAuth(to: &request)
 
-        isCancelled = false
         let (asyncBytes, response) = try await session.bytes(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
-            throw WebDAVError.downloadFailed("下载失败 (HTTP \(code))")
+            throw AppError.webdavDownloadFailed("下载失败 (HTTP \(code))")
         }
 
         let totalBytes = http.expectedContentLength
@@ -142,7 +192,9 @@ actor WebDAVClient {
         buffer.reserveCapacity(bufferSize)
 
         for try await byte in asyncBytes {
-            if isCancelled { throw WebDAVError.downloadFailed("下载已取消") }
+            if Task.isCancelled { throw AppError.webdavDownloadFailed("下载已取消") }
+            if isCancelled { throw AppError.webdavDownloadFailed("下载已取消") }
+            try Task.checkCancellation()
             buffer.append(byte)
             if buffer.count >= bufferSize {
                 handle.write(buffer)
@@ -159,33 +211,6 @@ actor WebDAVClient {
 
         return destination
     }
-
-    func fileInfo(path: String) async throws -> (size: Int64, etag: String?) {
-        let encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path
-        guard let url = URL(string: encodedPath, relativeTo: config.baseURL) else {
-            throw WebDAVError.connectionFailed("无效路径")
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "HEAD"
-        addAuth(to: &request)
-
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw WebDAVError.connectionFailed("HEAD 请求失败")
-        }
-
-        let size = http.expectedContentLength
-        let etag = http.value(forHTTPHeaderField: "ETag")
-        return (size, etag)
-    }
-
-    func cancelDownload() {
-        isCancelled = true
-        currentDownloadTask?.cancel()
-    }
-
-    // MARK: - Private
 
     private func addAuth(to request: inout URLRequest) {
         guard !config.username.isEmpty else { return }
@@ -214,20 +239,3 @@ actor WebDAVClient {
     }
 }
 
-enum WebDAVError: LocalizedError {
-    case connectionFailed(String)
-    case authFailed
-    case serverNotSupported
-    case downloadFailed(String)
-    case certificateError
-
-    var errorDescription: String? {
-        switch self {
-        case .connectionFailed(let msg): return msg
-        case .authFailed: return "用户名或密码错误"
-        case .serverNotSupported: return "服务器不支持 WebDAV 协议"
-        case .downloadFailed(let msg): return msg
-        case .certificateError: return "SSL 证书验证失败"
-        }
-    }
-}

@@ -61,12 +61,19 @@ final class MigrationManager {
     }
 
     private func performUpgrade(from oldVersion: String, to newVersion: String) {
-        // v1.x → v2.0: 示例：迁移 has_completed_onboarding 默认值
-        if oldVersion.isEmpty || oldVersion < "2.0" {
+        let oldNumeric = numericVersion(oldVersion)
+        if oldNumeric == (0, 0, 0) || oldNumeric < (2, 0, 0) {
             if !UserDefaults.standard.bool(forKey: AppStorageKey.hasCompletedOnboarding) {
                 UserDefaults.standard.set(true, forKey: AppStorageKey.hasCompletedOnboarding)
             }
         }
+    }
+
+    private func numericVersion(_ version: String) -> (Int, Int, Int) {
+        let parts = version.split(separator: ".").compactMap { Int($0) }
+        return (parts.count > 0 ? parts[0] : 0,
+                parts.count > 1 ? parts[1] : 0,
+                parts.count > 2 ? parts[2] : 0)
     }
 
     // MARK: - CoreData 数据修复（需在 CoreDataStack.load() 之后调用）
@@ -86,7 +93,7 @@ final class MigrationManager {
                 request.predicate = NSPredicate(format: "lyricsSource == 0 AND lyricsPath == nil")
                 let entities = try ctx.fetch(request)
                 for entity in entities {
-                    entity.lyricsSource = -1
+                    entity.lyricsSource = Int16.min
                 }
             }
             UserDefaults.standard.set(true, forKey: Self.lyricsSourceMigratedKey)

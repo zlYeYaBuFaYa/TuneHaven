@@ -32,7 +32,7 @@ enum SheetDestination: Identifiable {
     var id: String {
         switch self {
         case .createPlaylist: return "createPlaylist"
-        case .addToPlaylist(let ids): return "addToPlaylist_\(ids.first?.uuidString ?? "")"
+        case .addToPlaylist(let ids): return "addToPlaylist_\(ids.map(\.uuidString).joined(separator: ","))"
         case .editPlaylist(let id): return "editPlaylist_\(id)"
         case .playlistCoverPicker(let id): return "coverPicker_\(id)"
         case .setSleepTimer: return "sleepTimer"

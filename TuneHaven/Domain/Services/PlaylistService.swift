@@ -7,9 +7,15 @@ final class PlaylistService: ObservableObject {
 
     @Published private(set) var playlists: [Playlist] = []
 
-    private let repo = CoreDataPlaylistRepository()
-    private let songRepo = CoreDataSongRepository()
+    private let repo: PlaylistRepository
+    private let songRepo: SongRepository
     private let imageCache = ImageCacheManager.shared
+
+    init(repo: PlaylistRepository = CoreDataPlaylistRepository(),
+         songRepo: SongRepository = CoreDataSongRepository()) {
+        self.repo = repo
+        self.songRepo = songRepo
+    }
 
     func loadPlaylists() async {
         playlists = await repo.fetchAll()
@@ -22,7 +28,7 @@ final class PlaylistService: ObservableObject {
     func createPlaylist(name: String, description: String?) async throws -> Playlist {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw AppError.playlistNameEmpty }
-        let reserved = ["我喜欢", "最近播放"]
+        let reserved = [SystemPlaylistName.favorites, SystemPlaylistName.recentlyPlayed]
         guard !reserved.contains(trimmed) else { throw AppError.playlistNameDuplicate }
         log.info("创建歌单: \(trimmed)")
         let playlist = try await repo.create(name: trimmed, description: description)
@@ -59,11 +65,12 @@ final class PlaylistService: ObservableObject {
         }
         let thumb = ThumbnailGenerator.resize(image, to: .large)
         let url = SandboxPathManager.playlistCoverURL(playlistId: playlistId)
-        if let jpegData = thumb.jpegData(compressionQuality: 0.9) {
-            try jpegData.write(to: url)
-            try await repo.setCustomCover(playlistId: playlistId, imagePath: url.lastPathComponent)
-            await loadPlaylists()
+        guard let jpegData = thumb.jpegData(compressionQuality: 0.9) else {
+            throw AppError.importFileCorrupted("无法压缩图片")
         }
+        try jpegData.write(to: url)
+        try await repo.setCustomCover(playlistId: playlistId, imagePath: url.lastPathComponent)
+        await loadPlaylists()
     }
 
     func regenerateAutoCover(for playlist: Playlist, songs: [Song]) async {
@@ -79,9 +86,13 @@ final class PlaylistService: ObservableObject {
         let gridImage = ThumbnailGenerator.generateGridCover(images: images)
         let url = SandboxPathManager.playlistCoverURL(playlistId: playlist.id)
         if let data = gridImage.jpegData(compressionQuality: 0.85) {
-            try? data.write(to: url)
-            try? await repo.updateAutoCover(playlistId: playlist.id, path: url.lastPathComponent, hash: currentHash)
-            imageCache.store(image: gridImage, forKey: url.lastPathComponent)
+            do {
+                try data.write(to: url)
+                try await repo.updateAutoCover(playlistId: playlist.id, path: url.lastPathComponent, hash: currentHash)
+                imageCache.store(image: gridImage, forKey: url.lastPathComponent)
+            } catch {
+                AppLogger.shared.error(error, context: "regenerateAutoCover: 封面生成失败 \(playlist.id)")
+            }
         }
     }
 

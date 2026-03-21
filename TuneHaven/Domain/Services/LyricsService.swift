@@ -1,16 +1,19 @@
 import AVFoundation
 import Foundation
 
+@MainActor
 final class LyricsService {
     static let shared = LyricsService()
     private let log = AppLogger.shared
-    private let repo = CoreDataSongRepository()
+    private let repo: SongRepository
     private let api: LRCLibAPIClientProtocol
 
     private static let cooldownKey = "lyrics_match_cooldown"
     private static let cooldownDuration: TimeInterval = 7 * 24 * 3600
 
-    private init(api: LRCLibAPIClientProtocol = LRCLibAPIClient.shared) {
+    init(repo: SongRepository = CoreDataSongRepository(),
+         api: LRCLibAPIClientProtocol = LRCLibAPIClient.shared) {
+        self.repo = repo
         self.api = api
     }
 
@@ -66,7 +69,7 @@ final class LyricsService {
             }
 
             // Level 3: search API — 仅歌名（跳过已知艺术家为空的情况）
-            if song.artist != "未知艺术家" {
+            if song.artist != SongDefaults.unknownArtist {
                 if let data = try await searchMatch(title: song.title, artist: nil, songId: song.id, songTitle: song.title) {
                     return data
                 }
@@ -199,10 +202,10 @@ final class LyricsService {
     // MARK: - LRC Parsing
 
     private static let lrcRegex: NSRegularExpression? = {
-        try? NSRegularExpression(pattern: #"\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)"#)
+        try? NSRegularExpression(pattern: #"\[(\d{1,3}):(\d{2})\.(\d{2,3})\](.*)"#)
     }()
 
-    func parseLRC(_ content: String) -> [LyricsLine] {
+    nonisolated func parseLRC(_ content: String) -> [LyricsLine] {
         guard let regex = Self.lrcRegex else { return [] }
         var lines: [LyricsLine] = []
         let rawLines = content.components(separatedBy: "\n")
@@ -320,7 +323,9 @@ final class LyricsService {
 
     private func markCooldown(for songId: UUID) {
         var dict = UserDefaults.standard.dictionary(forKey: Self.cooldownKey) as? [String: Double] ?? [:]
-        dict[songId.uuidString] = Date().timeIntervalSince1970
+        let now = Date().timeIntervalSince1970
+        dict[songId.uuidString] = now
+        dict = dict.filter { now - $0.value < Self.cooldownDuration }
         UserDefaults.standard.set(dict, forKey: Self.cooldownKey)
     }
 

@@ -227,3 +227,20 @@ chang a
 ```
 
 ## 0321需求优化01:
+```
+1. 基于release分支创建feat分支, 优化项目支持ios版本;
+2. 当前项目支持ios版本更改为:16.1 
+```
+
+## 重构:
+```
+🟡 #30：TuneHavenApp 9 个 @StateObject — 需 DI 容器级架构重构
+🟡 #12：WiFiTransferServer 大文件上传全量内存 — 需重写 NWConnection HTTP 解析
+🟡 #27：LyricsService.shared 未注入 — 关联 P0 #1 Clean Architecture 协议/DI 全面重构
+🟢 #5：WiFiTransferServer HTTP status text — 检查后已正确映射，无需修改
+```
+
+## 疑问:
+```
+app日志是如何存储? 如果轮转的. 日志会一直记录么? 是否会定时清楚.
+```

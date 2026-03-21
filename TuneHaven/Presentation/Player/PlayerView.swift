@@ -34,7 +34,7 @@ struct PlayerView: View {
     @State private var showDeleteLyricsConfirm = false
     @State private var showLyricsImporter = false
     @State private var showLyricsPage = false
-    @State private var pendingSheetWork: DispatchWorkItem?
+    @State private var pendingSheetTask: Task<Void, Never>?
 
     @AppStorage(AppStorageKey.lyricsPreferSimplified) private var lyricsPreferSimplified: Bool = true
 
@@ -240,7 +240,7 @@ struct PlayerView: View {
             }
             Spacer()
             if let song = playback.currentSong {
-                Text(song.album.isEmpty || song.album == "未知专辑" ? "正在播放" : song.album)
+                Text(song.album.isEmpty || song.album == SongDefaults.unknownAlbum ? "正在播放" : song.album)
                     .font(.subheadline)
                     .foregroundColor(palette.textSecondary)
             }
@@ -632,19 +632,23 @@ struct PlayerView: View {
     }
 
     private func switchSheet(to newSheet: ActiveSheet, delay: TimeInterval = 0.3) {
-        pendingSheetWork?.cancel()
+        pendingSheetTask?.cancel()
         activeSheet = nil
-        let work = DispatchWorkItem { activeSheet = newSheet }
-        pendingSheetWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+        pendingSheetTask = Task {
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            activeSheet = newSheet
+        }
     }
 
-    private func scheduleAfterSheetDismiss(_ action: @escaping () -> Void, delay: TimeInterval = 0.3) {
-        pendingSheetWork?.cancel()
+    private func scheduleAfterSheetDismiss(_ action: @escaping @MainActor () -> Void, delay: TimeInterval = 0.3) {
+        pendingSheetTask?.cancel()
         activeSheet = nil
-        let work = DispatchWorkItem(block: action)
-        pendingSheetWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+        pendingSheetTask = Task {
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            action()
+        }
     }
 }
 

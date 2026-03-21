@@ -106,7 +106,7 @@ struct WebDAVAccountListView: View {
                         .font(.caption)
                         .foregroundColor(palette.textSecondary)
                     if let lastConnected = account.lastConnectedAt {
-                        Text("上次连接: \(lastConnected.relativeDisplay)")
+                        Text("上次连接: \(lastConnected.relativeDescription)")
                             .font(.caption2)
                             .foregroundColor(palette.textTertiary)
                     }
@@ -171,11 +171,3 @@ struct WebDAVAccountListView: View {
     }
 }
 
-private extension Date {
-    var relativeDisplay: String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: self, relativeTo: Date())
-    }
-}

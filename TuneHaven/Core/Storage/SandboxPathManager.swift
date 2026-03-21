@@ -68,21 +68,3 @@ enum SandboxPathManager {
         playlistCoversURL.appendingPathComponent("\(playlistId.uuidString).jpg")
     }
 }
-
-enum ThumbnailSize: String {
-    case small = "small"
-    case medium = "medium"
-    case large = "large"
-    case original = "original"
-
-    var suffix: String { rawValue }
-
-    var dimension: CGFloat {
-        switch self {
-        case .small: return 100
-        case .medium: return 200
-        case .large: return 400
-        case .original: return 1024
-        }
-    }
-}

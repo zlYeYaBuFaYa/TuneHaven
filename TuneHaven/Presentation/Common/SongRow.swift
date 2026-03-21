@@ -41,7 +41,7 @@ struct SongRow: View {
                         .font(.caption)
                         .foregroundColor(palette.textSecondary)
                         .lineLimit(1)
-                    if !song.album.isEmpty && song.album != "未知专辑" {
+                    if !song.album.isEmpty && song.album != SongDefaults.unknownAlbum {
                         Text("·")
                             .font(.caption)
                             .foregroundColor(palette.textTertiary)
@@ -62,6 +62,9 @@ struct SongRow: View {
         .padding(.vertical, 6)
         .contentShape(Rectangle())
         .onTapGesture { onTap?() }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(song.title), \(song.artist)")
+        .accessibilityAddTraits(.isButton)
         .swipeActions(edge: .trailing) {
             if let del = onDelete {
                 Button(role: .destructive, action: del) {

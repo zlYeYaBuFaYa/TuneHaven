@@ -31,8 +31,7 @@ final class WallpaperManager: ObservableObject {
     }
 
     private var wallpaperURL: URL {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return docs.appendingPathComponent(wallpaperFileName)
+        SandboxPathManager.documentsURL.appendingPathComponent(wallpaperFileName)
     }
 
     private func saveToDisk(_ image: UIImage) {

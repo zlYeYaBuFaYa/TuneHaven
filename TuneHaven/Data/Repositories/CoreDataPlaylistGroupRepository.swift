@@ -1,8 +1,9 @@
 import CoreData
 import Foundation
 
-final class CoreDataPlaylistGroupRepository {
+final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
     private let stack: CoreDataStack
+    private let log = AppLogger.shared
     init(stack: CoreDataStack = .shared) { self.stack = stack }
 
     func fetchAll() async -> [PlaylistGroup] {
@@ -28,19 +29,19 @@ final class CoreDataPlaylistGroupRepository {
             let maxReq = PlaylistGroupEntity.fetchRequest()
             let allGroups = (try? ctx.fetch(maxReq)) ?? []
             entity.sortOrder = Int32((allGroups.map { $0.sortOrder }.max() ?? -1) + 1)
-            guard let group = PlaylistGroup(id: entity.id!, name: name, createdAt: entity.createdAt!, sortOrder: Int(entity.sortOrder)) as PlaylistGroup? else {
-                throw AppError.databaseError(NSError(domain: "", code: -1))
-            }
-            return group
+            return PlaylistGroup(id: entity.id!, name: name, createdAt: entity.createdAt!, sortOrder: Int(entity.sortOrder))
         }
     }
 
     func rename(id: UUID, name: String) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = PlaylistGroupEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
             request.fetchLimit = 1
-            guard let entity = try ctx.fetch(request).first else { return }
+            guard let entity = try ctx.fetch(request).first else {
+                log.debug("rename group: entity not found id=\(id)")
+                return
+            }
             entity.name = name
         }
     }
@@ -61,11 +62,14 @@ final class CoreDataPlaylistGroupRepository {
     }
 
     func movePlaylist(_ playlistId: UUID, toGroup groupId: UUID?) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = PlaylistEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@", playlistId as CVarArg)
             request.fetchLimit = 1
-            guard let entity = try ctx.fetch(request).first else { return }
+            guard let entity = try ctx.fetch(request).first else {
+                log.debug("movePlaylist: entity not found id=\(playlistId)")
+                return
+            }
             entity.groupId = groupId
         }
     }

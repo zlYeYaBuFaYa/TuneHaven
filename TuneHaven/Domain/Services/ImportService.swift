@@ -8,8 +8,14 @@ final class ImportService: ObservableObject {
     @Published private(set) var isImporting = false
     @Published private(set) var progress: ImportProgress?
 
-    private let songRepo = CoreDataSongRepository()
-    private let fileService = FileStorageService.shared
+    private let songRepo: SongRepository
+    private let fileService: FileStorageService
+
+    init(songRepo: SongRepository = CoreDataSongRepository(),
+         fileService: FileStorageService = .shared) {
+        self.songRepo = songRepo
+        self.fileService = fileService
+    }
     private var isCancelled = false
 
     func importFromFiles(urls: [URL], onProgress: @escaping @MainActor (ImportProgress) -> Void) async -> ImportResult {
@@ -78,10 +84,11 @@ final class ImportService: ObservableObject {
     }
 
     func processAppleMusicFile(tempURL: URL, originalFilename: String, title: String?, artist: String?, album: String?, coverImage: UIImage?) async -> SingleImportResult {
-        return await processFile(url: tempURL, overrideName: originalFilename, titleOverride: title, artistOverride: artist, albumOverride: album, coverOverride: coverImage)
+        let coverData = coverImage?.jpegData(compressionQuality: 1.0)
+        return await processFile(url: tempURL, overrideName: originalFilename, titleOverride: title, artistOverride: artist, albumOverride: album, coverDataOverride: coverData)
     }
 
-    private func processFile(url: URL, overrideName: String? = nil, titleOverride: String? = nil, artistOverride: String? = nil, albumOverride: String? = nil, coverOverride: UIImage? = nil) async -> SingleImportResult {
+    private func processFile(url: URL, overrideName: String? = nil, titleOverride: String? = nil, artistOverride: String? = nil, albumOverride: String? = nil, coverDataOverride: Data? = nil) async -> SingleImportResult {
         let fileName = overrideName ?? url.lastPathComponent
         let ext = (fileName as NSString).pathExtension.lowercased()
         log.info("[Import] processFile start: \(fileName) ext=\(ext)")
@@ -122,7 +129,7 @@ final class ImportService: ObservableObject {
         let finalTitle = titleOverride ?? parsed.title
         let finalArtist = artistOverride ?? parsed.artist
         let finalAlbum = albumOverride ?? parsed.album
-        let finalCover = coverOverride ?? parsed.coverImage
+        let finalCoverData = coverDataOverride ?? parsed.coverImageData
         let isIncomplete = parsed.isIncomplete && titleOverride == nil
 
         let relPath: String
@@ -136,13 +143,17 @@ final class ImportService: ObservableObject {
 
         let songId = UUID()
         var coverImagePath: String? = nil
-        if let coverImage = finalCover {
+        if let coverData = finalCoverData, let coverImage = UIImage(data: coverData) {
             let mediumThumb = ThumbnailGenerator.resize(coverImage, to: .medium)
             let cacheURL = SandboxPathManager.coverImageURL(songId: songId, size: .medium)
-            if let data = mediumThumb.jpegData(compressionQuality: 0.85) {
-                try? data.write(to: cacheURL)
-                coverImagePath = "\(songId.uuidString)_medium.jpg"
-                ImageCacheManager.shared.store(image: mediumThumb, forKey: coverImagePath!)
+            if let thumbData = mediumThumb.jpegData(compressionQuality: 0.85) {
+                do {
+                    try thumbData.write(to: cacheURL)
+                    coverImagePath = "\(songId.uuidString)_medium.jpg"
+                    ImageCacheManager.shared.store(image: mediumThumb, forKey: coverImagePath!)
+                } catch {
+                    log.error(error, context: "封面图写入失败: \(songId)")
+                }
             }
         }
 

@@ -250,14 +250,14 @@ struct LyricsPageView: View {
                     proxy.scrollTo(data.lines[idx].id, anchor: .center)
                 }
             }
-            .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    guard !hasPerformedInitialScroll,
-                          let idx = currentLineIndex,
-                          idx < data.lines.count else { return }
-                    proxy.scrollTo(data.lines[idx].id, anchor: .center)
-                    hasPerformedInitialScroll = true
-                }
+            .task {
+                try? await Task.sleep(for: .seconds(0.15))
+                guard !Task.isCancelled,
+                      !hasPerformedInitialScroll,
+                      let idx = currentLineIndex,
+                      idx < data.lines.count else { return }
+                proxy.scrollTo(data.lines[idx].id, anchor: .center)
+                hasPerformedInitialScroll = true
             }
             .onDisappear {
                 scrollResumeTask?.cancel()

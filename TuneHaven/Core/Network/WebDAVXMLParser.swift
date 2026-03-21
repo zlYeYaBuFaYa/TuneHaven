@@ -52,10 +52,9 @@ final class WebDAVXMLParser: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, didStartElement elementName: String,
                 namespaceURI: String?, qualifiedName: String?,
                 attributes: [String: String] = [:]) {
-        let local = localName(elementName)
-        currentElement = local
+        currentElement = elementName
 
-        switch local {
+        switch elementName {
         case "response":
             insideResponse = true
             resetCurrentEntry()
@@ -79,10 +78,9 @@ final class WebDAVXMLParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didEndElement elementName: String,
                 namespaceURI: String?, qualifiedName: String?) {
-        let local = localName(elementName)
         let text = textBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        switch local {
+        switch elementName {
         case "href":
             if insideResponse { currentHref = text }
         case "displayname":
@@ -135,10 +133,4 @@ final class WebDAVXMLParser: NSObject, XMLParserDelegate {
         currentEtag = nil
     }
 
-    private func localName(_ name: String) -> String {
-        if let range = name.range(of: ":") {
-            return String(name[range.upperBound...])
-        }
-        return name
-    }
 }

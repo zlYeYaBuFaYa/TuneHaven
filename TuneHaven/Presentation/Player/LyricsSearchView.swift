@@ -23,7 +23,7 @@ struct LyricsSearchView: View {
         self.song = song
         self.onSaved = onSaved
         _trackName = State(initialValue: song.title)
-        _artistName = State(initialValue: song.artist == "未知艺术家" ? "" : song.artist)
+        _artistName = State(initialValue: song.artist == SongDefaults.unknownArtist ? "" : song.artist)
     }
 
     var body: some View {

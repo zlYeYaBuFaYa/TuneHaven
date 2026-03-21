@@ -221,24 +221,7 @@ struct ImportFilesView: View {
 
     @ViewBuilder
     private func importResultSection(_ result: ImportResult) -> some View {
-        Section("导入结果") {
-            resultRow("成功", count: result.successCount, color: palette.primary, icon: "checkmark.circle")
-            if result.incompleteMetadataCount > 0 {
-                resultRow("元数据不完整", count: result.incompleteMetadataCount, color: SemanticColor.warning, icon: "exclamationmark.circle")
-            }
-            if result.skippedDuplicateCount > 0 {
-                resultRow("已跳过（重复）", count: result.skippedDuplicateCount, color: palette.textSecondary, icon: "arrow.2.circlepath")
-            }
-            if result.skippedFormatCount > 0 {
-                resultRow("格式不支持", count: result.skippedFormatCount, color: palette.textTertiary, icon: "doc.badge.minus")
-            }
-            if result.skippedOversizeCount > 0 {
-                resultRow("超过大小限制", count: result.skippedOversizeCount, color: SemanticColor.warning, icon: "exclamationmark.triangle")
-            }
-            if result.failedCount > 0 {
-                resultRow("失败", count: result.failedCount, color: SemanticColor.danger, icon: "xmark.circle")
-            }
-        }
+        ImportResultSection(result: result)
     }
 
     private var resultAlertTitle: String {
@@ -271,17 +254,4 @@ struct ImportFilesView: View {
         return parts.isEmpty ? "没有可导入的文件" : parts.joined(separator: "，")
     }
 
-    private func resultRow(_ title: String, count: Int, color: Color, icon: String) -> some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundColor(color)
-            Text(title)
-                .foregroundColor(palette.textPrimary)
-            Spacer()
-            Text("\(count) 首")
-                .font(.subheadline.bold())
-                .foregroundColor(color)
-        }
-        .listRowBackground(palette.surface)
-    }
 }

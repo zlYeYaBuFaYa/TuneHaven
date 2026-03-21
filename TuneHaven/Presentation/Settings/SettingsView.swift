@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import UserNotifications
 import PhotosUI
 
@@ -93,7 +94,7 @@ struct SettingsView: View {
         }
         .fileImporter(
             isPresented: $showDocumentPicker,
-            allowedContentTypes: [.audio, .mpeg4Audio],
+            allowedContentTypes: UTType.allSupportedAudio,
             allowsMultipleSelection: true
         ) { result in
             if case .success(let urls) = result {
@@ -132,11 +133,7 @@ struct SettingsView: View {
     // MARK: - Helpers
 
     private func calculateCacheSize() async {
-        let bytes = ImageCacheManager.shared.cacheSize()
-        let mb = Double(bytes) / 1024 / 1024
-        currentCacheSize = mb < 1
-            ? String(format: "%.0f KB", Double(bytes) / 1024)
-            : String(format: "%.1f MB", mb)
+        currentCacheSize = ImageCacheManager.shared.formattedCacheSize()
     }
 
     private func checkNotificationPermission() async {

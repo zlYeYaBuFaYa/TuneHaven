@@ -15,7 +15,7 @@ struct ParsedMetadata {
     let year: Int?
     let genre: String?
     let encoder: String?
-    let coverImage: UIImage?
+    let coverImageData: Data?
     let isIncomplete: Bool
 }
 
@@ -29,13 +29,13 @@ final class AudioMetadataParser {
         let ext = url.pathExtension.lowercased()
 
         var title = fileName
-        var artist = "未知艺术家"
-        var album = "未知专辑"
+        var artist = SongDefaults.unknownArtist
+        var album = SongDefaults.unknownAlbum
         var duration: TimeInterval = 0
         var trackNumber: Int?
         var year: Int?
         var genre: String?
-        var coverImage: UIImage?
+        var coverImageData: Data?
         var sampleRate: Int?
         var bitRate: Int?
         var channels: Int?
@@ -57,8 +57,8 @@ final class AudioMetadataParser {
                 case .commonKeyAlbumName:
                     if let v = try? await item.load(.stringValue), !v.isEmpty { album = v }
                 case .commonKeyArtwork:
-                    if let data = try? await item.load(.dataValue), let img = UIImage(data: data) {
-                        coverImage = img
+                    if let data = try? await item.load(.dataValue) {
+                        coverImageData = data
                     }
                 default: break
                 }
@@ -66,33 +66,27 @@ final class AudioMetadataParser {
 
             let allMetadata = try await asset.load(.metadata)
             for item in allMetadata {
-                if let id3Key = item.identifier {
-                    switch id3Key {
-                    case .id3MetadataTrackNumber:
-                        if let v = try? await item.load(.stringValue) {
-                            trackNumber = Int(v.components(separatedBy: "/").first ?? v)
-                        }
-                    case .id3MetadataYear, .id3MetadataRecordingTime:
-                        if let v = try? await item.load(.stringValue) {
-                            year = Int(v.prefix(4))
-                        }
-                    case .id3MetadataContentType:
-                        if let v = try? await item.load(.stringValue), !v.isEmpty { genre = v }
-                    case .id3MetadataEncodedBy:
-                        if let v = try? await item.load(.stringValue), !v.isEmpty { encoder = v }
-                    default: break
+                guard let identifier = item.identifier else { continue }
+                switch identifier {
+                case .id3MetadataTrackNumber:
+                    if let v = try? await item.load(.stringValue) {
+                        trackNumber = Int(v.components(separatedBy: "/").first ?? v)
                     }
-                }
-                if let iTunesKey = item.identifier {
-                    switch iTunesKey {
-                    case .iTunesMetadataTrackNumber:
-                        if let v = try? await item.load(.numberValue) {
-                            trackNumber = v.intValue
-                        }
-                    case .iTunesMetadataUserGenre, .iTunesMetadataPredefinedGenre:
-                        if let v = try? await item.load(.stringValue), !v.isEmpty { genre = v }
-                    default: break
+                case .id3MetadataYear, .id3MetadataRecordingTime:
+                    if let v = try? await item.load(.stringValue) {
+                        year = Int(v.prefix(4))
                     }
+                case .id3MetadataContentType:
+                    if let v = try? await item.load(.stringValue), !v.isEmpty { genre = v }
+                case .id3MetadataEncodedBy:
+                    if let v = try? await item.load(.stringValue), !v.isEmpty { encoder = v }
+                case .iTunesMetadataTrackNumber:
+                    if let v = try? await item.load(.numberValue) {
+                        trackNumber = v.intValue
+                    }
+                case .iTunesMetadataUserGenre, .iTunesMetadataPredefinedGenre:
+                    if let v = try? await item.load(.stringValue), !v.isEmpty { genre = v }
+                default: break
                 }
             }
 
@@ -115,7 +109,7 @@ final class AudioMetadataParser {
             isIncomplete = true
         }
 
-        if title == fileName && artist == "未知艺术家" { isIncomplete = true }
+        if title == fileName && artist == SongDefaults.unknownArtist { isIncomplete = true }
 
         return ParsedMetadata(
             title: title,
@@ -130,7 +124,7 @@ final class AudioMetadataParser {
             year: year,
             genre: genre,
             encoder: encoder,
-            coverImage: coverImage,
+            coverImageData: coverImageData,
             isIncomplete: isIncomplete
         )
     }

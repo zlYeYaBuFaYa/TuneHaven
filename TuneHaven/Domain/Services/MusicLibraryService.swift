@@ -8,11 +8,11 @@ final class MusicLibraryService: ObservableObject {
     @Published private(set) var songs: [Song] = []
     @Published private(set) var isLoading = false
 
-    private let songRepo: CoreDataSongRepository
+    private let songRepo: SongRepository
     private var pendingUndoTokens: [UndoToken] = []
     private var undoTimers: [UUID: Timer] = [:]
 
-    init(songRepo: CoreDataSongRepository = CoreDataSongRepository()) {
+    init(songRepo: SongRepository = CoreDataSongRepository()) {
         self.songRepo = songRepo
     }
 
@@ -24,34 +24,11 @@ final class MusicLibraryService: ObservableObject {
     }
 
     func fetchSongsByArtist() async -> [ArtistGroup] {
-        let all = await songRepo.fetchAll(sortBy: .artist, ascending: true)
-        var groups: [String: (songCount: Int, albums: Set<String>)] = [:]
-        for song in all {
-            var g = groups[song.artist] ?? (0, [])
-            g.songCount += 1
-            g.albums.insert(song.album)
-            groups[song.artist] = g
-        }
-        return groups.map { ArtistGroup(name: $0.key, songCount: $0.value.songCount, albumCount: $0.value.albums.count) }
-                     .sorted { $0.name < $1.name }
-    }
-
-    private struct AlbumKey: Hashable {
-        let artist: String
-        let album: String
+        await songRepo.fetchArtistGroups()
     }
 
     func fetchSongsByAlbum() async -> [AlbumGroup] {
-        let all = await songRepo.fetchAll(sortBy: .album, ascending: true)
-        var groups: [AlbumKey: (year: Int?, count: Int, cover: String?)] = [:]
-        for song in all {
-            let key = AlbumKey(artist: song.artist, album: song.album)
-            var g = groups[key] ?? (song.metadata.year, 0, song.coverImagePath)
-            g.count += 1
-            groups[key] = g
-        }
-        return groups.map { AlbumGroup(name: $0.key.album, artist: $0.key.artist, year: $0.value.year, songCount: $0.value.count, coverImagePath: $0.value.cover) }
-                     .sorted { $0.name < $1.name }
+        await songRepo.fetchAlbumGroups()
     }
 
     func fetchArtistDetail(artist: String) async -> ArtistDetail {
@@ -103,6 +80,20 @@ final class MusicLibraryService: ObservableObject {
 
     func fetchRecentlyPlayed(days: Int, page: Int, pageSize: Int = 50) async -> PagedResult<Song> {
         await songRepo.fetchRecentlyPlayed(days: days, page: page, pageSize: pageSize)
+    }
+
+    func fetchSong(id: UUID) async -> Song? {
+        await songRepo.fetchSong(id: id)
+    }
+
+    func fetchAllSongs(sortBy: SongSortOption = .title, ascending: Bool = true) async -> [Song] {
+        await songRepo.fetchAll(sortBy: sortBy, ascending: ascending)
+    }
+
+    func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws {
+        log.info("更新歌曲信息: \(id)")
+        try await songRepo.updateSongInfo(id: id, title: title, artist: artist, album: album)
+        await loadSongs()
     }
 
     func cleanupOnLaunch() async {

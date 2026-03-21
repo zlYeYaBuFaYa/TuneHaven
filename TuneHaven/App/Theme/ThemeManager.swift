@@ -104,14 +104,15 @@ final class ThemeManager: ObservableObject {
 
     // MARK: - Deferred Refresh
 
-    private var pendingRefreshWork: DispatchWorkItem?
+    private var pendingRefreshTask: Task<Void, Never>?
     private var pendingFullApply: Bool = false
 
     func scheduleWindowRefresh(delay: TimeInterval = 0.15, fullApply: Bool = true) {
         if fullApply { pendingFullApply = true }
-        pendingRefreshWork?.cancel()
-        let work = DispatchWorkItem { [weak self] in
-            guard let self else { return }
+        pendingRefreshTask?.cancel()
+        pendingRefreshTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled, let self else { return }
             if self.pendingFullApply {
                 self.applyToWindows()
             } else {
@@ -119,8 +120,6 @@ final class ThemeManager: ObservableObject {
             }
             self.pendingFullApply = false
         }
-        pendingRefreshWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
     private static func updateNavigationBars(on vc: UIViewController?, bgColor: UIColor, surfaceColor: UIColor) {

@@ -1,5 +1,10 @@
 import Foundation
 
+enum SongDefaults {
+    static let unknownArtist = "未知艺术家"
+    static let unknownAlbum = "未知专辑"
+}
+
 struct Song: Identifiable, Hashable {
     let id: UUID
     var title: String
@@ -22,12 +27,8 @@ struct Song: Identifiable, Hashable {
     static func == (lhs: Song, rhs: Song) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 
-    /// "3:45" 格式的时长字符串
     func formatDuration() -> String {
-        let total = Int(duration)
-        let m = total / 60
-        let s = total % 60
-        return String(format: "%d:%02d", m, s)
+        DurationFormatter.format(duration)
     }
 
     /// 文件大小友好展示

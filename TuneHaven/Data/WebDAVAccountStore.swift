@@ -4,6 +4,7 @@ final class WebDAVAccountStore {
     static let shared = WebDAVAccountStore()
     private init() {}
 
+    private let queue = DispatchQueue(label: "com.tunehaven.webdav-account-store")
     private let accountsKey = "webdav_accounts"
     private func passwordKey(for id: UUID) -> String { "webdav_pwd_\(id.uuidString)" }
 
@@ -16,27 +17,31 @@ final class WebDAVAccountStore {
     }
 
     func saveAccount(_ account: WebDAVAccount, password: String?) throws {
-        var accounts = loadAccounts()
-        if let index = accounts.firstIndex(where: { $0.id == account.id }) {
-            accounts[index] = account
-        } else {
-            accounts.append(account)
-        }
-        let data = try JSONEncoder().encode(accounts)
-        UserDefaults.standard.set(data, forKey: accountsKey)
+        try queue.sync {
+            var accounts = loadAccounts()
+            if let index = accounts.firstIndex(where: { $0.id == account.id }) {
+                accounts[index] = account
+            } else {
+                accounts.append(account)
+            }
+            let data = try JSONEncoder().encode(accounts)
+            UserDefaults.standard.set(data, forKey: accountsKey)
 
-        if let password {
-            try KeychainHelper.saveString(password, forKey: passwordKey(for: account.id))
+            if let password {
+                try KeychainHelper.saveString(password, forKey: passwordKey(for: account.id))
+            }
         }
     }
 
     func deleteAccount(id: UUID) {
-        var accounts = loadAccounts()
-        accounts.removeAll { $0.id == id }
-        if let data = try? JSONEncoder().encode(accounts) {
-            UserDefaults.standard.set(data, forKey: accountsKey)
+        queue.sync {
+            var accounts = loadAccounts()
+            accounts.removeAll { $0.id == id }
+            if let data = try? JSONEncoder().encode(accounts) {
+                UserDefaults.standard.set(data, forKey: accountsKey)
+            }
+            KeychainHelper.delete(forKey: passwordKey(for: id))
         }
-        KeychainHelper.delete(forKey: passwordKey(for: id))
     }
 
     func password(for accountId: UUID) -> String? {
@@ -44,11 +49,13 @@ final class WebDAVAccountStore {
     }
 
     func updateLastConnected(accountId: UUID) {
-        var accounts = loadAccounts()
-        if let index = accounts.firstIndex(where: { $0.id == accountId }) {
-            accounts[index].lastConnectedAt = Date()
-            if let data = try? JSONEncoder().encode(accounts) {
-                UserDefaults.standard.set(data, forKey: accountsKey)
+        queue.sync {
+            var accounts = loadAccounts()
+            if let index = accounts.firstIndex(where: { $0.id == accountId }) {
+                accounts[index].lastConnectedAt = Date()
+                if let data = try? JSONEncoder().encode(accounts) {
+                    UserDefaults.standard.set(data, forKey: accountsKey)
+                }
             }
         }
     }

@@ -3,26 +3,6 @@ import Combine
 import Foundation
 import UIKit
 
-enum AppStorageKey {
-    static let playMode = "play_mode"
-    static let playbackSpeed = "playback_speed"
-    static let speedMemoryMode = "speed_memory_mode"
-    static let perSongSpeeds = "per_song_speeds"
-    static let songDislikes = "song_dislikes"
-    static let lastPlayedSongId = "last_played_song_id"
-    static let colorMode = "color_mode"
-    static let themeStyle = "theme_style"
-    static let useCustomWallpaper = "use_custom_wallpaper"
-    static let recentPlayRange = "recent_play_range"
-    static let wifiPasswordEnabled = "wifi_password_enabled"
-    static let sleepTimerNotification = "sleep_timer_notification"
-    static let cacheLimitMB = "cache_limit_mb"
-    static let autoMatchLyrics = "auto_match_lyrics"
-    /// `true`：歌词以简体显示；`false`：按原文显示（含繁体）。
-    static let lyricsPreferSimplified = "lyrics_simplified"
-    static let hasCompletedOnboarding = "has_completed_onboarding"
-}
-
 @MainActor
 final class PlaybackService: ObservableObject {
     static let shared = PlaybackService()
@@ -32,17 +12,17 @@ final class PlaybackService: ObservableObject {
     @Published private(set) var isPlaying = false
     @Published var playMode: PlayMode = PlayMode(rawValue: UserDefaults.standard.integer(forKey: AppStorageKey.playMode)) ?? .sequential
     @Published var playbackSpeed: Float = UserDefaults.standard.float(forKey: AppStorageKey.playbackSpeed) == 0 ? 1.0 : UserDefaults.standard.float(forKey: AppStorageKey.playbackSpeed)
-    @Published var sleepTimerRemaining: TimeInterval? = nil
+    let sleepTimer = SleepTimerService()
+
+    var sleepTimerRemaining: TimeInterval? { sleepTimer.remaining }
 
     private let engine = AudioEngine.shared
     private let queueService: PlayQueueService
     private var libraryService: MusicLibraryService
-    private let playlistRepo = CoreDataPlaylistRepository()
-    private let songRepo = CoreDataSongRepository()
+    private let playlistRepo: PlaylistRepository
+    private let songRepo: SongRepository
     private let imageCacheManager = ImageCacheManager.shared
     private var cancellables = Set<AnyCancellable>()
-    private var sleepTimerEndDate: Date?
-    private var sleepTimerTimer: Timer?
     private var currentCover: UIImage?
     private var dislikes: [String: Int] {
         UserDefaults.standard.dictionary(forKey: AppStorageKey.songDislikes) as? [String: Int] ?? [:]
@@ -50,10 +30,17 @@ final class PlaybackService: ObservableObject {
 
     private static let lastPlayedSongIdKey = AppStorageKey.lastPlayedSongId
 
-    private init() {
+    private init(playlistRepo: PlaylistRepository = CoreDataPlaylistRepository(),
+                songRepo: SongRepository = CoreDataSongRepository()) {
         self.queueService = PlayQueueService()
         self.libraryService = MusicLibraryService()
+        self.playlistRepo = playlistRepo
+        self.songRepo = songRepo
         setupBindings()
+        sleepTimer.configure { [weak self] in
+            self?.engine.pause()
+            self?.isPlaying = false
+        }
         Task { await restoreLastPlayedSong() }
     }
 
@@ -178,9 +165,13 @@ final class PlaybackService: ObservableObject {
     func cyclePlayMode() {
         let modes = PlayMode.allCases
         let current = modes.firstIndex(of: playMode) ?? 0
-        playMode = modes[(current + 1) % modes.count]
-        log.info("切换播放模式: \(playMode.rawValue)")
-        UserDefaults.standard.set(playMode.rawValue, forKey: AppStorageKey.playMode)
+        setPlayMode(modes[(current + 1) % modes.count])
+    }
+
+    func setPlayMode(_ mode: PlayMode) {
+        playMode = mode
+        log.info("切换播放模式: \(mode.rawValue)")
+        UserDefaults.standard.set(mode.rawValue, forKey: AppStorageKey.playMode)
     }
 
     // MARK: - Speed
@@ -220,19 +211,7 @@ final class PlaybackService: ObservableObject {
     // MARK: - Sleep Timer
 
     func setSleepTimer(minutes: Int?) {
-        log.info("设置睡眠定时: \(minutes ?? 0) 分钟")
-        sleepTimerTimer?.invalidate()
-        sleepTimerTimer = nil
-        sleepTimerEndDate = nil
-        sleepTimerRemaining = nil
-
-        guard let minutes, minutes > 0 else { return }
-        let endDate = Date().addingTimeInterval(TimeInterval(minutes * 60))
-        sleepTimerEndDate = endDate
-
-        sleepTimerTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.tickSleepTimer() }
-        }
+        sleepTimer.set(minutes: minutes)
     }
 
     func dislikeAndSkip() async {
@@ -245,8 +224,7 @@ final class PlaybackService: ObservableObject {
     }
 
     func checkSleepTimerOnForeground() {
-        guard let endDate = sleepTimerEndDate, Date() >= endDate else { return }
-        executeSleepTimerStop()
+        sleepTimer.checkOnForeground()
     }
 
     // MARK: - Private
@@ -287,6 +265,7 @@ final class PlaybackService: ObservableObject {
         guard FileStorageService.shared.fileExists(relativePath: song.fileRelativePath) else {
             ErrorLogger.shared.log(.playbackFileNotFound(song.id), context: "PlaybackService.loadAndPlay")
             log.error("播放文件不存在: \(song.fileRelativePath)")
+            playNext()
             return
         }
         currentSong = song
@@ -330,6 +309,10 @@ final class PlaybackService: ObservableObject {
     }
 
     private func setupBindings() {
+        sleepTimer.$remaining.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+
         engine.$state.sink { [weak self] state in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -387,23 +370,4 @@ final class PlaybackService: ObservableObject {
         )
     }
 
-    private func tickSleepTimer() {
-        guard let endDate = sleepTimerEndDate else { return }
-        let remaining = endDate.timeIntervalSince(Date())
-        if remaining <= 0 {
-            executeSleepTimerStop()
-        } else {
-            sleepTimerRemaining = remaining
-        }
-    }
-
-    private func executeSleepTimerStop() {
-        log.info("睡眠定时到期，暂停播放")
-        sleepTimerTimer?.invalidate()
-        sleepTimerTimer = nil
-        sleepTimerEndDate = nil
-        sleepTimerRemaining = nil
-        engine.pause()
-        isPlaying = false
-    }
 }

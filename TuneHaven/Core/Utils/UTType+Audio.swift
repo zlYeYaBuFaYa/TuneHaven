@@ -8,6 +8,6 @@ extension UTType {
     /// 与 FileStorageService.supportedExtensions 保持一致的 UTType 列表。
     /// 新增格式时需同步更新两处。
     static let allSupportedAudio: [UTType] = [
-        .audio, .mp3, .mpeg4Audio, .flac, .alac, .wav, .aiff, .caf
+        .mp3, .mpeg4Audio, .flac, .alac, .wav, .aiff, .caf
     ]
 }

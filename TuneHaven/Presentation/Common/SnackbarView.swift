@@ -46,6 +46,7 @@ struct SnackbarView: View {
 
 // MARK: - SnackbarState（全局状态，注入到 App）
 
+@MainActor
 final class SnackbarState: ObservableObject {
     @Published private(set) var isShowing = false
     @Published private(set) var message = ""
@@ -53,7 +54,6 @@ final class SnackbarState: ObservableObject {
     private var action: (() -> Void)? = nil
     private var hideTask: Task<Void, Never>? = nil
 
-    @MainActor
     func show(message: String,
               actionTitle: String? = nil,
               action: (() -> Void)? = nil,
@@ -71,14 +71,12 @@ final class SnackbarState: ObservableObject {
         }
     }
 
-    @MainActor
     func performAction() {
         action?()
         action = nil
         hide()
     }
 
-    @MainActor
     func hide() {
         withAnimation(.easeOut(duration: 0.25)) { isShowing = false }
     }

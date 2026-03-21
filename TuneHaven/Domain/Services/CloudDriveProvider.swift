@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(UIKit)
 import UIKit
+#endif
 
 protocol CloudDriveProvider: Identifiable {
     var id: String { get }
@@ -12,8 +14,12 @@ protocol CloudDriveProvider: Identifiable {
 
 extension CloudDriveProvider {
     var isInstalled: Bool {
+        #if canImport(UIKit)
         guard let url = URL(string: "\(urlScheme)://") else { return false }
         return UIApplication.shared.canOpenURL(url)
+        #else
+        return false
+        #endif
     }
 }
 

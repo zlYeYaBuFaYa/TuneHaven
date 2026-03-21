@@ -14,7 +14,7 @@ struct CoverImageView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
-                PlaceholderCoverView(size: size)
+                PlaceholderCoverView(size: size, cornerRadius: cornerRadius)
             }
         }
         .frame(width: size, height: size)
@@ -24,11 +24,12 @@ struct CoverImageView: View {
 
 struct PlaceholderCoverView: View {
     let size: CGFloat
+    var cornerRadius: CGFloat = 8
     @Environment(\.themePalette) private var palette
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(
                     LinearGradient(
                         colors: [palette.gradientStart.opacity(0.6), palette.gradientEnd.opacity(0.4)],

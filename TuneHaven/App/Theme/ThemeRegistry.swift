@@ -2,7 +2,7 @@ import Foundation
 
 /// 主题注册表 — 管理所有可用主题的注册与查找
 /// 新增主题只需：1) 创建 ThemeStyle+XXX.swift  2) 在 bootstrap() 中 register
-final class ThemeRegistry {
+final class ThemeRegistry: @unchecked Sendable {
     static let shared = ThemeRegistry()
 
     private var themes: [ThemeStyle] = []

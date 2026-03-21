@@ -38,11 +38,11 @@ enum PlaylistMapper {
             case .favorites:
                 let req = SongEntity.fetchRequest() as NSFetchRequest<SongEntity>
                 req.predicate = NSPredicate(format: "isFavorite == YES AND softDeleted == NO")
-                return (try? ctx.fetch(req))?.count ?? 0
+                return (try? ctx.count(for: req)) ?? 0
             case .recentlyPlayed:
                 let req = SongEntity.fetchRequest() as NSFetchRequest<SongEntity>
                 req.predicate = NSPredicate(format: "lastPlayedDate != nil AND softDeleted == NO")
-                return (try? ctx.fetch(req))?.count ?? 0
+                return (try? ctx.count(for: req)) ?? 0
             default:
                 return 0
             }
@@ -51,27 +51,8 @@ enum PlaylistMapper {
             req.predicate = NSPredicate(format: "playlistId == %@", id as CVarArg)
             req.includesSubentities = false
             req.includesPropertyValues = false
-            return (try? ctx.fetch(req))?.count ?? 0
+            return (try? ctx.count(for: req)) ?? 0
         }
     }
 
-    static func toEntity(_ playlist: Playlist, context: NSManagedObjectContext) -> PlaylistEntity {
-        let entity = PlaylistEntity(context: context)
-        entity.id = playlist.id
-        entity.name = playlist.name
-        entity.desc_ = playlist.description
-        entity.isSystem = playlist.isSystem
-        entity.systemType = playlist.systemType.rawValue
-        entity.groupId = playlist.groupId
-        entity.sortOrder = Int32(playlist.sortOrder)
-        entity.createdAt = playlist.createdAt
-        entity.updatedAt = playlist.updatedAt
-        entity.autoCoverHash = playlist.autoCoverHash
-        if playlist.autoCoverHash != nil {
-            entity.autoCoverPath = playlist.coverImagePath
-        } else {
-            entity.customCoverPath = playlist.coverImagePath
-        }
-        return entity
-    }
 }

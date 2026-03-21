@@ -1,10 +1,24 @@
 import SwiftUI
 
+private struct MiniPlayerProgressBar: View {
+    @EnvironmentObject private var engine: AudioEngine
+    let color: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            let progress = engine.duration > 0 ? engine.currentTime / engine.duration : 0
+            Rectangle()
+                .fill(color)
+                .frame(width: geo.size.width * progress)
+        }
+        .frame(height: 2)
+    }
+}
+
 struct MiniPlayerBar: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var playback: PlaybackService
-    @EnvironmentObject private var engine: AudioEngine
     @Environment(\.themePalette) private var palette
 
     var body: some View {
@@ -61,13 +75,7 @@ struct MiniPlayerBar: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
 
-                    GeometryReader { geo in
-                        let progress = engine.duration > 0 ? engine.currentTime / engine.duration : 0
-                        Rectangle()
-                            .fill(palette.primary.opacity(0.4))
-                            .frame(width: geo.size.width * progress)
-                    }
-                    .frame(height: 2)
+                    MiniPlayerProgressBar(color: palette.primary.opacity(0.4))
                 }
                 .background(palette.surface)
                 .contentShape(Rectangle())

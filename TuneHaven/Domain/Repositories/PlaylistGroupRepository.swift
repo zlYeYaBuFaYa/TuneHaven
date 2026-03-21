@@ -1,7 +1,7 @@
 import Foundation
 
-/// 歌单分组仓储协议（TDD §1.2 Domain/Repositories）
-protocol PlaylistGroupRepository {
+/// 歌单分组仓储协议 — Domain 层抽象，Data 层提供具体实现
+protocol PlaylistGroupRepository: AnyObject {
     func fetchAll() async -> [PlaylistGroup]
     func fetchGroupDetails() async -> [PlaylistGroupDetail]
     func create(name: String) async throws -> PlaylistGroup
