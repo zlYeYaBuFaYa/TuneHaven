@@ -145,9 +145,8 @@ struct PlaylistCoverPickerSheet: View {
             .onChange(of: selectedPhotoItem) { _, newItem in
                 guard let newItem else { return }
                 Task {
-                    if let data = try? await newItem.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
-                        try? await playlistService.setCustomCover(playlistId: playlistId, image: image)
+                    if let data = try? await newItem.loadTransferable(type: Data.self) {
+                        try? await playlistService.setCustomCover(playlistId: playlistId, imageData: data)
                     }
                     dismiss()
                 }
