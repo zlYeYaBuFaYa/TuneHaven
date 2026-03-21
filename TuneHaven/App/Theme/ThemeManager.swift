@@ -69,18 +69,14 @@ final class ThemeManager: ObservableObject {
             AppLogger.shared.debug("[ThemeManager] applyToWindows — no foreground windowScene yet")
             return
         }
-        let uiStyle: UIUserInterfaceStyle = currentStyle.colorScheme == .dark ? .dark : .light
         let bgColor = UIColor(currentStyle.palette.background)
         let surfaceColor = UIColor(currentStyle.palette.surface)
 
         AppLogger.shared.debug("[ThemeManager] applyToWindows — theme=\(currentStyle.id) scheme=\(currentStyle.colorScheme)")
 
-        AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
-
         windowScene.windows.forEach { window in
-            window.overrideUserInterfaceStyle = uiStyle
             window.backgroundColor = bgColor
-            Self.setNavigationControllerBackgrounds(on: window.rootViewController, color: bgColor)
+            Self.updateNavigationBars(on: window.rootViewController, bgColor: bgColor, surfaceColor: surfaceColor)
         }
     }
 
@@ -111,7 +107,7 @@ final class ThemeManager: ObservableObject {
     private var pendingRefreshWork: DispatchWorkItem?
     private var pendingFullApply: Bool = false
 
-    func scheduleWindowRefresh(delay: TimeInterval = 0.05, fullApply: Bool = true) {
+    func scheduleWindowRefresh(delay: TimeInterval = 0.15, fullApply: Bool = true) {
         if fullApply { pendingFullApply = true }
         pendingRefreshWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
@@ -127,16 +123,23 @@ final class ThemeManager: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
 
-    private static func setNavigationControllerBackgrounds(on vc: UIViewController?, color: UIColor) {
+    private static func updateNavigationBars(on vc: UIViewController?, bgColor: UIColor, surfaceColor: UIColor) {
         guard let vc = vc else { return }
         if let nav = vc as? UINavigationController {
-            nav.view.backgroundColor = color
+            nav.view.backgroundColor = bgColor
+            let appearance = UINavigationBarAppearance()
+            appearance.configureWithOpaqueBackground()
+            appearance.backgroundColor = surfaceColor
+            appearance.shadowColor = .clear
+            nav.navigationBar.standardAppearance = appearance
+            nav.navigationBar.compactAppearance = appearance
+            nav.navigationBar.scrollEdgeAppearance = appearance
         }
         for child in vc.children {
-            setNavigationControllerBackgrounds(on: child, color: color)
+            updateNavigationBars(on: child, bgColor: bgColor, surfaceColor: surfaceColor)
         }
         if let presented = vc.presentedViewController {
-            setNavigationControllerBackgrounds(on: presented, color: color)
+            updateNavigationBars(on: presented, bgColor: bgColor, surfaceColor: surfaceColor)
         }
     }
 }
