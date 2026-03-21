@@ -100,8 +100,8 @@ final class AudioMetadataParser {
             for track in tracks {
                 let mediaType = track.mediaType
                 if mediaType == .audio {
-                    if let desc = try? await track.load(.formatDescriptions).first {
-                        let afd = desc as! CMAudioFormatDescription
+                    if let desc = try? await track.load(.formatDescriptions).first,
+                       let afd = desc as? CMAudioFormatDescription {
                         let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(afd)
                         if let asbd {
                             sampleRate = Int(asbd.pointee.mSampleRate)

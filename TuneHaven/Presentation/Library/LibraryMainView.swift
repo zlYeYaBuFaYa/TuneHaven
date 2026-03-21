@@ -35,6 +35,7 @@ struct LibraryMainView: View {
     @State private var searchText = ""
     @State private var isSearchActive = false
     @State private var searchResult = SearchResult(songs: [], artists: [], albums: [], totalSongCount: 0, totalArtistCount: 0, totalAlbumCount: 0)
+    @State private var searchTask: Task<Void, Never>?
     @AppStorage("song_sort_option") private var sortOptionRaw: Int = SongSortOption.title.rawValue
     @AppStorage("song_sort_ascending") private var isAscending: Bool = true
     @State private var formatFilter: AudioFormat = .all
@@ -271,8 +272,11 @@ struct LibraryMainView: View {
 
     private func performSearch(query: String) {
         guard !query.isEmpty else { return }
-        Task {
-            searchResult = await searchService.search(query: query, tab: selectedTab, allSongs: libraryService.songs)
+        searchTask?.cancel()
+        searchTask = Task {
+            let result = await searchService.search(query: query, tab: selectedTab, allSongs: libraryService.songs)
+            guard !Task.isCancelled else { return }
+            searchResult = result
             await searchService.saveHistory(keyword: query, tab: selectedTab)
         }
     }
@@ -280,8 +284,11 @@ struct LibraryMainView: View {
     private func refreshSearch() {
         let query = searchDebouncer.debouncedQuery
         guard !query.isEmpty else { return }
-        Task {
-            searchResult = await searchService.search(query: query, tab: selectedTab, allSongs: libraryService.songs)
+        searchTask?.cancel()
+        searchTask = Task {
+            let result = await searchService.search(query: query, tab: selectedTab, allSongs: libraryService.songs)
+            guard !Task.isCancelled else { return }
+            searchResult = result
         }
     }
 

@@ -110,16 +110,38 @@ final class WiFiTransferServer: ObservableObject {
     }
 
     private func receiveHTTPRequest(connection: NWConnection, ip: String) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, isComplete, error in
-            guard let self else { return }
-            Task { @MainActor [weak self] in
+        var accumulatedData = Data()
+        func readLoop() {
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 1_048_576) { [weak self] data, _, isComplete, error in
                 guard let self else { return }
-                if let data, !data.isEmpty {
-                    self.handleHTTPData(data, connection: connection, ip: ip)
+                if let data, !data.isEmpty { accumulatedData.append(data) }
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    if isComplete || error != nil {
+                        if !accumulatedData.isEmpty {
+                            self.handleHTTPData(accumulatedData, connection: connection, ip: ip)
+                        }
+                        self.connectionState = .idle
+                    } else if self.isCompleteHTTPRequest(accumulatedData) {
+                        self.handleHTTPData(accumulatedData, connection: connection, ip: ip)
+                    } else {
+                        readLoop()
+                    }
                 }
-                if isComplete { self.connectionState = .idle }
             }
         }
+        readLoop()
+    }
+
+    private func isCompleteHTTPRequest(_ data: Data) -> Bool {
+        guard let str = String(data: data, encoding: .utf8),
+              let firstLine = str.components(separatedBy: "\r\n").first else { return true }
+        if firstLine.contains("GET ") { return true }
+        guard firstLine.contains("POST ") else { return true }
+        guard let contentLengthStr = extractHeader(from: data, key: "Content-Length"),
+              let contentLength = Int(contentLengthStr) else { return true }
+        guard let bodyData = extractBodyData(from: data) else { return false }
+        return bodyData.count >= contentLength
     }
 
     private func handleHTTPData(_ data: Data, connection: NWConnection, ip: String) {
@@ -196,7 +218,8 @@ final class WiFiTransferServer: ObservableObject {
             guard let headerStr = String(data: headerData, encoding: .utf8),
                   headerStr.contains("filename=") else { continue }
 
-            let filename = extractFilenameFromHeader(headerStr) ?? "uploaded_file"
+            let rawFilename = extractFilenameFromHeader(headerStr) ?? "uploaded_file"
+            let filename = URL(fileURLWithPath: rawFilename).lastPathComponent
             let destURL = SandboxPathManager.wifiUploadURL.appendingPathComponent(filename)
             try? Data(fileData).write(to: destURL)
 

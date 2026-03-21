@@ -73,7 +73,9 @@ struct SongListView: View {
         let ctx: PlayContext
         switch context {
         case .allSongs: ctx = .allSongs(sortBy: .title)
-        case .favorites: ctx = .playlist(id: UUID())
+        case .favorites:
+            let favId = playlistService.playlists.first { $0.systemType == .favorites }?.id
+            ctx = favId.map { .playlist(id: $0) } ?? .allSongs(sortBy: .title)
         case .recentlyPlayed: ctx = .allSongs(sortBy: .importDate)
         case .artist(let name): ctx = .artist(name: name)
         case .album(let name, let artist): ctx = .album(name: name, artist: artist)

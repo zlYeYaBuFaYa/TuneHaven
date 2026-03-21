@@ -110,14 +110,16 @@ final class CoreDataSongRepository {
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", ids as NSArray)
             let entities = try ctx.fetch(request)
+            var seenHashes = Set<String>()
             for entity in entities {
-                if let hash = entity.fileHash, let path = entity.fileRelativePath {
+                if let hash = entity.fileHash, let path = entity.fileRelativePath, !seenHashes.contains(hash) {
                     let countReq = SongEntity.fetchRequest()
                     countReq.predicate = NSPredicate(format: "fileHash == %@ AND softDeleted == NO AND NOT (id IN %@)",
                         hash, ids as NSArray)
                     let count = (try? ctx.count(for: countReq)) ?? 0
                     if count == 0 {
                         filesToMove.append((hash: hash, relativePath: path))
+                        seenHashes.insert(hash)
                     }
                 }
                 entity.softDeleted = true
@@ -218,7 +220,7 @@ final class CoreDataSongRepository {
             request.fetchLimit = 1
             guard let entity = try ctx.fetch(request).first else { return }
             entity.lyricsPath = lyricsPath
-            entity.lyricsSource = lyricsSource?.rawValue ?? 0
+            entity.lyricsSource = lyricsSource?.rawValue ?? -1
         }
     }
 

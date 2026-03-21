@@ -71,8 +71,10 @@ struct AlbumDetailView: View {
                         }
                         playButton(icon: "shuffle", title: "随机播放") {
                             if let random = detail.songs.randomElement() {
-                                let prevMode = playback.playMode
-                                if prevMode != .shuffle { playback.cyclePlayMode() }
+                                if playback.playMode != .shuffle {
+                                    playback.playMode = .shuffle
+                                    UserDefaults.standard.set(PlayMode.shuffle.rawValue, forKey: AppStorageKey.playMode)
+                                }
                                 Task { await playback.play(song: random, in: .album(name: albumName, artist: artistName)) }
                             }
                         }

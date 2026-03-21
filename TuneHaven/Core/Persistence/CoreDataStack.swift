@@ -52,9 +52,9 @@ final class CoreDataStack {
                             object: self.backgroundContext,
                             queue: nil
                         ) { notification = $0 }
+                        defer { NotificationCenter.default.removeObserver(token) }
 
                         try self.backgroundContext.save()
-                        NotificationCenter.default.removeObserver(token)
 
                         if let notification {
                             self.viewContext.performAndWait {

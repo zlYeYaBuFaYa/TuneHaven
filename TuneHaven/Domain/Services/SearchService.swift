@@ -46,13 +46,14 @@ final class SearchService: ObservableObject {
         }
         artists = artistCounts.map { ArtistGroup(name: $0.key, songCount: $0.value.songs, albumCount: $0.value.albums.count) }.sorted { $0.name < $1.name }
 
-        var albumData: [String: (artist: String, year: Int?, count: Int, cover: String?)] = [:]
+        struct AlbumKey: Hashable { let artist: String; let album: String }
+        var albumData: [AlbumKey: (year: Int?, count: Int, cover: String?)] = [:]
         for song in matched {
-            let key = "\(song.artist)/\(song.album)"
-            var g = albumData[key] ?? (song.artist, song.metadata.year, 0, song.coverImagePath)
+            let key = AlbumKey(artist: song.artist, album: song.album)
+            var g = albumData[key] ?? (song.metadata.year, 0, song.coverImagePath)
             g.count += 1; albumData[key] = g
         }
-        albums = albumData.map { AlbumGroup(name: String($0.key.split(separator: "/").last ?? ""), artist: $0.value.artist, year: $0.value.year, songCount: $0.value.count, coverImagePath: $0.value.cover) }.sorted { $0.name < $1.name }
+        albums = albumData.map { AlbumGroup(name: $0.key.album, artist: $0.key.artist, year: $0.value.year, songCount: $0.value.count, coverImagePath: $0.value.cover) }.sorted { $0.name < $1.name }
 
         let searchResult = SearchResult(songs: matched, artists: artists, albums: albums, totalSongCount: matched.count, totalArtistCount: artists.count, totalAlbumCount: albums.count)
         self.result = searchResult

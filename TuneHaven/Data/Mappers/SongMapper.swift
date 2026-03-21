@@ -13,7 +13,7 @@ enum SongMapper {
         entity.fileRelativePath = song.fileRelativePath
         entity.coverImagePath = song.coverImagePath
         entity.lyricsPath = song.lyricsPath
-        entity.lyricsSource = song.lyricsSource?.rawValue ?? 0
+        entity.lyricsSource = song.lyricsSource?.rawValue ?? -1
         entity.format = song.metadata.format
         entity.sampleRate = Int32(song.metadata.sampleRate ?? 0)
         entity.bitRate = Int32(song.metadata.bitRate ?? 0)
@@ -63,7 +63,7 @@ enum SongMapper {
             fileRelativePath: fileRelativePath,
             coverImagePath: entity.coverImagePath,
             lyricsPath: entity.lyricsPath,
-            lyricsSource: entity.lyricsSource != 0 ? LyricsSource(rawValue: entity.lyricsSource) : nil,
+            lyricsSource: entity.lyricsSource >= 0 ? LyricsSource(rawValue: entity.lyricsSource) : nil,
             metadata: metadata,
             importDate: importDate,
             fileSize: entity.fileSize,

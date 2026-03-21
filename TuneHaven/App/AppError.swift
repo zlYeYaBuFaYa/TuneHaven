@@ -110,6 +110,7 @@ extension AppError: Equatable {
 final class ErrorLogger {
     static let shared = ErrorLogger()
     private let maxFileSize: Int64 = 5 * 1024 * 1024
+    private let writeQueue = DispatchQueue(label: "com.tunehaven.errorlogger", qos: .utility)
 
     private var logFileURL: URL {
         SandboxPathManager.documentsURL.appendingPathComponent("error.log")
@@ -130,13 +131,16 @@ final class ErrorLogger {
 
     private func appendToLog(_ entry: String) {
         guard let data = entry.data(using: .utf8) else { return }
-        rotateIfNeeded()
-        if let handle = try? FileHandle(forWritingTo: logFileURL) {
-            handle.seekToEndOfFile()
-            handle.write(data)
-            try? handle.close()
-        } else {
-            try? data.write(to: logFileURL)
+        let url = logFileURL
+        writeQueue.async {
+            self.rotateIfNeeded()
+            if let handle = try? FileHandle(forWritingTo: url) {
+                handle.seekToEndOfFile()
+                handle.write(data)
+                try? handle.close()
+            } else {
+                try? data.write(to: url)
+            }
         }
     }
 
@@ -169,6 +173,7 @@ enum LogLevel: String {
 final class AppLogger {
     static let shared = AppLogger()
     private let maxFileSize: Int64 = 5 * 1024 * 1024
+    private let writeQueue = DispatchQueue(label: "com.tunehaven.applogger", qos: .utility)
 
     private static let dateFormatter: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
@@ -216,13 +221,16 @@ final class AppLogger {
 
     private func appendToFile(_ entry: String) {
         guard let data = entry.data(using: .utf8) else { return }
-        rotateIfNeeded()
-        if let handle = try? FileHandle(forWritingTo: logFileURL) {
-            handle.seekToEndOfFile()
-            handle.write(data)
-            try? handle.close()
-        } else {
-            try? data.write(to: logFileURL)
+        let url = logFileURL
+        writeQueue.async {
+            self.rotateIfNeeded()
+            if let handle = try? FileHandle(forWritingTo: url) {
+                handle.seekToEndOfFile()
+                handle.write(data)
+                try? handle.close()
+            } else {
+                try? data.write(to: url)
+            }
         }
     }
 

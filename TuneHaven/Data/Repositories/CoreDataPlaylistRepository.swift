@@ -105,12 +105,14 @@ final class CoreDataPlaylistRepository {
             let existingIds = Set(existing.compactMap { $0.songId })
             let maxOrder = existing.map { $0.sortOrder }.max() ?? -1
 
-            for (i, songId) in songIds.enumerated() {
+            var addedCount: Int32 = 0
+            for songId in songIds {
                 guard !existingIds.contains(songId) else { continue }
+                addedCount += 1
                 let link = PlaylistSongEntity(context: ctx)
                 link.playlistId = playlistId
                 link.songId = songId
-                link.sortOrder = maxOrder + Int32(i + 1)
+                link.sortOrder = maxOrder + addedCount
                 link.addedAt = Date()
             }
 

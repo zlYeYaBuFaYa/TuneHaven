@@ -10,14 +10,22 @@ final class FileStorageService {
     static let supportedExtensions: Set<String> = ["mp3", "m4a", "aac", "alac", "wav", "flac", "aiff", "aif", "caf"]
 
     func sha256(of url: URL) throws -> String {
-        let data = try Data(contentsOf: url)
-        let digest = SHA256.hash(data: data)
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        let chunkSize = 1024 * 1024
+        while autoreleasepool(invoking: {
+            let chunk = handle.readData(ofLength: chunkSize)
+            guard !chunk.isEmpty else { return false }
+            hasher.update(data: chunk)
+            return true
+        }) {}
+        let digest = hasher.finalize()
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 
     func copyToMusic(from sourceURL: URL, fileHash: String, originalFileName: String) throws -> String {
         log.info("复制文件到音乐目录: \(originalFileName)")
-        let ext = (originalFileName as NSString).pathExtension.lowercased()
         let shortHash = String(fileHash.prefix(8))
         let safeName = sanitizeFileName(originalFileName)
         let relativePath = "\(shortHash)_\(safeName)"
@@ -26,7 +34,6 @@ final class FileStorageService {
         if !FileManager.default.fileExists(atPath: destURL.path) {
             try FileManager.default.copyItem(at: sourceURL, to: destURL)
         }
-        _ = ext
         return relativePath
     }
 

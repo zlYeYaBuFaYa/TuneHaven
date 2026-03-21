@@ -112,6 +112,7 @@ struct TuneHavenApp: App {
             AppLogger.shared.info("[App] initialize start")
             MigrationManager.shared.runVersionUpgradeTasks()
             try await CoreDataStack.shared.load()
+            await MigrationManager.shared.runPostLoadMigrations()
             SandboxPathManager.createAllDirectories()
             try await playlistService.initializeSystemPlaylists()
             await libraryService.loadSongs()

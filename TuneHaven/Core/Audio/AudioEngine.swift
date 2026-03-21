@@ -155,7 +155,10 @@ final class AudioEngine: ObservableObject {
 
     func play() {
         AudioSessionManager.shared.ensureActive()
-        player.rate = playbackSpeed
+        player.play()
+        if playbackSpeed != 1.0 {
+            player.rate = playbackSpeed
+        }
         state = .playing
         log.debug("开始播放")
     }
@@ -276,7 +279,8 @@ final class AudioEngine: ObservableObject {
                         log.error("音频中断恢复失败：无法激活音频会话")
                         return
                     }
-                    player.rate = playbackSpeed
+                    player.play()
+                    if playbackSpeed != 1.0 { player.rate = playbackSpeed }
                     state = .playing
                     log.info("音频中断结束，恢复播放")
                 }

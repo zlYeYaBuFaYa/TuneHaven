@@ -3,7 +3,6 @@ import SwiftUI
 struct MiniPlayerBar: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var libraryService: MusicLibraryService
-    @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
     @Environment(\.themePalette) private var palette

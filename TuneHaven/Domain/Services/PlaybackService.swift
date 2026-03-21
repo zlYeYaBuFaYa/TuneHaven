@@ -283,14 +283,14 @@ final class PlaybackService: ObservableObject {
     }
 
     private func loadAndPlay(song: Song, autoPlay: Bool = true) async {
-        currentSong = song
-        UserDefaults.standard.set(song.id.uuidString, forKey: Self.lastPlayedSongIdKey)
         let fileURL = SandboxPathManager.musicFileURL(relativePath: song.fileRelativePath)
         guard FileStorageService.shared.fileExists(relativePath: song.fileRelativePath) else {
             ErrorLogger.shared.log(.playbackFileNotFound(song.id), context: "PlaybackService.loadAndPlay")
             log.error("播放文件不存在: \(song.fileRelativePath)")
             return
         }
+        currentSong = song
+        UserDefaults.standard.set(song.id.uuidString, forKey: Self.lastPlayedSongIdKey)
 
         AudioSessionManager.shared.ensureActive()
 

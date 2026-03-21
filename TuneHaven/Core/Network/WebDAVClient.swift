@@ -137,13 +137,23 @@ actor WebDAVClient {
         let handle = try FileHandle(forWritingTo: destination)
         defer { try? handle.close() }
 
+        let bufferSize = 65536
+        var buffer = Data()
+        buffer.reserveCapacity(bufferSize)
+
         for try await byte in asyncBytes {
             if isCancelled { throw WebDAVError.downloadFailed("下载已取消") }
-            handle.write(Data([byte]))
-            receivedBytes += 1
-            if receivedBytes % 65536 == 0 {
+            buffer.append(byte)
+            if buffer.count >= bufferSize {
+                handle.write(buffer)
+                receivedBytes += Int64(buffer.count)
+                buffer.removeAll(keepingCapacity: true)
                 progress(receivedBytes, totalBytes)
             }
+        }
+        if !buffer.isEmpty {
+            handle.write(buffer)
+            receivedBytes += Int64(buffer.count)
         }
         progress(receivedBytes, totalBytes)
 

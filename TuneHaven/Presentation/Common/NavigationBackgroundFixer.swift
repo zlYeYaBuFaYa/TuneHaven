@@ -42,7 +42,7 @@ private final class LayoutPassView: UIView {
             if let nav = next as? UINavigationController {
                 if nav.view.backgroundColor != targetColor {
                     nav.view.backgroundColor = targetColor
-                    print("[NavBGFixer] set UINavigationController.view.backgroundColor = \(targetColor)")
+                    AppLogger.shared.debug("NavBGFixer: set UINavigationController.view.backgroundColor")
                 }
                 return
             }

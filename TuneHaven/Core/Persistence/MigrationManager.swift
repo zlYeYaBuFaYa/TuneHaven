@@ -68,4 +68,31 @@ final class MigrationManager {
             }
         }
     }
+
+    // MARK: - CoreData 数据修复（需在 CoreDataStack.load() 之后调用）
+
+    private static let lyricsSourceMigratedKey = "lyrics_source_sentinel_migrated"
+
+    func runPostLoadMigrations() async {
+        await migrateLyricsSourceSentinel()
+    }
+
+    /// lyricsSource 哨兵值从 0 改为 -1：将旧记录中 lyricsSource=0 且无歌词文件的记录修正为 -1（nil）
+    private func migrateLyricsSourceSentinel() async {
+        guard !UserDefaults.standard.bool(forKey: Self.lyricsSourceMigratedKey) else { return }
+        do {
+            try await CoreDataStack.shared.performBackground { ctx in
+                let request = SongEntity.fetchRequest()
+                request.predicate = NSPredicate(format: "lyricsSource == 0 AND lyricsPath == nil")
+                let entities = try ctx.fetch(request)
+                for entity in entities {
+                    entity.lyricsSource = -1
+                }
+            }
+            UserDefaults.standard.set(true, forKey: Self.lyricsSourceMigratedKey)
+            AppLogger.shared.info("lyricsSource 哨兵值迁移完成")
+        } catch {
+            ErrorLogger.shared.log(.databaseError(error), context: "MigrationManager.migrateLyricsSourceSentinel")
+        }
+    }
 }

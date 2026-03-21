@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct SleepTimerSheet: View {
@@ -106,7 +107,7 @@ struct PlaylistCoverPickerSheet: View {
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
-    @State private var showImagePicker = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
 
     var body: some View {
         NavigationStack {
@@ -124,7 +125,7 @@ struct PlaylistCoverPickerSheet: View {
                 }
                 .listRowBackground(palette.surface)
 
-                Button { showImagePicker = true } label: {
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                     Label("从相册选择", systemImage: "photo")
                         .foregroundColor(palette.textPrimary)
                 }
@@ -139,6 +140,16 @@ struct PlaylistCoverPickerSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
                         .foregroundColor(palette.primary)
+                }
+            }
+            .onChange(of: selectedPhotoItem) { _, newItem in
+                guard let newItem else { return }
+                Task {
+                    if let data = try? await newItem.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        try? await playlistService.setCustomCover(playlistId: playlistId, image: image)
+                    }
+                    dismiss()
                 }
             }
         }

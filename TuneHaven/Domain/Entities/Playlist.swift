@@ -16,10 +16,6 @@ struct Playlist: Identifiable, Hashable {
 
     static func == (lhs: Playlist, rhs: Playlist) -> Bool {
         lhs.id == rhs.id
-            && lhs.name == rhs.name
-            && lhs.songCount == rhs.songCount
-            && lhs.coverImagePath == rhs.coverImagePath
-            && lhs.updatedAt == rhs.updatedAt
     }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
