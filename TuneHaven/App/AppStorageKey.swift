@@ -7,7 +7,6 @@ enum AppStorageKey {
     static let perSongSpeeds = "per_song_speeds"
     static let songDislikes = "song_dislikes"
     static let lastPlayedSongId = "last_played_song_id"
-    static let colorMode = "color_mode"
     static let themeStyle = "theme_style"
     static let useCustomWallpaper = "use_custom_wallpaper"
     static let recentPlayRange = "recent_play_range"

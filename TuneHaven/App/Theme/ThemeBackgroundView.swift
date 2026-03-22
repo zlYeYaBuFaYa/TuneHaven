@@ -152,7 +152,7 @@ struct ThemedCardModifier: ViewModifier {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.white.opacity(0.12), lineWidth: 0.5)
+                        .stroke(palette.separator.opacity(0.3), lineWidth: 0.5)
                 )
         }
     }

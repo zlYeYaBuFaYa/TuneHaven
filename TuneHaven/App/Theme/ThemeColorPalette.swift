@@ -33,6 +33,12 @@ struct ThemeColorPalette {
     // MARK: - 标签
     let tagBackground: Color
     let tagText: Color
+
+    // MARK: - Spotify 升级新增
+    let elevatedSurface: Color
+    let cardShadow: Color
+    let miniPlayerBg: Color
+    let hoverHighlight: Color
 }
 
 // MARK: - 语义色（所有主题共享，参考 TDD Section 8.2）
@@ -46,4 +52,5 @@ enum SemanticColor {
     static let dangerDark  = Color(hex: "#FB7185")
     static let warningDark = Color(hex: "#FBBF24")
     static let successDark = Color(hex: "#34D399")
+    static let infoDark    = Color(hex: "#60A5FA")
 }

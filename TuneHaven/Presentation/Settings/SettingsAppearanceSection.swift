@@ -38,7 +38,6 @@ struct SettingsAppearanceSection: View {
                 .foregroundColor(palette.textSecondary)
             LazyVGrid(columns: [
                 GridItem(.flexible(), spacing: 10),
-                GridItem(.flexible(), spacing: 10),
                 GridItem(.flexible(), spacing: 10)
             ], spacing: 10) {
                 ForEach(ThemeRegistry.shared.allThemes) { style in
@@ -73,7 +72,7 @@ struct SettingsAppearanceSection: View {
                         .font(.caption.bold())
                         .foregroundColor(.white)
                         .padding(4)
-                        .background(Circle().fill(Color.white.opacity(0.3)))
+                        .background(Circle().fill(palette.surface.opacity(0.3)))
                 }
             }
             Text(style.displayName)

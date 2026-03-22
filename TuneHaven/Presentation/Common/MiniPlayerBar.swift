@@ -2,16 +2,22 @@ import SwiftUI
 
 private struct MiniPlayerProgressBar: View {
     @EnvironmentObject private var engine: AudioEngine
-    let color: Color
+    let gradientColors: [Color]
 
     var body: some View {
         GeometryReader { geo in
             let progress = engine.duration > 0 ? engine.currentTime / engine.duration : 0
             Rectangle()
-                .fill(color)
+                .fill(
+                    LinearGradient(
+                        colors: gradientColors,
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
                 .frame(width: geo.size.width * progress)
         }
-        .frame(height: 2)
+        .frame(height: 3)
     }
 }
 
@@ -27,6 +33,7 @@ struct MiniPlayerBar: View {
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
                         CoverImageView(path: song.coverImagePath, size: 44, cornerRadius: 8)
+                            .shadow(color: palette.cardShadow, radius: 4, y: 2)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(song.title)
@@ -75,14 +82,22 @@ struct MiniPlayerBar: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
 
-                    MiniPlayerProgressBar(color: palette.primary.opacity(0.4))
+                    MiniPlayerProgressBar(gradientColors: [palette.gradientStart, palette.gradientEnd])
                 }
-                .background(palette.surface)
+                .background {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(palette.miniPlayerBg)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: palette.cardShadow, radius: 8, y: 4)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     router.openPlayer()
                 }
             }
+            .padding(.horizontal, 8)
         }
     }
 }

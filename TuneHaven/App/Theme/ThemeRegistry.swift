@@ -13,7 +13,7 @@ final class ThemeRegistry: @unchecked Sendable {
     func bootstrap() {
         lock.lock()
         defer { lock.unlock() }
-        let defaults: [ThemeStyle] = [.mintBreeze, .deepOcean, .cyberNeon, .glacierBlue, .auroraDream, .midnightGold]
+        let defaults: [ThemeStyle] = [.cloudWhite, .azureSky, .twilightRose, .cosmicTech]
         for style in defaults {
             guard !themes.contains(where: { $0.id == style.id }) else { continue }
             themes.append(style)
@@ -26,7 +26,7 @@ final class ThemeRegistry: @unchecked Sendable {
         return themes
     }
 
-    var defaultTheme: ThemeStyle { .mintBreeze }
+    var defaultTheme: ThemeStyle { .cloudWhite }
 
     func register(_ style: ThemeStyle) {
         lock.lock()

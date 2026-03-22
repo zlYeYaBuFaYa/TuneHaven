@@ -85,7 +85,7 @@ struct CloudDriveImportView: View {
             HStack(spacing: 12) {
                 Image(systemName: provider.iconName)
                     .font(.title3)
-                    .foregroundColor(.white)
+                    .foregroundColor(palette.textPrimary)
                     .frame(width: 36, height: 36)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
@@ -156,7 +156,7 @@ struct CloudDriveImportView: View {
         HStack(alignment: .top, spacing: 10) {
             Text(step)
                 .font(.caption.weight(.bold))
-                .foregroundColor(.white)
+                .foregroundColor(palette.textPrimary)
                 .frame(width: 20, height: 20)
                 .background(Circle().fill(palette.primary))
 

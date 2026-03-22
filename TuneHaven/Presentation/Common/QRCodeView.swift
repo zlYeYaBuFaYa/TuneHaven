@@ -4,6 +4,7 @@ struct QRCodeView: View {
     let content: String
     var size: CGFloat = 200
 
+    @Environment(\.themePalette) private var palette
     @State private var qrImage: UIImage?
 
     var body: some View {
@@ -16,7 +17,7 @@ struct QRCodeView: View {
                     .frame(width: size, height: size)
             } else {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(palette.surface)
                     .frame(width: size, height: size)
                     .overlay(ProgressView())
             }

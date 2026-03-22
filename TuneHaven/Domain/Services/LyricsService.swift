@@ -2,8 +2,7 @@ import AVFoundation
 import Foundation
 
 @MainActor
-final class LyricsService {
-    static let shared = LyricsService()
+final class LyricsService: ObservableObject {
     private let log = AppLogger.shared
     private let repo: SongRepository
     private let api: LRCLibAPIClientProtocol

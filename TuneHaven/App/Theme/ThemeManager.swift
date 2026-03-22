@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - EnvironmentKey
 
 struct ThemePaletteKey: EnvironmentKey {
-    static let defaultValue = ThemeStyle.mintBreeze.palette
+    static let defaultValue = ThemeStyle.cloudWhite.palette
 }
 
 extension EnvironmentValues {
@@ -19,30 +19,36 @@ extension EnvironmentValues {
 final class ThemeManager: ObservableObject {
     @Published private(set) var currentStyle: ThemeStyle
 
-    @AppStorage("theme_style") private var storedThemeStyle: String = "mint_breeze"
+    @AppStorage("theme_style") private var storedThemeStyle: String = "cloud_white"
 
     private let registry = ThemeRegistry.shared
 
     private static let legacyMapping: [String: String] = [
-        "meadow_breeze":   "mint_breeze",
-        "rose_dream":      "mint_breeze",
-        "frost_elegance":  "glacier_blue",
-        "crimson_tech":    "cyber_neon",
-        "comic_pop":       "mint_breeze",
-        "ink_wash":        "deep_ocean",
-        "deep_space_neon": "aurora_dream",
-        "morandi_green":   "mint_breeze",
-        "classic_indigo":  "glacier_blue",
-        "sakura_pink":     "mint_breeze",
-        "minimal_pure":    "mint_breeze",
-        "warm_sunlight":   "midnight_gold",
-        "digital_mist":    "cyber_neon",
+        "meadow_breeze":   "cloud_white",
+        "rose_dream":      "cloud_white",
+        "frost_elegance":  "cloud_white",
+        "crimson_tech":    "cloud_white",
+        "comic_pop":       "cloud_white",
+        "ink_wash":        "cloud_white",
+        "deep_space_neon": "cloud_white",
+        "morandi_green":   "cloud_white",
+        "classic_indigo":  "cloud_white",
+        "sakura_pink":     "cloud_white",
+        "minimal_pure":    "cloud_white",
+        "warm_sunlight":   "cloud_white",
+        "digital_mist":    "cloud_white",
+        "mint_breeze":     "cloud_white",
+        "deep_ocean":      "cloud_white",
+        "cyber_neon":      "cloud_white",
+        "glacier_blue":    "cloud_white",
+        "aurora_dream":    "cloud_white",
+        "midnight_gold":   "cloud_white",
     ]
 
     init() {
         registry.bootstrap()
 
-        var styleId = UserDefaults.standard.string(forKey: "theme_style") ?? "mint_breeze"
+        var styleId = UserDefaults.standard.string(forKey: "theme_style") ?? "cloud_white"
 
         if let migrated = Self.legacyMapping[styleId] {
             styleId = migrated

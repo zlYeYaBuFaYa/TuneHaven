@@ -21,6 +21,8 @@ final class WiFiTransferServer: ObservableObject {
     private var cooldownUntil: Date?
     private var port: UInt16 = 8080
 
+    // MARK: - Lifecycle
+
     func start(passwordEnabled: Bool) throws {
         guard !isRunning else { return }
         log.info("WiFi 传输服务启动")
@@ -81,6 +83,17 @@ final class WiFiTransferServer: ObservableObject {
         password = pwd
     }
 
+    static func cleanupTempFiles() {
+        let tmpDir = FileManager.default.temporaryDirectory
+        let contents = (try? FileManager.default.contentsOfDirectory(
+            at: tmpDir, includingPropertiesForKeys: nil)) ?? []
+        for url in contents where url.lastPathComponent.hasPrefix("wifi_upload_") {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    // MARK: - Connection Handling
+
     private func handleNewConnection(_ connection: NWConnection) {
         guard case let .hostPort(host, _) = connection.endpoint else { return }
         let ip = "\(host)"
@@ -109,29 +122,161 @@ final class WiFiTransferServer: ObservableObject {
         connection.start(queue: .main)
     }
 
+    // MARK: - Two-Phase HTTP Receive
+
     private func receiveHTTPRequest(connection: NWConnection, ip: String) {
-        var accumulatedData = Data()
-        func readLoop() {
-            connection.receive(minimumIncompleteLength: 1, maximumLength: 1_048_576) { [weak self] data, _, isComplete, error in
+        var headerData = Data()
+
+        func headerReadLoop() {
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { [weak self] data, _, isComplete, error in
                 guard let self else { return }
-                if let data, !data.isEmpty { accumulatedData.append(data) }
+                if let data, !data.isEmpty { headerData.append(data) }
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     if isComplete || error != nil {
-                        if !accumulatedData.isEmpty {
-                            self.handleHTTPData(accumulatedData, connection: connection, ip: ip)
+                        if !headerData.isEmpty {
+                            self.handleHTTPData(headerData, connection: connection, ip: ip)
                         }
                         self.connectionState = .idle
-                    } else if self.isCompleteHTTPRequest(accumulatedData) {
-                        self.handleHTTPData(accumulatedData, connection: connection, ip: ip)
+                        return
+                    }
+
+                    let headerEndMarker = Data("\r\n\r\n".utf8)
+                    if let headerEndRange = headerData.range(of: headerEndMarker) {
+                        let headers = headerData[headerData.startIndex..<headerEndRange.upperBound]
+                        let overflow = headerData[headerEndRange.upperBound...]
+
+                        if self.isUploadRequest(headers),
+                           let ctx = self.beginStreamingUpload(headers: Data(headers), ip: ip) {
+                            if !overflow.isEmpty {
+                                ctx.fileHandle.write(Data(overflow))
+                                ctx.bytesReceived = overflow.count
+                                self.updateTransferProgress(ctx)
+                            }
+                            self.bodyReadLoop(context: ctx, connection: connection)
+                        } else {
+                            self.finishSmallRequest(headerData: headerData, connection: connection, ip: ip)
+                        }
+                    } else if headerData.count > 16_384 {
+                        self.sendJSON(connection: connection, status: 400, body: #"{"error":"请求头过大"}"#)
                     } else {
-                        readLoop()
+                        headerReadLoop()
                     }
                 }
             }
         }
-        readLoop()
+
+        headerReadLoop()
     }
+
+    private func bodyReadLoop(context: StreamingUploadContext, connection: NWConnection) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 1_048_576) { [weak self] data, _, isComplete, error in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let data, !data.isEmpty {
+                    context.fileHandle.write(data)
+                    context.bytesReceived += data.count
+                    self.updateTransferProgress(context)
+                }
+                if error != nil {
+                    context.fileHandle.closeFile()
+                    try? FileManager.default.removeItem(at: context.tempFileURL)
+                    self.transferProgress = nil
+                    self.connectionState = .idle
+                    return
+                }
+                if isComplete || context.bytesReceived >= context.contentLength {
+                    context.fileHandle.closeFile()
+                    self.processUploadedTempFile(context: context, connection: connection)
+                } else {
+                    self.bodyReadLoop(context: context, connection: connection)
+                }
+            }
+        }
+    }
+
+    // MARK: - Small Request Handling (GET, POST /auth)
+
+    private func finishSmallRequest(headerData: Data, connection: NWConnection, ip: String) {
+        if isCompleteHTTPRequest(headerData) {
+            handleHTTPData(headerData, connection: connection, ip: ip)
+        } else {
+            receiveSmallBody(existingData: headerData, connection: connection, ip: ip)
+        }
+    }
+
+    private func receiveSmallBody(existingData: Data, connection: NWConnection, ip: String) {
+        var data = existingData
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { [weak self] chunk, _, isComplete, error in
+            guard let self else { return }
+            if let chunk { data.append(chunk) }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if isComplete || error != nil || self.isCompleteHTTPRequest(data) {
+                    self.handleHTTPData(data, connection: connection, ip: ip)
+                    if isComplete || error != nil { self.connectionState = .idle }
+                } else if data.count > 1_048_576 {
+                    self.sendJSON(connection: connection, status: 413, body: #"{"error":"请求体过大"}"#)
+                } else {
+                    self.receiveSmallBody(existingData: data, connection: connection, ip: ip)
+                }
+            }
+        }
+    }
+
+    // MARK: - Streaming Upload Helpers
+
+    private func isUploadRequest(_ headerData: Data) -> Bool {
+        guard let str = String(data: headerData, encoding: .utf8) else { return false }
+        return str.hasPrefix("POST") && str.contains("/upload")
+    }
+
+    private func beginStreamingUpload(headers: Data, ip: String) -> StreamingUploadContext? {
+        guard let contentLengthStr = extractHeader(from: headers, key: "Content-Length"),
+              let contentLength = Int(contentLengthStr),
+              let contentType = extractHeader(from: headers, key: "Content-Type"),
+              let boundary = extractBoundary(from: contentType) else { return nil }
+
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("wifi_upload_\(UUID().uuidString).tmp")
+        FileManager.default.createFile(atPath: tempURL.path, contents: nil)
+        guard let handle = FileHandle(forWritingAtPath: tempURL.path) else { return nil }
+
+        connectionState = .transferring(ip: ip)
+        return StreamingUploadContext(
+            contentLength: contentLength,
+            boundary: boundary,
+            tempFileURL: tempURL,
+            fileHandle: handle)
+    }
+
+    private func processUploadedTempFile(context: StreamingUploadContext, connection: NWConnection) {
+        defer {
+            try? FileManager.default.removeItem(at: context.tempFileURL)
+            transferProgress = nil
+        }
+
+        guard let bodyData = try? Data(contentsOf: context.tempFileURL, options: .mappedIfSafe) else {
+            sendJSON(connection: connection, status: 500, body: #"{"error":"临时文件读取失败"}"#)
+            connectionState = .idle
+            return
+        }
+        parseMultipart(bodyData: bodyData, boundary: context.boundary, connection: connection)
+    }
+
+    private func updateTransferProgress(_ context: StreamingUploadContext) {
+        let elapsed = Date().timeIntervalSince(context.startTime)
+        let speed = elapsed > 0 ? Double(context.bytesReceived) / elapsed : 0
+        transferProgress = WiFiTransferProgress(
+            fileName: "",
+            bytesReceived: Int64(context.bytesReceived),
+            totalBytes: Int64(context.contentLength),
+            speed: speed
+        )
+    }
+
+    // MARK: - HTTP Request Completeness
 
     private func isCompleteHTTPRequest(_ data: Data) -> Bool {
         guard let str = String(data: data, encoding: .utf8),
@@ -143,6 +288,8 @@ final class WiFiTransferServer: ObservableObject {
         guard let bodyData = extractBodyData(from: data) else { return false }
         return bodyData.count >= contentLength
     }
+
+    // MARK: - HTTP Routing
 
     private func handleHTTPData(_ data: Data, connection: NWConnection, ip: String) {
         guard let request = String(data: data, encoding: .utf8) else { return }
@@ -163,6 +310,8 @@ final class WiFiTransferServer: ObservableObject {
             send404(connection: connection)
         }
     }
+
+    // MARK: - Auth
 
     private func handleAuth(data: Data, connection: NWConnection, ip: String) {
         if let cooldown = cooldownUntil, Date() < cooldown {
@@ -197,6 +346,8 @@ final class WiFiTransferServer: ObservableObject {
         sendJSON(connection: connection, status: 200, body: #"{"success":true}"#)
     }
 
+    // MARK: - Upload (fallback for small in-memory requests)
+
     private func handleUpload(data: Data, connection: NWConnection) {
         guard let contentType = extractHeader(from: data, key: "Content-Type"),
               contentType.contains("multipart/form-data") else {
@@ -211,6 +362,8 @@ final class WiFiTransferServer: ObservableObject {
             sendJSON(connection: connection, status: 400, body: #"{"error":"解析失败"}"#)
         }
     }
+
+    // MARK: - Multipart Parsing
 
     private func parseMultipart(bodyData: Data, boundary: String, connection: NWConnection) {
         let boundaryData = ("--" + boundary).data(using: .utf8)!
@@ -227,7 +380,7 @@ final class WiFiTransferServer: ObservableObject {
             let filename = URL(fileURLWithPath: rawFilename).lastPathComponent
             let destURL = SandboxPathManager.wifiUploadURL.appendingPathComponent(filename)
             do {
-                try Data(fileData).write(to: destURL)
+                try fileData.write(to: destURL)
             } catch {
                 AppLogger.shared.error(error, context: "WiFi上传文件写入失败: \(filename)")
                 sendJSON(connection: connection, status: 500, body: #"{"error":"文件写入失败"}"#)
@@ -241,6 +394,8 @@ final class WiFiTransferServer: ObservableObject {
         }
         sendJSON(connection: connection, status: 400, body: #"{"error":"未找到文件"}"#)
     }
+
+    // MARK: - HTTP Response
 
     private func sendHTML(connection: NWConnection) {
         let html = WiFiTransferHTML.page(address: serverAddress ?? "", passwordRequired: passwordEnabled)
@@ -269,6 +424,7 @@ final class WiFiTransferServer: ObservableObject {
         case 400: statusText = "Bad Request"
         case 401: statusText = "Unauthorized"
         case 404: statusText = "Not Found"
+        case 413: statusText = "Payload Too Large"
         case 429: statusText = "Too Many Requests"
         case 500: statusText = "Internal Server Error"
         default: statusText = "OK"
@@ -278,6 +434,8 @@ final class WiFiTransferServer: ObservableObject {
         response.append(body)
         return response
     }
+
+    // MARK: - Network Utilities
 
     private func resolveLocalIP() -> String? {
         var address: String?
@@ -305,6 +463,8 @@ final class WiFiTransferServer: ObservableObject {
     private func generateRandomPassword() -> String {
         String((0..<6).map { _ in String(Int.random(in: 0...9)) }.joined())
     }
+
+    // MARK: - HTTP Parsing Utilities
 
     private func extractBody(from data: Data) -> String? {
         guard let str = String(data: data, encoding: .utf8) else { return nil }
@@ -363,6 +523,26 @@ final class WiFiTransferServer: ObservableObject {
     }
 }
 
+// MARK: - Streaming Upload Context
+
+private final class StreamingUploadContext: @unchecked Sendable {
+    let contentLength: Int
+    let boundary: String
+    let tempFileURL: URL
+    let fileHandle: FileHandle
+    var bytesReceived: Int = 0
+    let startTime: Date = Date()
+
+    init(contentLength: Int, boundary: String, tempFileURL: URL, fileHandle: FileHandle) {
+        self.contentLength = contentLength
+        self.boundary = boundary
+        self.tempFileURL = tempFileURL
+        self.fileHandle = fileHandle
+    }
+}
+
+// MARK: - Data Extension
+
 private extension Data {
     func components(separatedBy separator: Data) -> [Data] {
         var result: [Data] = []
@@ -375,6 +555,8 @@ private extension Data {
         return result
     }
 }
+
+// MARK: - Supporting Types
 
 enum WiFiConnectionState: Equatable {
     case idle

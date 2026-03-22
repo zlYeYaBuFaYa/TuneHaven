@@ -7,6 +7,7 @@ struct PlayerView: View {
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
+    @EnvironmentObject private var lyricsService: LyricsService
     private enum ActiveSheet: Identifiable {
         case moreActions
         case sleepTimer
@@ -120,7 +121,7 @@ struct PlayerView: View {
                   let url = urls.first,
                   let song = playback.currentSong else { return }
             Task {
-                try? await LyricsService.shared.importLyricsFile(url: url, for: song)
+                try? await lyricsService.importLyricsFile(url: url, for: song)
                 await loadLyrics()
             }
         }
@@ -129,7 +130,7 @@ struct PlayerView: View {
             Button("删除", role: .destructive) {
                 guard let song = playback.currentSong else { return }
                 Task {
-                    try? await LyricsService.shared.deleteLyrics(for: song)
+                    try? await lyricsService.deleteLyrics(for: song)
                     lyricsData = nil
                 }
             }
@@ -380,7 +381,7 @@ struct PlayerView: View {
 
     private var coverSection: some View {
         GeometryReader { geo in
-            let coverSize = geo.size.width * 0.85
+            let coverSize = geo.size.width * 0.75
             ZStack(alignment: .bottom) {
                 albumCoverImage(size: coverSize)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -396,7 +397,7 @@ struct PlayerView: View {
                                 Text("搜索歌词")
                             }
                             .font(.caption.weight(.medium))
-                            .foregroundColor(.white)
+                            .foregroundColor(palette.textPrimary)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .background(.ultraThinMaterial)
@@ -418,10 +419,10 @@ struct PlayerView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: palette.cardShadow, radius: 20, y: 10)
         } else {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [palette.gradientStart.opacity(0.5), palette.gradientEnd.opacity(0.3)],
@@ -435,9 +436,9 @@ struct PlayerView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: size * 0.25)
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(palette.iconSecondary.opacity(0.5))
                 }
-                .shadow(color: .black.opacity(0.2), radius: 16, y: 8)
+                .shadow(color: palette.cardShadow, radius: 16, y: 8)
         }
     }
 
@@ -524,8 +525,8 @@ struct PlayerView: View {
                 let progress = engine.duration > 0 ? engine.currentTime / engine.duration : 0
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(palette.separator)
-                        .frame(height: 4)
+                        .fill(palette.progressBackground)
+                        .frame(height: 6)
                     Capsule()
                         .fill(
                             LinearGradient(
@@ -534,7 +535,7 @@ struct PlayerView: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: max(geo.size.width * progress, 4), height: 4)
+                        .frame(width: max(geo.size.width * progress, 6), height: 6)
                 }
                 .frame(maxHeight: .infinity, alignment: .center)
                 .contentShape(Rectangle())
@@ -594,6 +595,7 @@ struct PlayerView: View {
                         .foregroundColor(.white)
                 }
             }
+            .buttonStyle(PressableButtonStyle())
             .frame(maxWidth: .infinity)
 
             Button { playback.playNext() } label: {
@@ -628,7 +630,7 @@ struct PlayerView: View {
 
     private func loadLyrics() async {
         guard let song = playback.currentSong else { lyricsData = nil; return }
-        lyricsData = await LyricsService.shared.loadLyrics(for: song)
+        lyricsData = await lyricsService.loadLyrics(for: song)
     }
 
     private func switchSheet(to newSheet: ActiveSheet, delay: TimeInterval = 0.3) {

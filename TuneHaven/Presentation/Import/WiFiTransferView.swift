@@ -99,7 +99,7 @@ struct WiFiTransferView: View {
                     VStack(spacing: 12) {
                         QRCodeView(content: address, size: 160)
                             .cornerRadius(8)
-                            .shadow(color: .black.opacity(0.15), radius: 6)
+                            .shadow(color: palette.cardShadow, radius: 6)
                         Text("用手机/电脑扫码访问")
                             .font(.caption)
                             .foregroundColor(palette.textSecondary)
