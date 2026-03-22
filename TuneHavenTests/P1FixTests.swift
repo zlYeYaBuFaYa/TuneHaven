@@ -107,7 +107,7 @@ struct SearchDebouncerTests {
     }
 }
 
-// MARK: - #19 ThemeVisualConfig 映射正确性（重构后适配新主题）
+// MARK: - #19 ThemeVisualConfig 映射正确性（UI 重设计后适配 4 套新主题）
 
 @Suite("P1 Fix #19: ThemeVisualConfig 映射")
 struct ThemeVisualConfigTests {
@@ -117,40 +117,38 @@ struct ThemeVisualConfigTests {
         ThemeRegistry.shared.bootstrap()
     }
 
-    @Test("青云薄荷使用 mintLeaves 配置")
-    func testMintBreezeConfig() {
-        let style = ThemeStyle.mintBreeze
-        #expect(style.visualConfig.backgroundType == .codeGenerated(.mintLeaves))
-        #expect(style.visualConfig.cardStyle == .minimal)
+    @Test("素云白简使用 solidColor + softFloat 配置")
+    func testCloudWhiteConfig() {
+        let style = ThemeStyle.cloudWhite
+        #expect(style.visualConfig.backgroundType == .solidColor)
+        #expect(style.visualConfig.cardStyle == .softFloat)
+        #expect(style.hasCustomBackground == false)
+    }
+
+    @Test("星际穹顶使用 cosmicParticles + glassmorphism")
+    func testCosmicTechConfig() {
+        let style = ThemeStyle.cosmicTech
+        #expect(style.visualConfig.backgroundType == .codeGenerated(.cosmicParticles))
+        #expect(style.visualConfig.cardStyle == .glassmorphism)
         #expect(style.hasCustomBackground == true)
     }
 
-    @Test("赛博霓虹使用 cyberParticles + monospaced")
-    func testCyberNeonConfig() {
-        let style = ThemeStyle.cyberNeon
-        #expect(style.visualConfig.backgroundType == .codeGenerated(.cyberParticles))
+    @Test("暮光玫瑰使用 glassmorphism 卡片风格")
+    func testTwilightRoseConfig() {
+        let style = ThemeStyle.twilightRose
         #expect(style.visualConfig.cardStyle == .glassmorphism)
-        #expect(style.visualConfig.fontStyle == .monospaced)
-    }
-
-    @Test("冰川幽蓝使用 frosted 卡片风格")
-    func testGlacierBlueConfig() {
-        let style = ThemeStyle.glacierBlue
-        #expect(style.visualConfig.cardStyle == .frosted)
         #expect(style.visualConfig.navigationBarBlur == true)
     }
 
     @Test("所有新主题都已在 ThemeRegistry 注册")
     func testAllNewThemesRegistered() {
         let themes = ThemeRegistry.shared.allThemes
-        #expect(themes.count == 6)
+        #expect(themes.count == 4)
         let ids = Set(themes.map { $0.id })
-        #expect(ids.contains("mint_breeze"))
-        #expect(ids.contains("deep_ocean"))
-        #expect(ids.contains("cyber_neon"))
-        #expect(ids.contains("glacier_blue"))
-        #expect(ids.contains("aurora_dream"))
-        #expect(ids.contains("midnight_gold"))
+        #expect(ids.contains("cloud_white"))
+        #expect(ids.contains("azure_sky"))
+        #expect(ids.contains("twilight_rose"))
+        #expect(ids.contains("cosmic_tech"))
     }
 }
 

@@ -32,6 +32,7 @@ struct LibraryMainView: View {
     @StateObject private var searchDebouncer = SearchDebouncer()
     @FocusState private var isSearchFieldFocused: Bool
     @State private var selectedTab: LibraryTab = .all
+    @Namespace private var tabNamespace
     @State private var searchText = ""
     @State private var isSearchActive = false
     @State private var searchResult = SearchResult(songs: [], artists: [], albums: [], totalSongCount: 0, totalArtistCount: 0, totalAlbumCount: 0)
@@ -133,7 +134,7 @@ struct LibraryMainView: View {
     }
 
     private var tabBar: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 24) {
             ForEach(LibraryTab.allCases, id: \.self) { tab in
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -142,28 +143,21 @@ struct LibraryMainView: View {
                 } label: {
                     Text(tab.displayName)
                         .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
-                        .foregroundColor(selectedTab == tab ? .white : palette.textSecondary)
-                        .padding(.horizontal, 16)
+                        .foregroundColor(selectedTab == tab ? palette.primary : palette.textSecondary)
                         .padding(.vertical, 8)
-                        .background(
-                            Group {
-                                if selectedTab == tab {
-                                    LinearGradient(
-                                        colors: [palette.gradientStart, palette.gradientEnd],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                } else {
-                                    palette.surfaceSecondary
-                                }
+                        .overlay(alignment: .bottom) {
+                            if selectedTab == tab {
+                                Rectangle()
+                                    .fill(palette.primary)
+                                    .frame(height: 2)
+                                    .matchedGeometryEffect(id: "tab_underline", in: tabNamespace)
                             }
-                        )
-                        .clipShape(Capsule())
+                        }
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder

@@ -15,6 +15,7 @@ enum ThemePatternType: String, Equatable {
     case glacierCrystals
     case auroraWaves
     case goldDust
+    case cosmicParticles
 }
 
 // MARK: - 主题卡片风格

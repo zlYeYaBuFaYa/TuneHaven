@@ -62,6 +62,7 @@ struct RootTabView: View {
         }
         .sheet(item: $router.sheet) { destination in
             sheetView(for: destination)
+                .presentationBackground(themeManager.palette.elevatedSurface)
                 .environment(\.themePalette, themeManager.palette)
                 .environmentObject(themeManager)
                 .environmentObject(router)
@@ -80,41 +81,34 @@ struct RootTabView: View {
 
     private var customTabBar: some View {
         VStack(spacing: 0) {
-            Divider()
-                .overlay(palette.separator)
-
             HStack(spacing: 0) {
-                tabButton(.library, icon: "music.note.house", label: "音乐库")
-                tabButton(.playlist, icon: "list.bullet.rectangle.portrait", label: "歌单")
-                tabButton(.settings, icon: "gearshape", label: "设置")
+                tabButton(.library, label: "音乐库")
+                tabButton(.playlist, label: "歌单")
+                tabButton(.settings, label: "设置")
             }
-            .padding(.top, 6)
-            .padding(.bottom, 2)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
         }
         .background {
-            if hasCustomBg {
-                Rectangle().fill(.ultraThinMaterial).ignoresSafeArea(edges: .bottom)
-            } else {
-                palette.surface.ignoresSafeArea(edges: .bottom)
-            }
+            Rectangle().fill(.ultraThinMaterial).ignoresSafeArea(edges: .bottom)
         }
     }
 
-    private func tabButton(_ tab: AppTab, icon: String, label: String) -> some View {
+    private func tabButton(_ tab: AppTab, label: String) -> some View {
         Button {
-            AppLogger.shared.debug("[RootTabView] tab switch: \(router.selectedTab) → \(tab)")
-            router.selectedTab = tab
-        } label: {
-            VStack(spacing: 3) {
-                Image(systemName: icon)
-                    .symbolVariant(router.selectedTab == tab ? .fill : .none)
-                    .font(.system(size: 21))
-                    .frame(height: 24)
-                Text(label)
-                    .font(.system(size: 10))
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                AppLogger.shared.debug("[RootTabView] tab switch: \(router.selectedTab) → \(tab)")
+                router.selectedTab = tab
             }
-            .foregroundColor(router.selectedTab == tab ? palette.primary : palette.textSecondary)
-            .animation(.easeInOut(duration: 0.15), value: router.selectedTab)
+        } label: {
+            VStack(spacing: 4) {
+                Text(label)
+                    .font(.system(size: 11, weight: router.selectedTab == tab ? .semibold : .regular))
+                    .foregroundColor(router.selectedTab == tab ? palette.primary : palette.textTertiary)
+                Circle()
+                    .fill(router.selectedTab == tab ? palette.primary : Color.clear)
+                    .frame(width: 5, height: 5)
+            }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }

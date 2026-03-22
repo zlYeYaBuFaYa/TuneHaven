@@ -41,7 +41,7 @@ struct PlaceholderCoverView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: size * 0.35, height: size * 0.35)
-                .foregroundColor(.white.opacity(0.8))
+                .foregroundColor(palette.iconSecondary)
         }
         .frame(width: size, height: size)
     }

@@ -60,6 +60,7 @@ struct SongRow: View {
                 .foregroundColor(palette.textTertiary)
         }
         .padding(.vertical, 6)
+        .background(isPlaying ? palette.hoverHighlight : Color.clear)
         .contentShape(Rectangle())
         .onTapGesture { onTap?() }
         .accessibilityElement(children: .combine)

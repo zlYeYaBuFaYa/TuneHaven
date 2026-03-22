@@ -190,7 +190,7 @@ struct WebDAVBrowserView: View {
             Button { showDownloadView = true } label: {
                 Text("下载导入")
                     .font(.subheadline.bold())
-                    .foregroundColor(.white)
+                    .foregroundColor(palette.textPrimary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .background(Capsule().fill(palette.primary))

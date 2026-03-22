@@ -38,7 +38,7 @@ struct AlbumDetailView: View {
                 VStack(spacing: 16) {
                     CoverImageView(path: detail.coverImagePath, size: 160)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                        .shadow(color: palette.cardShadow, radius: 8, y: 4)
                         .padding(.top, 8)
 
                     VStack(spacing: 4) {

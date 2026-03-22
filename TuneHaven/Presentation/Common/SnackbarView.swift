@@ -13,7 +13,7 @@ struct SnackbarView: View {
         HStack(spacing: 12) {
             Text(message)
                 .font(.subheadline)
-                .foregroundColor(.white)
+                .foregroundColor(palette.textPrimary)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -21,10 +21,10 @@ struct SnackbarView: View {
                 Button(action: action) {
                     Text(actionTitle)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(palette.textPrimary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(Color.white.opacity(0.2))
+                        .background(palette.surface.opacity(0.2))
                         .clipShape(Capsule())
                 }
             }
