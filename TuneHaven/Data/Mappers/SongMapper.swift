@@ -2,7 +2,8 @@ import CoreData
 import Foundation
 
 enum SongMapper {
-    /// Creates a new SongEntity for initial import; sets softDeleted = false.
+    static let int16Nil: Int16 = Int16.min
+
     static func toEntity(_ song: Song, context: NSManagedObjectContext) -> SongEntity {
         let entity = SongEntity(context: context)
         entity.id = song.id
@@ -14,14 +15,14 @@ enum SongMapper {
         entity.fileRelativePath = song.fileRelativePath
         entity.coverImagePath = song.coverImagePath
         entity.lyricsPath = song.lyricsPath
-        entity.lyricsSource = song.lyricsSource?.rawValue ?? Int16.min
+        entity.lyricsSource = song.lyricsSource?.rawValue ?? Self.int16Nil
         entity.format = song.metadata.format
         entity.sampleRate = Int32(song.metadata.sampleRate ?? 0)
         entity.bitRate = Int32(song.metadata.bitRate ?? 0)
         entity.channels = Int16(song.metadata.channels ?? 0)
         entity.encoder = song.metadata.encoder
-        entity.trackNumber = song.metadata.trackNumber.map { Int16($0) } ?? Int16.min
-        entity.year = song.metadata.year.map { Int16($0) } ?? Int16.min
+        entity.trackNumber = song.metadata.trackNumber.map { Int16($0) } ?? Self.int16Nil
+        entity.year = song.metadata.year.map { Int16($0) } ?? Self.int16Nil
         entity.genre = song.metadata.genre
         entity.importDate = song.importDate
         entity.fileSize = song.fileSize
@@ -75,13 +76,11 @@ enum SongMapper {
         )
     }
 
-    /// Handles both old sentinel (`0`) and new sentinel (`Int16.min`) for trackNumber/year.
     private static func isValidOptionalInt16(_ value: Int16) -> Bool {
-        value != 0 && value != Int16.min
+        value != 0 && value != int16Nil
     }
 
-    /// Handles both old sentinel (`-1`) and new sentinel (`Int16.min`) for lyricsSource.
     private static func isValidLyricsSource(_ value: Int16) -> Bool {
-        value != -1 && value != Int16.min
+        value != -1 && value != int16Nil
     }
 }

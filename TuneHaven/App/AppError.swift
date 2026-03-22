@@ -113,33 +113,36 @@ extension AppError: Equatable {
     }
 }
 
-final class ErrorLogger {
-    static let shared = ErrorLogger()
-    private let maxFileSize: Int64 = 5 * 1024 * 1024
-    private let writeQueue = DispatchQueue(label: "com.tunehaven.errorlogger", qos: .utility)
+// MARK: - FileLogWriter (shared file-append + rotation logic)
 
-    private var logFileURL: URL {
-        SandboxPathManager.documentsURL.appendingPathComponent("error.log")
+private final class FileLogWriter {
+    private let writeQueue: DispatchQueue
+    private let fileURL: () -> URL
+    private let maxFileSize: Int64
+    private let backupSuffix: String
+
+    static let dateFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    static func isoDate() -> String {
+        dateFormatter.string(from: Date())
     }
 
-    private init() {}
-
-    func log(_ error: AppError, context: String, file: String = #file, line: Int = #line) {
-        let shortFile = (file as NSString).lastPathComponent
-        let entry = "[\(isoDate())] [\(error.errorCode)] \(context) - \(error.localizedDescription) at \(shortFile):\(line)\n"
-        appendToLog(entry)
+    init(queueLabel: String, fileURL: @escaping () -> URL, maxFileSize: Int64 = 5 * 1024 * 1024, backupSuffix: String = ".old") {
+        self.writeQueue = DispatchQueue(label: queueLabel, qos: .utility)
+        self.fileURL = fileURL
+        self.maxFileSize = maxFileSize
+        self.backupSuffix = backupSuffix
     }
 
-    func logGeneric(_ error: Error, context: String) {
-        let entry = "[\(isoDate())] [GEN] \(context) - \(error.localizedDescription)\n"
-        appendToLog(entry)
-    }
-
-    private func appendToLog(_ entry: String) {
+    func write(_ entry: String) {
         guard let data = entry.data(using: .utf8) else { return }
-        let url = logFileURL
+        let url = fileURL()
         writeQueue.async {
-            self.rotateIfNeeded()
+            self.rotateIfNeeded(url: url)
             if let handle = try? FileHandle(forWritingTo: url) {
                 handle.seekToEndOfFile()
                 handle.write(data)
@@ -150,23 +153,37 @@ final class ErrorLogger {
         }
     }
 
-    private func rotateIfNeeded() {
-        let size = (try? FileManager.default.attributesOfItem(atPath: logFileURL.path)[.size] as? Int64) ?? 0
+    private func rotateIfNeeded(url: URL) {
+        let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
         if size > maxFileSize {
-            let backupURL = logFileURL.deletingLastPathComponent().appendingPathComponent("error.log.old")
+            let backupURL = url.deletingLastPathComponent().appendingPathComponent(url.lastPathComponent + backupSuffix)
             try? FileManager.default.removeItem(at: backupURL)
-            try? FileManager.default.moveItem(at: logFileURL, to: backupURL)
+            try? FileManager.default.moveItem(at: url, to: backupURL)
         }
     }
+}
 
-    private static let dateFormatter: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
+// MARK: - ErrorLogger
 
-    private func isoDate() -> String {
-        Self.dateFormatter.string(from: Date())
+final class ErrorLogger {
+    static let shared = ErrorLogger()
+
+    private let writer = FileLogWriter(
+        queueLabel: "com.tunehaven.errorlogger",
+        fileURL: { SandboxPathManager.documentsURL.appendingPathComponent("error.log") }
+    )
+
+    private init() {}
+
+    func log(_ error: AppError, context: String, file: String = #file, line: Int = #line) {
+        let shortFile = (file as NSString).lastPathComponent
+        let entry = "[\(FileLogWriter.isoDate())] [\(error.errorCode)] \(context) - \(error.localizedDescription) at \(shortFile):\(line)\n"
+        writer.write(entry)
+    }
+
+    func logGeneric(_ error: Error, context: String) {
+        let entry = "[\(FileLogWriter.isoDate())] [GEN] \(context) - \(error.localizedDescription)\n"
+        writer.write(entry)
     }
 }
 
@@ -180,18 +197,11 @@ enum LogLevel: String {
 
 final class AppLogger {
     static let shared = AppLogger()
-    private let maxFileSize: Int64 = 5 * 1024 * 1024
-    private let writeQueue = DispatchQueue(label: "com.tunehaven.applogger", qos: .utility)
 
-    private static let dateFormatter: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-
-    private var logFileURL: URL {
-        SandboxPathManager.documentsURL.appendingPathComponent("app.log")
-    }
+    private let writer = FileLogWriter(
+        queueLabel: "com.tunehaven.applogger",
+        fileURL: { SandboxPathManager.documentsURL.appendingPathComponent("app.log") }
+    )
 
     private init() {}
 
@@ -220,34 +230,10 @@ final class AppLogger {
 
     private func writeLog(level: LogLevel, message: String, file: String, function: String) {
         let shortFile = (file as NSString).lastPathComponent.replacingOccurrences(of: ".swift", with: "")
-        let entry = "[\(Self.dateFormatter.string(from: Date()))] [\(level.rawValue)] [\(shortFile).\(function)] \(message)\n"
+        let entry = "[\(FileLogWriter.isoDate())] [\(level.rawValue)] [\(shortFile).\(function)] \(message)\n"
         #if DEBUG
         print(entry, terminator: "")
         #endif
-        appendToFile(entry)
-    }
-
-    private func appendToFile(_ entry: String) {
-        guard let data = entry.data(using: .utf8) else { return }
-        let url = logFileURL
-        writeQueue.async {
-            self.rotateIfNeeded()
-            if let handle = try? FileHandle(forWritingTo: url) {
-                handle.seekToEndOfFile()
-                handle.write(data)
-                try? handle.close()
-            } else {
-                try? data.write(to: url)
-            }
-        }
-    }
-
-    private func rotateIfNeeded() {
-        let size = (try? FileManager.default.attributesOfItem(atPath: logFileURL.path)[.size] as? Int64) ?? 0
-        if size > maxFileSize {
-            let backupURL = logFileURL.deletingLastPathComponent().appendingPathComponent("app.log.old")
-            try? FileManager.default.removeItem(at: backupURL)
-            try? FileManager.default.moveItem(at: logFileURL, to: backupURL)
-        }
+        writer.write(entry)
     }
 }

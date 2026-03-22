@@ -250,7 +250,7 @@ final class CoreDataSongRepository: SongRepository {
                 return
             }
             entity.lyricsPath = lyricsPath
-            entity.lyricsSource = lyricsSource?.rawValue ?? Int16.min
+            entity.lyricsSource = lyricsSource?.rawValue ?? SongMapper.int16Nil
         }
     }
 

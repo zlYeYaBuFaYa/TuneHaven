@@ -18,4 +18,6 @@ enum AppStorageKey {
     /// `true`：歌词以简体显示；`false`：按原文显示（含繁体）。
     static let lyricsPreferSimplified = "lyrics_simplified"
     static let hasCompletedOnboarding = "has_completed_onboarding"
+    static let songSortOption = "song_sort_option"
+    static let songSortAscending = "song_sort_ascending"
 }

@@ -36,8 +36,8 @@ struct LibraryMainView: View {
     @State private var isSearchActive = false
     @State private var searchResult = SearchResult(songs: [], artists: [], albums: [], totalSongCount: 0, totalArtistCount: 0, totalAlbumCount: 0)
     @State private var searchTask: Task<Void, Never>?
-    @AppStorage("song_sort_option") private var sortOptionRaw: Int = SongSortOption.title.rawValue
-    @AppStorage("song_sort_ascending") private var isAscending: Bool = true
+    @AppStorage(AppStorageKey.songSortOption) private var sortOptionRaw: Int = SongSortOption.title.rawValue
+    @AppStorage(AppStorageKey.songSortAscending) private var isAscending: Bool = true
     @State private var formatFilter: AudioFormat = .all
 
     private var sortOptionBinding: Binding<SongSortOption> {

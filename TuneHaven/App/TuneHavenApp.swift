@@ -114,6 +114,7 @@ struct TuneHavenApp: App {
             try await CoreDataStack.shared.load()
             await MigrationManager.shared.runPostLoadMigrations()
             SandboxPathManager.createAllDirectories()
+            playbackService.configure(libraryService: libraryService)
             try await playlistService.initializeSystemPlaylists()
             await libraryService.loadSongs()
             await libraryService.cleanupOnLaunch()
