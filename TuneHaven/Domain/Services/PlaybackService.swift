@@ -5,7 +5,6 @@ import UIKit
 
 @MainActor
 final class PlaybackService: ObservableObject {
-    static let shared = PlaybackService()
     private let log = AppLogger.shared
 
     @Published private(set) var currentSong: Song?
@@ -30,8 +29,8 @@ final class PlaybackService: ObservableObject {
 
     private static let lastPlayedSongIdKey = AppStorageKey.lastPlayedSongId
 
-    private init(playlistRepo: PlaylistRepository = CoreDataPlaylistRepository(),
-                songRepo: SongRepository = CoreDataSongRepository()) {
+    init(playlistRepo: PlaylistRepository = CoreDataPlaylistRepository(),
+         songRepo: SongRepository = CoreDataSongRepository()) {
         self.queueService = PlayQueueService()
         self.libraryService = MusicLibraryService()
         self.playlistRepo = playlistRepo

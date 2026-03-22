@@ -7,6 +7,7 @@ struct PlayerView: View {
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
+    @EnvironmentObject private var lyricsService: LyricsService
     private enum ActiveSheet: Identifiable {
         case moreActions
         case sleepTimer
@@ -120,7 +121,7 @@ struct PlayerView: View {
                   let url = urls.first,
                   let song = playback.currentSong else { return }
             Task {
-                try? await LyricsService.shared.importLyricsFile(url: url, for: song)
+                try? await lyricsService.importLyricsFile(url: url, for: song)
                 await loadLyrics()
             }
         }
@@ -129,7 +130,7 @@ struct PlayerView: View {
             Button("删除", role: .destructive) {
                 guard let song = playback.currentSong else { return }
                 Task {
-                    try? await LyricsService.shared.deleteLyrics(for: song)
+                    try? await lyricsService.deleteLyrics(for: song)
                     lyricsData = nil
                 }
             }
@@ -628,7 +629,7 @@ struct PlayerView: View {
 
     private func loadLyrics() async {
         guard let song = playback.currentSong else { lyricsData = nil; return }
-        lyricsData = await LyricsService.shared.loadLyrics(for: song)
+        lyricsData = await lyricsService.loadLyrics(for: song)
     }
 
     private func switchSheet(to newSheet: ActiveSheet, delay: TimeInterval = 0.3) {

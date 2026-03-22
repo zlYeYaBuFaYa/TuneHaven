@@ -1,22 +1,9 @@
 import SwiftUI
-import AVFoundation
 
 @main
 struct TuneHavenApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-
-    @StateObject private var themeManager = ThemeManager()
-    @StateObject private var libraryService = MusicLibraryService()
-    @StateObject private var playlistService = PlaylistService()
-    @StateObject private var importService = ImportService()
-    @StateObject private var searchService = SearchService()
-    @StateObject private var router = AppRouter()
-    @StateObject private var snackbar = SnackbarState()
-    @StateObject private var wallpaperManager = WallpaperManager()
-    @StateObject private var groupService = PlaylistGroupService()
-    @StateObject private var webDAVService = WebDAVService()
-
-    private let playbackService = PlaybackService.shared
+    @StateObject private var container = AppDIContainer()
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var isReady = false
@@ -27,25 +14,26 @@ struct TuneHavenApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                themeManager.palette.background
+                container.themeManager.palette.background
                     .ignoresSafeArea()
 
                 if isReady {
                     RootTabView()
-                        .environmentObject(themeManager)
-                        .environmentObject(libraryService)
-                        .environmentObject(playlistService)
-                        .environmentObject(importService)
-                        .environmentObject(searchService)
-                        .environmentObject(router)
-                        .environmentObject(snackbar)
-                        .environmentObject(wallpaperManager)
-                        .environmentObject(groupService)
-                        .environmentObject(playbackService)
-                        .environmentObject(AudioEngine.shared)
-                        .environmentObject(webDAVService)
-                        .environment(\.themePalette, themeManager.palette)
-                        .snackbar(snackbar)
+                        .environmentObject(container.themeManager)
+                        .environmentObject(container.libraryService)
+                        .environmentObject(container.playlistService)
+                        .environmentObject(container.importService)
+                        .environmentObject(container.searchService)
+                        .environmentObject(container.router)
+                        .environmentObject(container.snackbar)
+                        .environmentObject(container.wallpaperManager)
+                        .environmentObject(container.groupService)
+                        .environmentObject(container.playbackService)
+                        .environmentObject(container.audioEngine)
+                        .environmentObject(container.webDAVService)
+                        .environmentObject(container.lyricsService)
+                        .environment(\.themePalette, container.themeManager.palette)
+                        .snackbar(container.snackbar)
                 } else if let error = initError {
                     VStack(spacing: 16) {
                         Image(systemName: "exclamationmark.triangle")
@@ -64,20 +52,20 @@ struct TuneHavenApp: App {
                         .progressViewStyle(.circular)
                 }
             }
-            .preferredColorScheme(themeManager.colorScheme)
+            .preferredColorScheme(container.themeManager.colorScheme)
             .task { await initialize() }
             .onOpenURL { url in
                 handleIncomingURL(url)
             }
             .onAppear {
                 AppLogger.shared.debug("[App] onAppear — applying window theme")
-                themeManager.scheduleWindowRefresh(delay: 0.1, fullApply: true)
+                container.themeManager.scheduleWindowRefresh(delay: 0.1, fullApply: true)
             }
             .onChange(of: scenePhase) { _, phase in
                 AppLogger.shared.debug("[App] scenePhase → \(phase)")
                 switch phase {
                 case .active:
-                    playbackService.checkSleepTimerOnForeground()
+                    container.playbackService.checkSleepTimerOnForeground()
                 case .background:
                     AudioSessionManager.shared.ensureActive()
                 default:
@@ -99,9 +87,9 @@ struct TuneHavenApp: App {
     private func ensureOpenInHandler() -> OpenInImportHandler {
         if let handler = openInHandler { return handler }
         let handler = OpenInImportHandler(
-            importService: importService,
-            libraryService: libraryService,
-            snackbar: snackbar
+            importService: container.importService,
+            libraryService: container.libraryService,
+            snackbar: container.snackbar
         )
         openInHandler = handler
         return handler
@@ -114,11 +102,12 @@ struct TuneHavenApp: App {
             try await CoreDataStack.shared.load()
             await MigrationManager.shared.runPostLoadMigrations()
             SandboxPathManager.createAllDirectories()
-            try await playlistService.initializeSystemPlaylists()
-            await libraryService.loadSongs()
-            await libraryService.cleanupOnLaunch()
+            WiFiTransferServer.cleanupTempFiles()
+            try await container.playlistService.initializeSystemPlaylists()
+            await container.libraryService.loadSongs()
+            await container.libraryService.cleanupOnLaunch()
             OpenInImportHandler.cleanupInbox()
-            playbackService.checkSleepTimerOnForeground()
+            container.playbackService.checkSleepTimerOnForeground()
             isReady = true
             AppLogger.shared.info("[App] initialize done — isReady=true")
 
@@ -128,7 +117,7 @@ struct TuneHavenApp: App {
                 ensureOpenInHandler().enqueue(urls: urls)
             }
 
-            themeManager.scheduleWindowRefresh(delay: 0.15, fullApply: true)
+            container.themeManager.scheduleWindowRefresh(delay: 0.15, fullApply: true)
         } catch {
             initError = error.localizedDescription
             AppLogger.shared.error("[App] initialize FAILED: \(error)")

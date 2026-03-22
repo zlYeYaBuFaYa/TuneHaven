@@ -4,6 +4,7 @@ struct SongInfoEditView: View {
     let songId: UUID
 
     @EnvironmentObject private var libraryService: MusicLibraryService
+    @EnvironmentObject private var lyricsService: LyricsService
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -142,7 +143,7 @@ struct SongInfoEditView: View {
                   let url = urls.first,
                   let song = self.song else { return }
             Task {
-                try? await LyricsService.shared.importLyricsFile(url: url, for: song)
+                try? await lyricsService.importLyricsFile(url: url, for: song)
                 await reloadSong()
             }
         }
@@ -151,7 +152,7 @@ struct SongInfoEditView: View {
             Button("删除", role: .destructive) {
                 guard let song = self.song else { return }
                 Task {
-                    try? await LyricsService.shared.deleteLyrics(for: song)
+                    try? await lyricsService.deleteLyrics(for: song)
                     await reloadSong()
                 }
             }

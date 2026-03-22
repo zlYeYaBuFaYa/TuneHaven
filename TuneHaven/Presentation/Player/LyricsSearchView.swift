@@ -4,6 +4,7 @@ struct LyricsSearchView: View {
     let song: Song
     var onSaved: (() -> Void)?
 
+    @EnvironmentObject private var lyricsService: LyricsService
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -104,7 +105,7 @@ struct LyricsSearchView: View {
 
         Task {
             do {
-                try await LyricsService.shared.saveLyrics(content, for: song)
+                try await lyricsService.saveLyrics(content, for: song)
                 await MainActor.run {
                     isSaving = false
                     showManualInput = false
@@ -394,7 +395,7 @@ struct LyricsSearchView: View {
         Task {
             do {
                 let artist = artistName.trimmingCharacters(in: .whitespaces)
-                results = try await LyricsService.shared.searchOnline(
+                results = try await lyricsService.searchOnline(
                     title: query,
                     artist: artist.isEmpty ? nil : artist
                 )
@@ -412,7 +413,7 @@ struct LyricsSearchView: View {
 
         Task {
             do {
-                try await LyricsService.shared.saveLyrics(lyrics, for: song)
+                try await lyricsService.saveLyrics(lyrics, for: song)
                 await MainActor.run {
                     onSaved?()
                     dismiss()

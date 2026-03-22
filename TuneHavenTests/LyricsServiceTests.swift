@@ -8,7 +8,7 @@ import Foundation
 @MainActor
 struct LyricsServiceTests {
 
-    private let service = LyricsService.shared
+    private let service = LyricsService()
 
     // MARK: - 基础 LRC 解析
 
