@@ -166,7 +166,7 @@ final class CoreDataSongRepository: SongRepository {
                     let countReq = SongEntity.fetchRequest()
                     countReq.predicate = NSPredicate(format: "fileHash == %@ AND softDeleted == NO AND NOT (id IN %@)",
                         hash, ids as NSArray)
-                    let count = (try? ctx.count(for: countReq)) ?? 0
+                    let count = try ctx.count(for: countReq)
                     if count == 0 {
                         filesToMove.append((hash: hash, relativePath: path))
                         seenHashes.insert(hash)

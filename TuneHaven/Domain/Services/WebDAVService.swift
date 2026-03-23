@@ -11,9 +11,13 @@ final class WebDAVService: ObservableObject {
     @Published private(set) var overallProgress: Double = 0
     @Published private(set) var isDownloading = false
 
-    private let accountStore = WebDAVAccountStore.shared
+    private let accountStore: WebDAVAccountStoring
     private var activeClient: WebDAVClient?
     private var isCancelRequested = false
+
+    init(accountStore: WebDAVAccountStoring) {
+        self.accountStore = accountStore
+    }
 
     // MARK: - Account Management
 
@@ -34,6 +38,10 @@ final class WebDAVService: ObservableObject {
     func deleteAccount(id: UUID) {
         accountStore.deleteAccount(id: id)
         loadAccounts()
+    }
+
+    func password(for accountId: UUID) -> String? {
+        accountStore.password(for: accountId)
     }
 
     func testConnection(account: WebDAVAccount, password: String) async throws -> Bool {

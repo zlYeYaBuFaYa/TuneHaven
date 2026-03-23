@@ -4,6 +4,7 @@ struct PlayQueueView: View {
     let onClose: () -> Void
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var playlistService: PlaylistService
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
 
     @State private var showSaveAsPlaylist = false
@@ -102,11 +103,16 @@ struct PlayQueueView: View {
                 let name = savePlaylistName.trimmingCharacters(in: .whitespaces)
                 guard !name.isEmpty else { return }
                 Task {
-                    try? await playback.queue.saveQueueAsPlaylist(
-                        name: name,
-                        createPlaylist: { n in try await playlistService.createPlaylist(name: n, description: nil) },
-                        addSongs: { ids, pid in try await playlistService.addSongs(ids, to: pid) }
-                    )
+                    do {
+                        try await playback.queue.saveQueueAsPlaylist(
+                            name: name,
+                            createPlaylist: { n in try await playlistService.createPlaylist(name: n, description: nil) },
+                            addSongs: { ids, pid in try await playlistService.addSongs(ids, to: pid) }
+                        )
+                        snackbar.show(message: "已保存为歌单「\(name)」")
+                    } catch {
+                        snackbar.show(message: "保存歌单失败")
+                    }
                     savePlaylistName = ""
                 }
             }

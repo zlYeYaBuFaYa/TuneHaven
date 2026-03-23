@@ -15,9 +15,9 @@ final class PlaybackService: ObservableObject {
 
     var sleepTimerRemaining: TimeInterval? { sleepTimer.remaining }
 
-    private let engine = AudioEngine.shared
+    private let engine: AudioEngine
     private let queueService: PlayQueueService
-    private var libraryService: MusicLibraryService
+    private let libraryService: MusicLibraryService
     private let playlistRepo: PlaylistRepository
     private let songRepo: SongRepository
     private let imageCacheManager = ImageCacheManager.shared
@@ -32,11 +32,15 @@ final class PlaybackService: ObservableObject {
     private static let lastPlayedSongIdKey = AppStorageKey.lastPlayedSongId
 
     init(playlistRepo: PlaylistRepository,
-         songRepo: SongRepository) {
-        self.queueService = PlayQueueService()
-        self.libraryService = MusicLibraryService(songRepo: songRepo)
+         songRepo: SongRepository,
+         queueService: PlayQueueService,
+         libraryService: MusicLibraryService,
+         engine: AudioEngine) {
+        self.queueService = queueService
+        self.libraryService = libraryService
         self.playlistRepo = playlistRepo
         self.songRepo = songRepo
+        self.engine = engine
         setupBindings()
         sleepTimer.configure { [weak self] in
             self?.engine.pause()
@@ -51,10 +55,6 @@ final class PlaybackService: ObservableObject {
         guard let song = await songRepo.fetchSong(id: songId) else { return }
         currentSong = song
         queueService.replaceQueue(with: [song], startAt: 0)
-    }
-
-    func configure(libraryService: MusicLibraryService) {
-        self.libraryService = libraryService
     }
 
     var queue: PlayQueueService { queueService }

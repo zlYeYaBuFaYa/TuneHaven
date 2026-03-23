@@ -5,6 +5,7 @@ struct PlaylistGroupView: View {
     @EnvironmentObject private var groupService: PlaylistGroupService
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
 
     @State private var showCreateGroup = false
@@ -33,7 +34,10 @@ struct PlaylistGroupView: View {
                 .onMove { src, dst in
                     var ids = groupService.groupDetails.map { $0.id }
                     ids.move(fromOffsets: src, toOffset: dst)
-                    Task { try? await groupService.reorderGroups(orderedIds: ids) }
+                    Task {
+                        do { try await groupService.reorderGroups(orderedIds: ids) }
+                        catch { snackbar.show(message: "分组排序失败") }
+                    }
                 }
             }
 
@@ -72,7 +76,8 @@ struct PlaylistGroupView: View {
                 let name = newGroupName.trimmingCharacters(in: .whitespaces)
                 guard !name.isEmpty else { return }
                 Task {
-                    try? await groupService.createGroup(name: name)
+                    do { try await groupService.createGroup(name: name) }
+                    catch { snackbar.show(message: "创建分组失败") }
                     newGroupName = ""
                 }
             }
@@ -88,7 +93,8 @@ struct PlaylistGroupView: View {
                 let name = renameText.trimmingCharacters(in: .whitespaces)
                 guard !name.isEmpty else { return }
                 Task {
-                    try? await groupService.renameGroup(id: target.id, name: name)
+                    do { try await groupService.renameGroup(id: target.id, name: name) }
+                    catch { snackbar.show(message: "重命名失败") }
                     renameTarget = nil
                     renameText = ""
                 }
@@ -103,7 +109,8 @@ struct PlaylistGroupView: View {
                 groups: groupService.groupDetails,
                 onMove: { groupId in
                     Task {
-                        try? await groupService.movePlaylist(playlist.id, toGroup: groupId)
+                        do { try await groupService.movePlaylist(playlist.id, toGroup: groupId) }
+                        catch { snackbar.show(message: "移动歌单失败") }
                         movingPlaylist = nil
                     }
                 }
@@ -158,7 +165,10 @@ struct PlaylistGroupView: View {
                         Label("重命名", systemImage: "pencil")
                     }
                     Button(role: .destructive) {
-                        Task { try? await groupService.deleteGroup(id: group.id) }
+                        Task {
+                            do { try await groupService.deleteGroup(id: group.id) }
+                            catch { snackbar.show(message: "删除分组失败") }
+                        }
                     } label: {
                         Label("删除分组", systemImage: "trash")
                     }

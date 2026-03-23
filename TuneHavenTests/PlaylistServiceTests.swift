@@ -8,107 +8,129 @@ import Foundation
 @Suite("PlaylistService - 命名校验逻辑")
 struct PlaylistNameValidationTests {
 
-    // MARK: - 命名校验辅助函数（与 PlaylistService.createPlaylist 逻辑一致）
-
-    private func validatePlaylistName(_ name: String) throws {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw AppError.playlistNameEmpty }
-        let reserved = ["我喜欢", "最近播放"]
-        guard !reserved.contains(trimmed) else { throw AppError.playlistNameDuplicate }
+    private func makeService() -> PlaylistService {
+        PlaylistService(repo: MockPlaylistRepository(), songRepo: MockSongRepository())
     }
 
     // MARK: - 空名称验证
 
     @Test("空字符串歌单名称抛出 playlistNameEmpty 错误")
-    func testEmptyNameThrows() throws {
-        #expect(throws: AppError.playlistNameEmpty) {
-            try validatePlaylistName("")
+    @MainActor
+    func testEmptyNameThrows() async throws {
+        let service = makeService()
+        await #expect(throws: AppError.playlistNameEmpty) {
+            try await service.createPlaylist(name: "", description: nil)
         }
     }
 
     @Test("纯空白字符名称抛出 playlistNameEmpty 错误")
-    func testWhitespaceOnlyNameThrows() throws {
-        #expect(throws: AppError.playlistNameEmpty) {
-            try validatePlaylistName("   ")
+    @MainActor
+    func testWhitespaceOnlyNameThrows() async throws {
+        let service = makeService()
+        await #expect(throws: AppError.playlistNameEmpty) {
+            try await service.createPlaylist(name: "   ", description: nil)
         }
     }
 
     @Test("仅含制表符和换行符的名称抛出 playlistNameEmpty 错误")
-    func testTabAndNewlineOnlyNameThrows() throws {
-        #expect(throws: AppError.playlistNameEmpty) {
-            try validatePlaylistName("\t\n  ")
+    @MainActor
+    func testTabAndNewlineOnlyNameThrows() async throws {
+        let service = makeService()
+        await #expect(throws: AppError.playlistNameEmpty) {
+            try await service.createPlaylist(name: "\t\n  ", description: nil)
         }
     }
 
     // MARK: - 系统歌单名称保护
 
     @Test("名称为「我喜欢」时抛出 playlistNameDuplicate 错误")
-    func testFavoritePlaylistNameThrows() throws {
-        #expect(throws: AppError.playlistNameDuplicate) {
-            try validatePlaylistName("我喜欢")
+    @MainActor
+    func testFavoritePlaylistNameThrows() async throws {
+        let service = makeService()
+        await #expect(throws: AppError.playlistNameDuplicate) {
+            try await service.createPlaylist(name: "我喜欢", description: nil)
         }
     }
 
     @Test("名称为「最近播放」时抛出 playlistNameDuplicate 错误")
-    func testRecentlyPlayedNameThrows() throws {
-        #expect(throws: AppError.playlistNameDuplicate) {
-            try validatePlaylistName("最近播放")
+    @MainActor
+    func testRecentlyPlayedNameThrows() async throws {
+        let service = makeService()
+        await #expect(throws: AppError.playlistNameDuplicate) {
+            try await service.createPlaylist(name: "最近播放", description: nil)
         }
     }
 
     @Test("系统歌单名称前后有空格时也被保护（trim 后检查）")
-    func testFavoriteNameWithSpacesThrows() throws {
-        #expect(throws: AppError.playlistNameDuplicate) {
-            try validatePlaylistName("  我喜欢  ")
+    @MainActor
+    func testFavoriteNameWithSpacesThrows() async throws {
+        let service = makeService()
+        await #expect(throws: AppError.playlistNameDuplicate) {
+            try await service.createPlaylist(name: "  我喜欢  ", description: nil)
         }
     }
 
     // MARK: - 合法名称
 
     @Test("普通中文名称合法")
-    func testValidChineseName() throws {
-        try validatePlaylistName("我的歌单")
-        // 无异常则通过
+    @MainActor
+    func testValidChineseName() async throws {
+        let service = makeService()
+        _ = try await service.createPlaylist(name: "我的歌单", description: nil)
     }
 
     @Test("英文名称合法")
-    func testValidEnglishName() throws {
-        try validatePlaylistName("My Playlist")
+    @MainActor
+    func testValidEnglishName() async throws {
+        let service = makeService()
+        _ = try await service.createPlaylist(name: "My Playlist", description: nil)
     }
 
     @Test("含特殊字符的名称合法（v4.3 放宽限制）")
-    func testValidNameWithSpecialChars() throws {
-        try validatePlaylistName("Rock/Pop Mix")
-        try validatePlaylistName("Best:Songs*2024")
-        try validatePlaylistName("Jazz & Blues")
+    @MainActor
+    func testValidNameWithSpecialChars() async throws {
+        let service = makeService()
+        _ = try await service.createPlaylist(name: "Rock/Pop Mix", description: nil)
+        _ = try await service.createPlaylist(name: "Best:Songs*2024", description: nil)
+        _ = try await service.createPlaylist(name: "Jazz & Blues", description: nil)
     }
 
     @Test("前后有空格的合法名称通过校验（trim 后不为空）")
-    func testValidNameWithLeadingTrailingSpaces() throws {
-        try validatePlaylistName("  我的歌单  ")
+    @MainActor
+    func testValidNameWithLeadingTrailingSpaces() async throws {
+        let service = makeService()
+        _ = try await service.createPlaylist(name: "  我的歌单  ", description: nil)
     }
 
     @Test("50 个字符的名称合法")
-    func testValidLongName() throws {
+    @MainActor
+    func testValidLongName() async throws {
+        let service = makeService()
         let name = String(repeating: "音", count: 50)
-        try validatePlaylistName(name)
+        _ = try await service.createPlaylist(name: name, description: nil)
     }
 
     @Test("包含数字和特殊符号的名称合法")
-    func testValidNameWithNumbers() throws {
-        try validatePlaylistName("最爱 Top 100")
-        try validatePlaylistName("2024年收藏集")
+    @MainActor
+    func testValidNameWithNumbers() async throws {
+        let service = makeService()
+        _ = try await service.createPlaylist(name: "最爱 Top 100", description: nil)
+        _ = try await service.createPlaylist(name: "2024年收藏集", description: nil)
     }
 
     @Test("单个字符的名称合法")
-    func testValidSingleCharName() throws {
-        try validatePlaylistName("A")
+    @MainActor
+    func testValidSingleCharName() async throws {
+        let service = makeService()
+        _ = try await service.createPlaylist(name: "A", description: nil)
     }
 
     @Test("emoji 名称合法")
-    func testValidEmojiName() throws {
-        try validatePlaylistName("🎵 音乐精选")
-        try validatePlaylistName("❤️ 我爱的歌")
+    @MainActor
+    func testValidEmojiName() async throws {
+        let service = makeService()
+        _ = try await service.createPlaylist(name: "🎵 音乐精选", description: nil)
+        _ = try await service.createPlaylist(name: "❤️ 我爱的歌", description: nil)
     }
 }
 

@@ -202,6 +202,13 @@ final class LyricsService: ObservableObject {
         }
     }
 
+    // MARK: - Query
+
+    nonisolated func hasExternalLyrics(for songId: UUID) -> Bool {
+        let fileURL = SandboxPathManager.lyricsFileURL(relativePath: "\(songId.uuidString).lrc")
+        return FileManager.default.fileExists(atPath: fileURL.path)
+    }
+
     // MARK: - LRC Parsing
 
     private static let lrcRegex: NSRegularExpression? = {

@@ -7,18 +7,18 @@ import Foundation
 @Suite("AudioSessionManager Tests")
 struct AudioSessionManagerTests {
 
-    @Test("ensureActive 返回 Bool 类型")
+    @Test("ensureActive 在测试环境不崩溃且返回布尔值")
     @MainActor
     func testEnsureActiveReturnsBool() {
         let result = AudioSessionManager.shared.ensureActive()
-        #expect(result == true || result == false)
+        #expect(type(of: result) == Bool.self)
     }
 
-    @Test("configure 返回 Bool 类型")
+    @Test("configure 在测试环境不崩溃且返回布尔值")
     @MainActor
     func testConfigureReturnsBool() {
         let result = AudioSessionManager.shared.configure()
-        #expect(result == true || result == false)
+        #expect(type(of: result) == Bool.self)
     }
 }
 
@@ -145,10 +145,11 @@ struct CustomCoverErrorTests {
 @Suite("AppLogger Tests")
 struct AppLoggerTests {
 
-    @Test("AppLogger 单例存在")
+    @Test("AppLogger 单例始终返回同一实例")
     func testAppLoggerSingleton() {
-        let logger = AppLogger.shared
-        #expect(logger !== nil as AnyObject?)
+        let a = AppLogger.shared
+        let b = AppLogger.shared
+        #expect(a === b)
     }
 
     @Test("LogLevel rawValue 正确")

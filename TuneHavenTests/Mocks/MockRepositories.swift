@@ -18,20 +18,27 @@ final class MockLRCLibAPIClient: LRCLibAPIClientProtocol {
 // MARK: - Mock Repositories
 
 final class MockSearchHistoryRepository: SearchHistoryRepository {
-    var history: [SearchHistoryItem] = []
+    private var tabHistory: [LibraryTab: [SearchHistoryItem]] = [:]
+
+    var history: [SearchHistoryItem] {
+        tabHistory.values.flatMap { $0 }
+    }
 
     func fetchHistory(tab: LibraryTab, limit: Int) async -> [SearchHistoryItem] {
-        Array(history.prefix(limit))
+        Array((tabHistory[tab] ?? []).prefix(limit))
     }
     func saveHistory(keyword: String, tab: LibraryTab) async {
-        history.append(SearchHistoryItem(id: UUID(), keyword: keyword, searchedAt: Date()))
+        let item = SearchHistoryItem(id: UUID(), keyword: keyword, searchedAt: Date())
+        tabHistory[tab, default: []].append(item)
     }
     func deleteHistory(id: UUID) async {
-        history.removeAll { $0.id == id }
+        for tab in tabHistory.keys {
+            tabHistory[tab]?.removeAll { $0.id == id }
+        }
     }
-    func clearHistory() async { history.removeAll() }
+    func clearHistory() async { tabHistory.removeAll() }
     func clearHistory(tab: LibraryTab) async {
-        history.removeAll()
+        tabHistory[tab] = nil
     }
 }
 

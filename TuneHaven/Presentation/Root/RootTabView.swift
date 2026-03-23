@@ -9,6 +9,7 @@ struct RootTabView: View {
     @EnvironmentObject private var wallpaperManager: WallpaperManager
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
+    @EnvironmentObject private var lyricsService: LyricsService
     @Environment(\.themePalette) private var palette
 
     private var hasCustomBg: Bool {
@@ -59,6 +60,7 @@ struct RootTabView: View {
                 .environmentObject(snackbar)
                 .environmentObject(playback)
                 .environmentObject(engine)
+                .environmentObject(lyricsService)
         }
         .sheet(item: $router.sheet) { destination in
             sheetView(for: destination)
@@ -71,6 +73,7 @@ struct RootTabView: View {
                 .environmentObject(snackbar)
                 .environmentObject(playback)
                 .environmentObject(engine)
+                .environmentObject(lyricsService)
         }
         .onAppear {
             #if DEBUG

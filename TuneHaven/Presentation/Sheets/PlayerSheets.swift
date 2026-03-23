@@ -104,6 +104,7 @@ struct PlaybackSpeedSheet: View {
 struct PlaylistCoverPickerSheet: View {
     let playlistId: UUID
     @EnvironmentObject private var playlistService: PlaylistService
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -147,10 +148,16 @@ struct PlaylistCoverPickerSheet: View {
             .onChange(of: selectedPhotoItem) { _, newItem in
                 guard let newItem else { return }
                 Task {
-                    if let data = try? await newItem.loadTransferable(type: Data.self) {
-                        try? await playlistService.setCustomCover(playlistId: playlistId, imageData: data)
+                    do {
+                        guard let data = try await newItem.loadTransferable(type: Data.self) else {
+                            snackbar.show(message: "无法读取所选图片")
+                            return
+                        }
+                        try await playlistService.setCustomCover(playlistId: playlistId, imageData: data)
+                        dismiss()
+                    } catch {
+                        snackbar.show(message: "封面设置失败")
                     }
-                    dismiss()
                 }
             }
         }

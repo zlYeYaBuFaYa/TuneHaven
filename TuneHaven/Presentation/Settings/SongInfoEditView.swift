@@ -5,6 +5,7 @@ struct SongInfoEditView: View {
 
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var lyricsService: LyricsService
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -167,10 +168,7 @@ struct SongInfoEditView: View {
         case .file: return "已有歌词（LRC 文件）"
         case .manual: return "手动导入歌词"
         case nil:
-            let hasExternal = FileManager.default.fileExists(
-                atPath: SandboxPathManager.lyricsFileURL(relativePath: "\(song.id.uuidString).lrc").path
-            )
-            return hasExternal ? "已有歌词（LRC 文件）" : "暂无歌词"
+            return lyricsService.hasExternalLyrics(for: song.id) ? "已有歌词（LRC 文件）" : "暂无歌词"
         }
     }
 
@@ -200,14 +198,19 @@ struct SongInfoEditView: View {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         isSaving = true
         Task {
-            try? await libraryService.updateSongInfo(
-                id: songId,
-                title: title.trimmingCharacters(in: .whitespaces),
-                artist: artist.trimmingCharacters(in: .whitespaces),
-                album: album.trimmingCharacters(in: .whitespaces)
-            )
+            do {
+                try await libraryService.updateSongInfo(
+                    id: songId,
+                    title: title.trimmingCharacters(in: .whitespaces),
+                    artist: artist.trimmingCharacters(in: .whitespaces),
+                    album: album.trimmingCharacters(in: .whitespaces)
+                )
+                dismiss()
+            } catch {
+                snackbar.show(message: "保存失败，请重试")
+                AppLogger.shared.error(error, context: "歌曲信息保存失败")
+            }
             isSaving = false
-            dismiss()
         }
     }
 }

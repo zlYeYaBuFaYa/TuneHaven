@@ -257,7 +257,7 @@ struct WebDAVAccountEditView: View {
             serverURL = account.serverURL
             username = account.username
             trustSelfSignedCert = account.trustSelfSignedCert
-            password = WebDAVAccountStore.shared.password(for: account.id) ?? ""
+            password = webDAVService.password(for: account.id) ?? ""
         }
     }
 

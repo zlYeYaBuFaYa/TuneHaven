@@ -1,6 +1,6 @@
 import Foundation
 
-final class WebDAVAccountStore {
+final class WebDAVAccountStore: WebDAVAccountStoring {
     static let shared = WebDAVAccountStore()
     private init() {}
 

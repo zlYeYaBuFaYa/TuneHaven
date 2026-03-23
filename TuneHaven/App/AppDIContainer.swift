@@ -23,7 +23,7 @@ final class AppDIContainer: ObservableObject {
         ImportService(songRepo: songRepo, fileService: FileStorageService.shared)
     }()
     lazy var webDAVService: WebDAVService = {
-        WebDAVService()
+        WebDAVService(accountStore: WebDAVAccountStore.shared)
     }()
     lazy var lyricsService: LyricsService = {
         LyricsService(repo: songRepo, api: LRCLibAPIClient.shared)
@@ -49,12 +49,17 @@ final class AppDIContainer: ObservableObject {
         self.songRepo = songRepo
         self.playlistRepo = playlistRepo
 
-        self.libraryService = MusicLibraryService(songRepo: songRepo)
+        let libraryService = MusicLibraryService(songRepo: songRepo)
+        self.libraryService = libraryService
         self.playlistService = PlaylistService(repo: playlistRepo, songRepo: songRepo)
         self.groupService = PlaylistGroupService(repo: groupRepo)
         self.searchService = SearchService(historyRepo: searchHistoryRepo)
-        self.playbackService = PlaybackService(playlistRepo: playlistRepo, songRepo: songRepo)
-
-        self.playbackService.configure(libraryService: self.libraryService)
+        self.playbackService = PlaybackService(
+            playlistRepo: playlistRepo,
+            songRepo: songRepo,
+            queueService: PlayQueueService(),
+            libraryService: libraryService,
+            engine: AudioEngine.shared
+        )
     }
 }
