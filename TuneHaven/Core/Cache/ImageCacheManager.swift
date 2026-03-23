@@ -1,5 +1,6 @@
 import UIKit
 import Foundation
+import os
 
 extension Notification.Name {
     static let imageCacheDidUpdate = Notification.Name("imageCacheDidUpdate")
@@ -10,7 +11,7 @@ final class ImageCacheManager {
 
     private let memoryCache = NSCache<NSString, UIImage>()
     private let fileManager = FileManager.default
-    private var cacheLimitMB: Int = 100
+    private let cacheLimitLock = OSAllocatedUnfairLock(initialState: 100)
     private let log = AppLogger.shared
     private var trackedCacheSize: Int64 = -1
     private let fileQueue = DispatchQueue(label: "com.tunehaven.imagecache.file", qos: .utility)
@@ -28,13 +29,14 @@ final class ImageCacheManager {
 
     func setCacheLimit(_ megabytes: Int) {
         let clamped = max(10, min(megabytes, 300))
-        fileQueue.async { [weak self] in self?.cacheLimitMB = clamped }
+        cacheLimitLock.withLock { $0 = clamped }
     }
 
     func memoryImage(forKey key: String) -> UIImage? {
         memoryCache.object(forKey: key as NSString)
     }
 
+    @available(*, deprecated, message: "Use imageAsync(forKey:) to avoid blocking the main thread")
     func image(forKey key: String) -> UIImage? {
         if let cached = memoryCache.object(forKey: key as NSString) {
             return cached
@@ -114,6 +116,7 @@ final class ImageCacheManager {
         }
     }
 
+    @available(*, deprecated, message: "Use cacheSizeAsync() to avoid blocking the main thread")
     func cacheSize() -> Int64 {
         var size: Int64 = 0
         let dirs = [SandboxPathManager.coverImagesURL, SandboxPathManager.playlistCoversURL]
@@ -149,7 +152,7 @@ final class ImageCacheManager {
     }
 
     private func evictIfNeeded() {
-        let limitBytes = Int64(cacheLimitMB) * 1024 * 1024
+        let limitBytes = Int64(cacheLimitLock.withLock { $0 }) * 1024 * 1024
         let currentSize = trackedCacheSize >= 0 ? trackedCacheSize : cacheSize()
         if trackedCacheSize < 0 { trackedCacheSize = currentSize }
         guard currentSize > limitBytes else { return }
@@ -178,8 +181,17 @@ final class ImageCacheManager {
         trackedCacheSize = max(0, currentSize - freed)
     }
 
+    @available(*, deprecated, message: "Use formattedCacheSizeAsync() to avoid blocking the main thread")
     func formattedCacheSize() -> String {
         let bytes = cacheSize()
+        let mb = Double(bytes) / 1024 / 1024
+        return mb < 1
+            ? String(format: "%.0f KB", Double(bytes) / 1024)
+            : String(format: "%.1f MB", mb)
+    }
+
+    func formattedCacheSizeAsync() async -> String {
+        let bytes = await cacheSizeAsync()
         let mb = Double(bytes) / 1024 / 1024
         return mb < 1
             ? String(format: "%.0f KB", Double(bytes) / 1024)

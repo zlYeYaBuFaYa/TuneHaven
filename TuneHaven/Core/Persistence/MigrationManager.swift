@@ -63,8 +63,9 @@ final class MigrationManager {
     private func performUpgrade(from oldVersion: String, to newVersion: String) {
         let oldNumeric = numericVersion(oldVersion)
         if oldNumeric == (0, 0, 0) || oldNumeric < (2, 0, 0) {
-            if !UserDefaults.standard.bool(forKey: AppStorageKey.hasCompletedOnboarding) {
-                UserDefaults.standard.set(true, forKey: AppStorageKey.hasCompletedOnboarding)
+            let onboardingKey = "has_completed_onboarding"
+            if !UserDefaults.standard.bool(forKey: onboardingKey) {
+                UserDefaults.standard.set(true, forKey: onboardingKey)
             }
         }
     }

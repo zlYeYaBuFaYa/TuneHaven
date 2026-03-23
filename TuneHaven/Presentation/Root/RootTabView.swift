@@ -52,28 +52,30 @@ struct RootTabView: View {
                         endPoint: .bottom
                     )
                 )
-                .environment(\.themePalette, themeManager.palette)
-                .environmentObject(themeManager)
-                .environmentObject(router)
-                .environmentObject(libraryService)
-                .environmentObject(playlistService)
-                .environmentObject(snackbar)
-                .environmentObject(playback)
-                .environmentObject(engine)
-                .environmentObject(lyricsService)
+                .withFullEnvironment(
+                    themeManager: themeManager,
+                    router: router,
+                    libraryService: libraryService,
+                    playlistService: playlistService,
+                    snackbar: snackbar,
+                    playback: playback,
+                    engine: engine,
+                    lyricsService: lyricsService
+                )
         }
         .sheet(item: $router.sheet) { destination in
             sheetView(for: destination)
                 .presentationBackground(themeManager.palette.elevatedSurface)
-                .environment(\.themePalette, themeManager.palette)
-                .environmentObject(themeManager)
-                .environmentObject(router)
-                .environmentObject(libraryService)
-                .environmentObject(playlistService)
-                .environmentObject(snackbar)
-                .environmentObject(playback)
-                .environmentObject(engine)
-                .environmentObject(lyricsService)
+                .withFullEnvironment(
+                    themeManager: themeManager,
+                    router: router,
+                    libraryService: libraryService,
+                    playlistService: playlistService,
+                    snackbar: snackbar,
+                    playback: playback,
+                    engine: engine,
+                    lyricsService: lyricsService
+                )
         }
         .onAppear {
             #if DEBUG

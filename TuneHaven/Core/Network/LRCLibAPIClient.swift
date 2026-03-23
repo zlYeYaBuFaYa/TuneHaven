@@ -1,7 +1,5 @@
 import Foundation
 
-typealias LRCLibAPIClientProtocol = LyricsAPIProviding
-
 final class LRCLibAPIClient: LyricsAPIProviding {
     static let shared = LRCLibAPIClient()
 

@@ -150,13 +150,15 @@ final class PlaybackService: ObservableObject {
         engine.stop()
         isPlaying = false
         if let song = currentSong {
-            nowPlaying.update(
-                song: song,
-                currentTime: 0,
-                duration: duration,
-                speed: 0,
-                coverPath: currentCoverPath
-            )
+            Task {
+                await nowPlaying.update(
+                    song: song,
+                    currentTime: 0,
+                    duration: duration,
+                    speed: 0,
+                    coverPath: currentCoverPath
+                )
+            }
         }
     }
 
@@ -300,7 +302,7 @@ final class PlaybackService: ObservableObject {
         }
 
         currentCoverPath = song.coverImagePath
-        nowPlaying.update(
+        await nowPlaying.update(
             song: song,
             currentTime: 0,
             duration: engine.duration,
@@ -311,13 +313,15 @@ final class PlaybackService: ObservableObject {
 
     private func updateNowPlayingTime(currentTime: TimeInterval) {
         guard let song = currentSong else { return }
-        nowPlaying.update(
-            song: song,
-            currentTime: currentTime,
-            duration: engine.duration,
-            speed: isPlaying ? playbackSpeed : 0,
-            coverPath: currentCoverPath
-        )
+        Task {
+            await nowPlaying.update(
+                song: song,
+                currentTime: currentTime,
+                duration: engine.duration,
+                speed: isPlaying ? playbackSpeed : 0,
+                coverPath: currentCoverPath
+            )
+        }
     }
 
     private func setupBindings() {

@@ -6,19 +6,27 @@ struct SleepTimerSheet: View {
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
-    private let options: [(String, Int?)] = [
-        ("关闭定时", nil),
-        ("15 分钟", 15),
-        ("30 分钟", 30),
-        ("45 分钟", 45),
-        ("60 分钟", 60),
-        ("90 分钟", 90)
+    private struct TimerOption: Identifiable {
+        let id: Int
+        let label: String
+        let minutes: Int?
+    }
+
+    private let options: [TimerOption] = [
+        TimerOption(id: 0, label: "关闭定时", minutes: nil),
+        TimerOption(id: 15, label: "15 分钟", minutes: 15),
+        TimerOption(id: 30, label: "30 分钟", minutes: 30),
+        TimerOption(id: 45, label: "45 分钟", minutes: 45),
+        TimerOption(id: 60, label: "60 分钟", minutes: 60),
+        TimerOption(id: 90, label: "90 分钟", minutes: 90)
     ]
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(options, id: \.0) { label, minutes in
+                ForEach(options) { option in
+                    let label = option.label
+                    let minutes = option.minutes
                     Button {
                         playback.setSleepTimer(minutes: minutes)
                         dismiss()

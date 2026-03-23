@@ -68,6 +68,7 @@ final class WiFiTransferServer: ObservableObject {
         isRunning = false
         connectionState = .idle
         serverAddress = nil
+        authAttempts.removeAll()
     }
 
     func regeneratePassword() -> String {
@@ -323,14 +324,16 @@ final class WiFiTransferServer: ObservableObject {
     // MARK: - Auth
 
     private func handleAuth(data: Data, connection: NWConnection, ip: String) {
-        if let cooldown = cooldownUntil, Date() < cooldown {
+        var record = authAttempts[ip] ?? (attempts: 0, cooldownUntil: nil)
+
+        if let cooldown = record.cooldownUntil, Date() < cooldown {
             sendJSON(connection: connection, status: 429, body: #"{"error":"请稍后再试"}"#)
             return
         }
 
-        if let cooldown = cooldownUntil, Date() >= cooldown {
-            failedAttempts = 0
-            cooldownUntil = nil
+        if let cooldown = record.cooldownUntil, Date() >= cooldown {
+            record = (attempts: 0, cooldownUntil: nil)
+            authAttempts[ip] = record
         }
 
         guard let body = extractBody(from: data),
@@ -340,24 +343,32 @@ final class WiFiTransferServer: ObservableObject {
         }
 
         if passwordEnabled && pwd != (password ?? "") {
-            failedAttempts += 1
-            if failedAttempts >= 5 {
-                cooldownUntil = Date().addingTimeInterval(30)
-                securityAlert = .bruteForceDetected(ip: ip, attemptCount: failedAttempts)
+            record.attempts += 1
+            if record.attempts >= 5 {
+                record.cooldownUntil = Date().addingTimeInterval(30)
+                securityAlert = .bruteForceDetected(ip: ip, attemptCount: record.attempts)
+                authAttempts[ip] = record
                 sendJSON(connection: connection, status: 429, body: #"{"error":"密码错误次数过多，请等待30秒"}"#)
             } else {
+                authAttempts[ip] = record
                 sendJSON(connection: connection, status: 401, body: #"{"error":"密码错误"}"#)
             }
             return
         }
 
-        failedAttempts = 0
+        authAttempts[ip] = (attempts: 0, cooldownUntil: nil)
         sendJSON(connection: connection, status: 200, body: #"{"success":true}"#)
     }
 
     // MARK: - Upload (fallback for small in-memory requests)
 
     private func handleUpload(data: Data, connection: NWConnection) {
+        if let clStr = extractHeader(from: data, key: "Content-Length"),
+           let cl = Int(clStr), cl > Self.maxUploadBytes {
+            sendJSON(connection: connection, status: 413, body: #"{"error":"文件过大，超过上传限制"}"#)
+            return
+        }
+
         guard let contentType = extractHeader(from: data, key: "Content-Type"),
               contentType.contains("multipart/form-data") else {
             sendJSON(connection: connection, status: 400, body: #"{"error":"需要multipart/form-data"}"#)
@@ -381,6 +392,7 @@ final class WiFiTransferServer: ObservableObject {
             return
         }
         let parts = bodyData.components(separatedBy: boundaryData)
+        var savedFiles: [(name: String, url: URL)] = []
 
         for part in parts {
             guard let headerEnd = part.range(of: headerSeparator) else { continue }
@@ -397,18 +409,21 @@ final class WiFiTransferServer: ObservableObject {
             let destURL = SandboxPathManager.wifiUploadURL.appendingPathComponent(filename)
             do {
                 try fileData.write(to: destURL)
+                savedFiles.append((name: filename, url: destURL))
             } catch {
-                AppLogger.shared.error(error, context: "WiFi上传文件写入失败: \(filename)")
-                sendJSON(connection: connection, status: 500, body: #"{"error":"文件写入失败"}"#)
-                return
+                log.error(error, context: "WiFi上传文件写入失败: \(filename)")
             }
-
-            connectionState = .idle
-            sendJSON(connection: connection, status: 200, body: #"{"success":true}"#)
-            onFileReceived?(filename, destURL)
-            return
         }
-        sendJSON(connection: connection, status: 400, body: #"{"error":"未找到文件"}"#)
+
+        connectionState = .idle
+        if savedFiles.isEmpty {
+            sendJSON(connection: connection, status: 400, body: #"{"error":"未找到文件"}"#)
+        } else {
+            sendJSON(connection: connection, status: 200, body: #"{"success":true}"#)
+            for file in savedFiles {
+                onFileReceived?(file.name, file.url)
+            }
+        }
     }
 
     // MARK: - HTTP Response
