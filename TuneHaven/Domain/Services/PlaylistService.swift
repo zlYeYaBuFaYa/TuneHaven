@@ -61,7 +61,7 @@ final class PlaylistService: ObservableObject {
     }
 
     func setCustomCover(playlistId: UUID, imageData: Data) async throws {
-        let imagePath = try coverProcessor.processPlaylistCover(imageData: imageData, playlistId: playlistId)
+        let imagePath = try await coverProcessor.processPlaylistCover(imageData: imageData, playlistId: playlistId)
         try await repo.setCustomCover(playlistId: playlistId, imagePath: imagePath)
         await loadPlaylists()
     }
@@ -72,7 +72,7 @@ final class PlaylistService: ObservableObject {
         guard playlist.autoCoverHash != currentHash else { return }
 
         do {
-            let path = try coverProcessor.generatePlaylistGridCover(
+            let path = try await coverProcessor.generatePlaylistGridCover(
                 coverPaths: topSongs.map(\.coverImagePath),
                 playlistId: playlist.id
             )

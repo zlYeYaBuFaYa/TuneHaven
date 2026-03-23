@@ -17,6 +17,8 @@ struct ThemeStyle: Identifiable, Equatable {
     let visualConfig: ThemeVisualConfig
     let previewGradient: GradientPair
 
+    /// 按 identity（id）判等：同一 id 视为同一主题。palette/visualConfig 在运行时不会被修改，
+    /// ThemeStyle 为值类型且仅通过 ThemeRegistry 分发，保证同 id 实例内容一致。
     static func == (lhs: ThemeStyle, rhs: ThemeStyle) -> Bool {
         lhs.id == rhs.id
     }

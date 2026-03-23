@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - AppTab（TDD Section 9，含 settings 第三 Tab）
 enum AppTab: Int, CaseIterable {
     case library = 0
     case playlist = 1
@@ -13,7 +12,7 @@ final class AppRouter: ObservableObject {
     @Published var playlistPath = NavigationPath()
     @Published var settingsPath = NavigationPath()
     @Published var selectedTab: AppTab = .library
-    @Published var sheet: SheetDestination? = nil
+    @Published var sheet: SheetDestination?
     @Published var isPlayerPresented = false
 
     func navigate(to destination: AppDestination, in tab: AppTab? = nil) {

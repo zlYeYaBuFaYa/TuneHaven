@@ -33,6 +33,7 @@ enum AppError: LocalizedError {
     case lyricsImportFailed(String)
     case lyricsDeleteFailed(String)
     case fileSystemError(String)
+    case imageProcessingFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -68,6 +69,7 @@ enum AppError: LocalizedError {
         case .lyricsImportFailed: return "歌词导入失败，请确认文件格式正确"
         case .lyricsDeleteFailed: return "歌词删除失败"
         case .fileSystemError(let msg): return "文件系统错误：\(msg)"
+        case .imageProcessingFailed(let msg): return "图片处理失败：\(msg)"
         }
     }
 
@@ -105,6 +107,7 @@ enum AppError: LocalizedError {
         case .lyricsImportFailed: return "LYR003"
         case .lyricsDeleteFailed: return "LYR004"
         case .fileSystemError: return "FS001"
+        case .imageProcessingFailed: return "IMG001"
         }
     }
 }
@@ -132,7 +135,7 @@ extension AppError: Equatable {
         case (.permissionMediaLibrary, .permissionMediaLibrary): return true
         case (.storageFull, .storageFull): return true
         case (.databaseError(let a), .databaseError(let b)):
-            return a.localizedDescription == b.localizedDescription
+            return String(describing: a) == String(describing: b)
         case (.playlistNameDuplicate, .playlistNameDuplicate): return true
         case (.playlistNameEmpty, .playlistNameEmpty): return true
         case (.playQueueFull, .playQueueFull): return true
@@ -146,14 +149,18 @@ extension AppError: Equatable {
         case (.lyricsImportFailed(let a), .lyricsImportFailed(let b)): return a == b
         case (.lyricsDeleteFailed(let a), .lyricsDeleteFailed(let b)): return a == b
         case (.fileSystemError(let a), .fileSystemError(let b)): return a == b
+        case (.imageProcessingFailed(let a), .imageProcessingFailed(let b)): return a == b
         default: return false
         }
     }
 }
 
 // MARK: - CaseIterable
-// 含关联值的枚举无法由编译器合成 CaseIterable；此处为测试与完整性检查提供代表性实例，新增 case 时须同步更新。
 extension AppError: CaseIterable {
+    /// 含关联值的枚举无法由编译器合成 CaseIterable；此处为测试与完整性检查提供代表性实例。
+    /// `expectedCaseCount` 与此列表长度在单元测试中交叉验证，新增 case 时两处须同步更新。
+    static let expectedCaseCount = 33
+
     static var allCases: [AppError] {
         let id = UUID()
         return [
@@ -189,131 +196,7 @@ extension AppError: CaseIterable {
             .lyricsImportFailed("test"),
             .lyricsDeleteFailed("test"),
             .fileSystemError("test"),
+            .imageProcessingFailed("test"),
         ]
-    }
-}
-
-// MARK: - FileLogWriter (shared file-append + rotation logic)
-
-private final class FileLogWriter {
-    private let writeQueue: DispatchQueue
-    private let fileURL: () -> URL
-    private let maxFileSize: Int64
-    private let backupSuffix: String
-
-    static let dateFormatter: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f
-    }()
-
-    static func isoDate() -> String {
-        dateFormatter.string(from: Date())
-    }
-
-    init(queueLabel: String, fileURL: @escaping () -> URL, maxFileSize: Int64 = 5 * 1024 * 1024, backupSuffix: String = ".old") {
-        self.writeQueue = DispatchQueue(label: queueLabel, qos: .utility)
-        self.fileURL = fileURL
-        self.maxFileSize = maxFileSize
-        self.backupSuffix = backupSuffix
-    }
-
-    func write(_ entry: String) {
-        guard let data = entry.data(using: .utf8) else { return }
-        let url = fileURL()
-        writeQueue.async {
-            self.rotateIfNeeded(url: url)
-            if let handle = try? FileHandle(forWritingTo: url) {
-                handle.seekToEndOfFile()
-                handle.write(data)
-                try? handle.close()
-            } else {
-                try? data.write(to: url)
-            }
-        }
-    }
-
-    private func rotateIfNeeded(url: URL) {
-        let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
-        if size > maxFileSize {
-            let backupURL = url.deletingLastPathComponent().appendingPathComponent(url.lastPathComponent + backupSuffix)
-            try? FileManager.default.removeItem(at: backupURL)
-            try? FileManager.default.moveItem(at: url, to: backupURL)
-        }
-    }
-}
-
-// MARK: - ErrorLogger
-
-final class ErrorLogger {
-    static let shared = ErrorLogger()
-
-    private let writer = FileLogWriter(
-        queueLabel: "com.tunehaven.errorlogger",
-        fileURL: { SandboxPathManager.documentsURL.appendingPathComponent("error.log") }
-    )
-
-    private init() {}
-
-    func log(_ error: AppError, context: String, file: String = #file, line: Int = #line) {
-        let shortFile = (file as NSString).lastPathComponent
-        let entry = "[\(FileLogWriter.isoDate())] [\(error.errorCode)] \(context) - \(error.localizedDescription) at \(shortFile):\(line)\n"
-        writer.write(entry)
-    }
-
-    func logGeneric(_ error: Error, context: String) {
-        let entry = "[\(FileLogWriter.isoDate())] [GEN] \(context) - \(error.localizedDescription)\n"
-        writer.write(entry)
-    }
-}
-
-// MARK: - AppLogger
-
-enum LogLevel: String {
-    case debug = "DEBUG"
-    case info  = "INFO"
-    case error = "ERROR"
-}
-
-final class AppLogger {
-    static let shared = AppLogger()
-
-    private let writer = FileLogWriter(
-        queueLabel: "com.tunehaven.applogger",
-        fileURL: { SandboxPathManager.documentsURL.appendingPathComponent("app.log") }
-    )
-
-    private init() {}
-
-    func debug(_ message: String, file: String = #file, function: String = #function) {
-        writeLog(level: .debug, message: message, file: file, function: function)
-    }
-
-    func info(_ message: String, file: String = #file, function: String = #function) {
-        writeLog(level: .info, message: message, file: file, function: function)
-    }
-
-    func error(_ message: String, file: String = #file, function: String = #function) {
-        writeLog(level: .error, message: message, file: file, function: function)
-    }
-
-    func error(_ err: Error, context: String, file: String = #file, function: String = #function) {
-        let msg = "\(context) - \(err.localizedDescription)"
-        writeLog(level: .error, message: msg, file: file, function: function)
-    }
-
-    func error(_ err: AppError, context: String, file: String = #file, function: String = #function, line: Int = #line) {
-        let msg = "[\(err.errorCode)] \(context) - \(err.localizedDescription)"
-        writeLog(level: .error, message: msg, file: file, function: function)
-        ErrorLogger.shared.log(err, context: context, file: file, line: line)
-    }
-
-    private func writeLog(level: LogLevel, message: String, file: String, function: String) {
-        let shortFile = (file as NSString).lastPathComponent.replacingOccurrences(of: ".swift", with: "")
-        let entry = "[\(FileLogWriter.isoDate())] [\(level.rawValue)] [\(shortFile).\(function)] \(message)\n"
-        #if DEBUG
-        print(entry, terminator: "")
-        #endif
-        writer.write(entry)
     }
 }

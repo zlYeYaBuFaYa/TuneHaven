@@ -1,13 +1,14 @@
 import Foundation
 import UIKit
+import Combine
 @testable import TuneHaven
 
 // MARK: - Mock Infrastructure
 
 final class MockUserPreferences: UserPreferencesProviding {
-    var playMode: Int = 0
+    var playMode: PlayMode = .sequential
     var playbackSpeed: Float = 1.0
-    var speedMemoryMode: Int = 0
+    var speedMemoryMode: SpeedMemoryMode = .global
     var autoMatchLyrics: Bool = true
     var lastPlayedSongId: String?
     var songDislikes: [String: Int] = [:]
@@ -25,24 +26,23 @@ final class MockImageCacheManaging: ImageCacheManaging {
     func cacheSizeAsync() async -> Int64 { mockCacheSize }
 }
 
-@MainActor
 final class MockCoverImageProcessing: CoverImageProcessing {
     var lastSongCoverData: Data?
     var songCoverResult: String? = "mock_cover.jpg"
     var playlistCoverResult: String = "mock_playlist.jpg"
     var gridCoverResult: String = "mock_grid.jpg"
 
-    func processSongCover(data: Data, songId: UUID) throws -> String? {
+    func processSongCover(data: Data, songId: UUID) async throws -> String? {
         lastSongCoverData = data
         return songCoverResult
     }
-    func processPlaylistCover(imageData: Data, playlistId: UUID) throws -> String {
+    func processPlaylistCover(imageData: Data, playlistId: UUID) async throws -> String {
         guard UIImage(data: imageData) != nil else {
-            throw AppError.importFileCorrupted("无效的图片数据")
+            throw AppError.imageProcessingFailed("无效的图片数据")
         }
         return playlistCoverResult
     }
-    func generatePlaylistGridCover(coverPaths: [String?], playlistId: UUID) throws -> String {
+    func generatePlaylistGridCover(coverPaths: [String?], playlistId: UUID) async throws -> String {
         gridCoverResult
     }
 }
@@ -61,6 +61,18 @@ final class MockFileStorageProviding: FileStorageProviding {
     func fileSize(at url: URL) -> Int64 { 1024 }
     func createDirectoryIfNeeded(at url: URL) throws {}
     func removeItem(at url: URL) throws {}
+    func musicFileURL(relativePath: String) -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(relativePath)
+    }
+    func lyricsFileURL(relativePath: String) -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(relativePath)
+    }
+    var lyricsDirectoryURL: URL {
+        URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("Lyrics")
+    }
+    func fileExists(at url: URL) -> Bool { fileExistsResult }
+    func isReadableFile(at url: URL) -> Bool { fileExistsResult }
+    func readStringContents(at url: URL) -> String? { nil }
 }
 
 final class MockAudioMetadataParsing: AudioMetadataParsing {
@@ -107,9 +119,42 @@ final class MockNowPlayingManaging: NowPlayingManaging {
     }
 }
 
+// MARK: - Mock Audio Engine
+
+@MainActor
+final class MockAudioEngine: AudioEngineProtocol {
+    var currentTime: TimeInterval = 0
+    var duration: TimeInterval = 180
+    var state: PlaybackState = .idle
+
+    var statePublisher: AnyPublisher<PlaybackState, Never> { stateSubject.eraseToAnyPublisher() }
+    var playbackEndedPublisher: AnyPublisher<Void, Never> { playbackEndedSubject.eraseToAnyPublisher() }
+    var timeUpdatePublisher: AnyPublisher<(currentTime: TimeInterval, duration: TimeInterval), Never> { timeUpdateSubject.eraseToAnyPublisher() }
+
+    let stateSubject = PassthroughSubject<PlaybackState, Never>()
+    let playbackEndedSubject = PassthroughSubject<Void, Never>()
+    let timeUpdateSubject = PassthroughSubject<(currentTime: TimeInterval, duration: TimeInterval), Never>()
+
+    var loadCalled = false
+    var playCalled = false
+    var pauseCalled = false
+    var stopCalled = false
+
+    func load(url: URL) async { loadCalled = true; state = .paused }
+    func play() { playCalled = true; state = .playing }
+    func pause() { pauseCalled = true; state = .paused }
+    func stop() { stopCalled = true; state = .idle }
+    func seek(to time: TimeInterval) { currentTime = time }
+    func skip(by seconds: TimeInterval) { currentTime += seconds }
+    func setSpeed(_ speed: Float) {}
+    func togglePlayPause() {
+        if case .playing = state { pause() } else { play() }
+    }
+}
+
 // MARK: - Mock API Clients
 
-final class MockLRCLibAPIClient: LRCLibAPIClientProtocol {
+final class MockLRCLibAPIClient: LyricsAPIProviding {
     var getResult: LRCLibTrack?
     var searchResults: [LRCLibTrack] = []
 
@@ -119,6 +164,13 @@ final class MockLRCLibAPIClient: LRCLibAPIClientProtocol {
     func search(trackName: String, artistName: String?) async throws -> [LRCLibTrack] {
         searchResults
     }
+}
+
+// MARK: - Mock Embedded Lyrics Reader
+
+final class MockEmbeddedLyricsReader: EmbeddedLyricsReading {
+    var result: String?
+    func readEmbeddedLyrics(from fileURL: URL) async -> String? { result }
 }
 
 // MARK: - Mock Repositories
@@ -133,17 +185,17 @@ final class MockSearchHistoryRepository: SearchHistoryRepository {
     func fetchHistory(tab: LibraryTab, limit: Int) async -> [SearchHistoryItem] {
         Array((tabHistory[tab] ?? []).prefix(limit))
     }
-    func saveHistory(keyword: String, tab: LibraryTab) async {
+    func saveHistory(keyword: String, tab: LibraryTab) async throws {
         let item = SearchHistoryItem(id: UUID(), keyword: keyword, searchedAt: Date())
         tabHistory[tab, default: []].append(item)
     }
-    func deleteHistory(id: UUID) async {
+    func deleteHistory(id: UUID) async throws {
         for tab in tabHistory.keys {
             tabHistory[tab]?.removeAll { $0.id == id }
         }
     }
-    func clearHistory() async { tabHistory.removeAll() }
-    func clearHistory(tab: LibraryTab) async {
+    func clearHistory() async throws { tabHistory.removeAll() }
+    func clearHistory(tab: LibraryTab) async throws {
         tabHistory[tab] = nil
     }
 }

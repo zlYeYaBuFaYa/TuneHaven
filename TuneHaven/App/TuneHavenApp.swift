@@ -32,7 +32,7 @@ struct TuneHavenApp: App {
                         .environmentObject(container.audioEngine)
                         .environmentObject(container.webDAVService)
                         .environmentObject(container.lyricsService)
-                        .environment(\.themePalette, container.themeManager.palette)
+                        .injectThemePalette(from: container.themeManager)
                         .snackbar(container.snackbar)
                 } else if let error = initError {
                     VStack(spacing: 16) {
@@ -52,7 +52,6 @@ struct TuneHavenApp: App {
                         .progressViewStyle(.circular)
                 }
             }
-            .preferredColorScheme(container.themeManager.colorScheme)
             .task { await initialize() }
             .onOpenURL { url in
                 handleIncomingURL(url)
@@ -67,7 +66,7 @@ struct TuneHavenApp: App {
                 case .active:
                     container.playbackService.checkSleepTimerOnForeground()
                 case .background:
-                    AudioSessionManager.shared.ensureActive()
+                    container.audioSessionManager.ensureActive()
                 default:
                     break
                 }

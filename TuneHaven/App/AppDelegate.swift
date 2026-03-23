@@ -18,8 +18,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     private func configureEarlyAppearance() {
         let registry = ThemeRegistry.shared
         if registry.allThemes.isEmpty { registry.bootstrap() }
-        let styleId = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) ?? ThemeRegistry.shared.defaultTheme.id
-        let style = registry.theme(for: styleId) ?? registry.defaultTheme
+        let style = registry.resolveCurrentStyle()
 
         let bgColor = UIColor(style.palette.background)
         let surfaceColor = UIColor(style.palette.surface)
@@ -43,8 +42,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     private func configureAudioSession() {
-        let success = AudioSessionManager.shared.configure()
-        AppLogger.shared.info("[AppDelegate] Audio session \(success ? "OK" : "FAILED")")
+        var success = AudioSessionManager.shared.configure()
+        if !success {
+            AppLogger.shared.error("[AppDelegate] Audio session FAILED, retrying...")
+            success = AudioSessionManager.shared.configure()
+        }
+        AppLogger.shared.info("[AppDelegate] Audio session \(success ? "OK" : "FAILED after retry")")
     }
 
     private func verifyBackgroundAudioEntitlement() {

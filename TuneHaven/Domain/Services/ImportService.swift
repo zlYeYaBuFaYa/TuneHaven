@@ -89,10 +89,11 @@ final class ImportService: ObservableObject, FileImporting {
     }
 
     func processAppleMusicFile(tempURL: URL, originalFilename: String, title: String?, artist: String?, album: String?, coverData: Data?) async -> SingleImportResult {
-        return await processFile(url: tempURL, overrideName: originalFilename, titleOverride: title, artistOverride: artist, albumOverride: album, coverDataOverride: coverData)
+        let overrides = ImportOverrides(title: title, artist: artist, album: album, coverData: coverData)
+        return await processFile(url: tempURL, overrideName: originalFilename, overrides: overrides)
     }
 
-    private func processFile(url: URL, overrideName: String? = nil, titleOverride: String? = nil, artistOverride: String? = nil, albumOverride: String? = nil, coverDataOverride: Data? = nil) async -> SingleImportResult {
+    private func processFile(url: URL, overrideName: String? = nil, overrides: ImportOverrides = ImportOverrides()) async -> SingleImportResult {
         let fileName = overrideName ?? url.lastPathComponent
         let ext = (fileName as NSString).pathExtension.lowercased()
         log.info("[Import] processFile start: \(fileName) ext=\(ext)")
@@ -130,11 +131,11 @@ final class ImportService: ObservableObject, FileImporting {
         let parsed = await metadataParser.parse(url: url)
         log.info("[Import] 元数据解析完成: title=\(parsed.title) artist=\(parsed.artist) duration=\(parsed.duration)")
 
-        let finalTitle = titleOverride ?? parsed.title
-        let finalArtist = artistOverride ?? parsed.artist
-        let finalAlbum = albumOverride ?? parsed.album
-        let finalCoverData = coverDataOverride ?? parsed.coverImageData
-        let isIncomplete = parsed.isIncomplete && titleOverride == nil
+        let finalTitle = overrides.title ?? parsed.title
+        let finalArtist = overrides.artist ?? parsed.artist
+        let finalAlbum = overrides.album ?? parsed.album
+        let finalCoverData = overrides.coverData ?? parsed.coverImageData
+        let isIncomplete = parsed.isIncomplete && overrides.title == nil
 
         let relPath: String
         do {
@@ -146,9 +147,9 @@ final class ImportService: ObservableObject, FileImporting {
         }
 
         let songId = UUID()
-        var coverImagePath: String? = nil
+        var coverImagePath: String?
         if let coverData = finalCoverData {
-            coverImagePath = try? coverProcessor.processSongCover(data: coverData, songId: songId)
+            coverImagePath = try? await coverProcessor.processSongCover(data: coverData, songId: songId)
         }
 
         let song = Song(

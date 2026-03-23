@@ -94,20 +94,22 @@ struct ThemeBackgroundView: View {
         }
     }
 
+    private static let wallpaperOverlayOpacity: Double = 0.55
+    private static let wallpaperMaterialOpacity: Double = 0.3
+
     private func userWallpaperBackground(_ image: UIImage) -> some View {
-        let overlayColor: Color = palette.background.opacity(0.55)
-        return ZStack {
+        ZStack {
             Image(uiImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 .clipped()
 
-            overlayColor
+            palette.background.opacity(Self.wallpaperOverlayOpacity)
 
             Rectangle()
                 .fill(.ultraThinMaterial)
-                .opacity(0.3)
+                .opacity(Self.wallpaperMaterialOpacity)
         }
     }
 }
@@ -119,46 +121,40 @@ struct ThemedCardModifier: ViewModifier {
     @Environment(\.themePalette) private var palette
 
     func body(content: Content) -> some View {
-        let config = themeManager.currentStyle.visualConfig
-        switch config.cardStyle {
+        let visual = themeManager.currentStyle.visualConfig
+        let card = visual.cardConfig
+        let shape = RoundedRectangle(cornerRadius: card.cornerRadius)
+
+        switch visual.cardStyle {
         case .standard:
             content
-                .background(palette.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .background(palette.surface.opacity(card.backgroundOpacity))
+                .clipShape(shape)
         case .rounded:
             content
-                .background(palette.surface.opacity(0.9))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(palette.primary.opacity(0.15), lineWidth: 1.5)
-                )
+                .background(palette.surface.opacity(card.backgroundOpacity))
+                .clipShape(shape)
+                .overlay(shape.stroke(palette.primary.opacity(card.borderOpacity), lineWidth: card.borderWidth))
         case .glassmorphism:
             content
                 .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(palette.primary.opacity(0.2), lineWidth: 0.5)
-                )
-                .shadow(color: palette.primary.opacity(0.08), radius: 8, y: 2)
+                .clipShape(shape)
+                .overlay(shape.stroke(palette.primary.opacity(card.borderOpacity), lineWidth: card.borderWidth))
+                .shadow(color: palette.primary.opacity(card.shadowOpacity), radius: card.shadowRadius, y: card.shadowY)
         case .minimal:
             content
-                .background(palette.surface.opacity(0.7))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .background(palette.surface.opacity(card.backgroundOpacity))
+                .clipShape(shape)
         case .softFloat:
             content
-                .background(palette.surface.opacity(0.85))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .shadow(color: palette.primary.opacity(0.1), radius: 12, y: 4)
+                .background(palette.surface.opacity(card.backgroundOpacity))
+                .clipShape(shape)
+                .shadow(color: palette.primary.opacity(card.shadowOpacity), radius: card.shadowRadius, y: card.shadowY)
         case .frosted:
             content
                 .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(palette.separator.opacity(0.3), lineWidth: 0.5)
-                )
+                .clipShape(shape)
+                .overlay(shape.stroke(palette.separator.opacity(card.borderOpacity), lineWidth: card.borderWidth))
         }
     }
 }

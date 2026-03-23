@@ -37,6 +37,7 @@ extension ThemeStyle {
         visualConfig: ThemeVisualConfig(
             backgroundType: .solidColor,
             cardStyle: .glassmorphism,
+            cardConfig: .glassmorphism,
             fontStyle: .system,
             contentOverlayOpacity: 0.0,
             navigationBarBlur: true,

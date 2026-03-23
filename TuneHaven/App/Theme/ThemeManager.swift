@@ -48,14 +48,12 @@ final class ThemeManager: ObservableObject {
     init() {
         registry.bootstrap()
 
-        var styleId = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) ?? registry.defaultTheme.id
-
-        if let migrated = Self.legacyMapping[styleId] {
-            styleId = migrated
+        let rawId = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) ?? registry.defaultTheme.id
+        if let migrated = Self.legacyMapping[rawId] {
             UserDefaults.standard.set(migrated, forKey: AppStorageKey.themeStyle)
         }
 
-        currentStyle = registry.theme(for: styleId) ?? registry.defaultTheme
+        currentStyle = registry.resolveCurrentStyle()
     }
 
     var palette: ThemeColorPalette { currentStyle.palette }
@@ -128,6 +126,20 @@ final class ThemeManager: ObservableObject {
         }
     }
 
+    // MARK: - Reactive Palette Injection
+
+    struct PaletteInjector: ViewModifier {
+        @ObservedObject var themeManager: ThemeManager
+
+        func body(content: Content) -> some View {
+            content
+                .environment(\.themePalette, themeManager.palette)
+                .preferredColorScheme(themeManager.colorScheme)
+        }
+    }
+
+    // MARK: - Navigation Bar
+
     private static func updateNavigationBars(on vc: UIViewController?, bgColor: UIColor, surfaceColor: UIColor) {
         guard let vc = vc else { return }
         if let nav = vc as? UINavigationController {
@@ -146,5 +158,13 @@ final class ThemeManager: ObservableObject {
         if let presented = vc.presentedViewController {
             updateNavigationBars(on: presented, bgColor: bgColor, surfaceColor: surfaceColor)
         }
+    }
+}
+
+// MARK: - View Extension
+
+extension View {
+    func injectThemePalette(from themeManager: ThemeManager) -> some View {
+        modifier(ThemeManager.PaletteInjector(themeManager: themeManager))
     }
 }

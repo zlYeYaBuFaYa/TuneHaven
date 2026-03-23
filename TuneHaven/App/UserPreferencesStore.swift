@@ -7,9 +7,9 @@ final class UserPreferencesStore: UserPreferencesProviding {
         self.defaults = defaults
     }
 
-    var playMode: Int {
-        get { defaults.integer(forKey: AppStorageKey.playMode) }
-        set { defaults.set(newValue, forKey: AppStorageKey.playMode) }
+    var playMode: PlayMode {
+        get { PlayMode(rawValue: defaults.integer(forKey: AppStorageKey.playMode)) ?? .sequential }
+        set { defaults.set(newValue.rawValue, forKey: AppStorageKey.playMode) }
     }
 
     var playbackSpeed: Float {
@@ -20,8 +20,8 @@ final class UserPreferencesStore: UserPreferencesProviding {
         set { defaults.set(newValue, forKey: AppStorageKey.playbackSpeed) }
     }
 
-    var speedMemoryMode: Int {
-        defaults.integer(forKey: AppStorageKey.speedMemoryMode)
+    var speedMemoryMode: SpeedMemoryMode {
+        SpeedMemoryMode(rawValue: defaults.integer(forKey: AppStorageKey.speedMemoryMode)) ?? .global
     }
 
     var autoMatchLyrics: Bool {
@@ -43,10 +43,8 @@ final class UserPreferencesStore: UserPreferencesProviding {
         set { defaults.set(newValue, forKey: AppStorageKey.perSongSpeeds) }
     }
 
-    private static let cooldownKey = "lyrics_match_cooldown"
-
     var lyricsCooldown: [String: Double] {
-        get { defaults.dictionary(forKey: Self.cooldownKey) as? [String: Double] ?? [:] }
-        set { defaults.set(newValue, forKey: Self.cooldownKey) }
+        get { defaults.dictionary(forKey: AppStorageKey.lyricsCooldown) as? [String: Double] ?? [:] }
+        set { defaults.set(newValue, forKey: AppStorageKey.lyricsCooldown) }
     }
 }

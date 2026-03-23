@@ -10,6 +10,7 @@ final class AppDIContainer: ObservableObject {
 
     // MARK: - Infrastructure
     let audioEngine: AudioEngine
+    let audioSessionManager: AudioSessionManager
     let preferences: UserPreferencesProviding
     let coverProcessor: CoverImageProcessing
 
@@ -38,14 +39,22 @@ final class AppDIContainer: ObservableObject {
         )
     }()
     lazy var lyricsService: LyricsService = {
-        LyricsService(repo: songRepo, api: LRCLibAPIClient.shared, preferences: preferences)
+        LyricsService(
+            repo: songRepo,
+            api: LRCLibAPIClient.shared,
+            preferences: preferences,
+            fileStorage: FileStorageService.shared,
+            embeddedReader: EmbeddedLyricsReader()
+        )
     }()
 
     // MARK: - Shared Repositories
     private let songRepo: SongRepository
 
     init() {
+        let audioSession = AudioSessionManager.shared
         self.audioEngine = AudioEngine.shared
+        self.audioSessionManager = audioSession
 
         self.themeManager = ThemeManager()
         self.wallpaperManager = WallpaperManager()
@@ -76,7 +85,7 @@ final class AppDIContainer: ObservableObject {
             queueService: PlayQueueService(),
             libraryService: libraryService,
             engine: AudioEngine.shared,
-            audioSession: AudioSessionManager.shared,
+            audioSession: audioSession,
             nowPlaying: NowPlayingManager.shared,
             fileStorage: FileStorageService.shared,
             preferences: preferences,

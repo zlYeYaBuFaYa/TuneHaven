@@ -33,7 +33,14 @@ final class ThemeRegistry {
         themes.first { $0.id == id }
     }
 
+    func resolveCurrentStyle() -> ThemeStyle {
+        let styleId = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) ?? defaultTheme.id
+        return theme(for: styleId) ?? defaultTheme
+    }
+
+    #if DEBUG
     func reset() {
         themes.removeAll()
     }
+    #endif
 }

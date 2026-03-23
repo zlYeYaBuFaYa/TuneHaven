@@ -19,4 +19,5 @@ enum AppStorageKey {
     static let hasCompletedOnboarding = "has_completed_onboarding"
     static let songSortOption = "song_sort_option"
     static let songSortAscending = "song_sort_ascending"
+    static let lyricsCooldown = "lyrics_match_cooldown"
 }

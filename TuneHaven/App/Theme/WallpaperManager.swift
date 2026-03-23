@@ -5,7 +5,11 @@ import PhotosUI
 final class WallpaperManager: ObservableObject {
 
     @Published var currentWallpaper: UIImage?
-    @Published var useCustomWallpaper: Bool
+    @Published var useCustomWallpaper: Bool {
+        didSet { UserDefaults.standard.set(useCustomWallpaper, forKey: AppStorageKey.useCustomWallpaper) }
+    }
+
+    private static let maxWallpaperDimension: CGFloat = 2048
 
     private let wallpaperFileName = "user_wallpaper.jpg"
 
@@ -19,10 +23,10 @@ final class WallpaperManager: ObservableObject {
     @discardableResult
     func setWallpaper(_ image: UIImage) -> Bool {
         do {
-            try saveToDisk(image)
-            currentWallpaper = image
+            let resized = Self.constrainSize(image, maxDimension: Self.maxWallpaperDimension)
+            try saveToDisk(resized)
+            currentWallpaper = resized
             useCustomWallpaper = true
-            UserDefaults.standard.set(true, forKey: AppStorageKey.useCustomWallpaper)
             return true
         } catch {
             ErrorLogger.shared.logGeneric(error, context: "壁纸保存失败")
@@ -33,9 +37,10 @@ final class WallpaperManager: ObservableObject {
     func removeWallpaper() {
         currentWallpaper = nil
         useCustomWallpaper = false
-        UserDefaults.standard.set(false, forKey: AppStorageKey.useCustomWallpaper)
         deleteFromDisk()
     }
+
+    // MARK: - Private
 
     private var wallpaperURL: URL {
         SandboxPathManager.documentsURL.appendingPathComponent(wallpaperFileName)
@@ -55,5 +60,18 @@ final class WallpaperManager: ObservableObject {
 
     private func deleteFromDisk() {
         try? FileManager.default.removeItem(at: wallpaperURL)
+    }
+
+    private static func constrainSize(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let size = image.size
+        guard size.width > maxDimension || size.height > maxDimension else { return image }
+
+        let scale = maxDimension / max(size.width, size.height)
+        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
     }
 }
