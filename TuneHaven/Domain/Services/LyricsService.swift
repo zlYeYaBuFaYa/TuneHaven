@@ -1,21 +1,26 @@
-import AVFoundation
 import Foundation
 
 @MainActor
 final class LyricsService: ObservableObject {
     private let log = AppLogger.shared
     private let repo: SongRepository
-    private let api: LRCLibAPIClientProtocol
+    private let api: any LyricsAPIProviding
     private let preferences: UserPreferencesProviding
+    private let fileStorage: FileStorageProviding
+    private let embeddedReader: EmbeddedLyricsReading
 
     private static let cooldownDuration: TimeInterval = 7 * 24 * 3600
 
     init(repo: SongRepository,
-         api: LRCLibAPIClientProtocol,
-         preferences: UserPreferencesProviding) {
+         api: any LyricsAPIProviding,
+         preferences: UserPreferencesProviding,
+         fileStorage: FileStorageProviding,
+         embeddedReader: EmbeddedLyricsReading) {
         self.repo = repo
         self.api = api
         self.preferences = preferences
+        self.fileStorage = fileStorage
+        self.embeddedReader = embeddedReader
     }
 
     // MARK: - Load Lyrics (fallthrough chain)
@@ -23,7 +28,6 @@ final class LyricsService: ObservableObject {
     func loadLyrics(for song: Song) async -> LyricsData? {
         log.debug("加载歌词: \(song.title)")
 
-        // Step 1: DB-specified source
         var triedEmbedded = false
         if let source = song.lyricsSource {
             switch source {
@@ -36,20 +40,16 @@ final class LyricsService: ObservableObject {
             }
         }
 
-        // Step 2: Fallback — embedded (skip if already tried)
         if !triedEmbedded, let embedded = await loadEmbedded(song: song) { return embedded }
 
-        // Step 3: Fallback — external LRC files
         let songIdFile = "\(song.id.uuidString).lrc"
         if let data = loadFromFile(relativePath: songIdFile) { return data }
         if let data = loadExternalLRC(songTitle: song.title) { return data }
 
-        // Step 4: Online auto-match
         if preferences.autoMatchLyrics {
             if let data = await autoMatchOnline(for: song) { return data }
         }
 
-        // Step 5: Nothing found
         log.debug("歌词未找到: \(song.title)")
         return nil
     }
@@ -59,23 +59,19 @@ final class LyricsService: ObservableObject {
     func autoMatchOnline(for song: Song) async -> LyricsData? {
         guard !isCooldownActive(for: song.id) else { return nil }
 
-        // Level 1: 精确匹配（歌名+艺术家+专辑+时长）
         if let data = try? await exactMatch(song: song) { return data }
 
         do {
-            // Level 2: search API — 歌名 + 艺术家
             if let data = try await searchMatch(title: song.title, artist: song.artist, songId: song.id, songTitle: song.title) {
                 return data
             }
 
-            // Level 3: search API — 仅歌名（跳过已知艺术家为空的情况）
             if song.artist != SongDefaults.unknownArtist {
                 if let data = try await searchMatch(title: song.title, artist: nil, songId: song.id, songTitle: song.title) {
                     return data
                 }
             }
 
-            // Level 4: search API — 简化歌名（去除括号、feat. 等）
             let simplified = simplifyTitle(song.title)
             if simplified != song.title && !simplified.isEmpty {
                 if let data = try await searchMatch(title: simplified, artist: nil, songId: song.id, songTitle: song.title) {
@@ -113,11 +109,7 @@ final class LyricsService: ObservableObject {
         guard let track, !track.instrumental, let lyrics = track.bestLyrics else { return nil }
         cleanupOldLRC(songTitle: songTitle)
         try await saveLyricsFile(lyrics, for: songId)
-        let lines = parseLRC(lyrics)
-        if lines.isEmpty {
-            return LyricsData(source: .file, lines: buildPlainLines(from: lyrics), rawText: lyrics)
-        }
-        return LyricsData(source: .file, lines: lines, rawText: lyrics)
+        return buildLyricsData(from: lyrics, source: .file)
     }
 
     private func simplifyTitle(_ title: String) -> String {
@@ -156,17 +148,14 @@ final class LyricsService: ObservableObject {
         let didAccess = url.startAccessingSecurityScopedResource()
         if !didAccess {
             log.error("startAccessingSecurityScopedResource 返回 false: \(url.lastPathComponent)，尝试直接读取")
-            guard FileManager.default.isReadableFile(atPath: url.path) else {
+            guard fileStorage.isReadableFile(at: url) else {
                 throw AppError.lyricsImportFailed("无法访问文件（安全范围授权失败）")
             }
         }
         defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
 
-        let content: String
-        do {
-            content = try String(contentsOf: url, encoding: .utf8)
-        } catch {
-            throw AppError.lyricsImportFailed(error.localizedDescription)
+        guard let content = fileStorage.readStringContents(at: url) else {
+            throw AppError.lyricsImportFailed("文件读取失败")
         }
 
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -181,19 +170,18 @@ final class LyricsService: ObservableObject {
     // MARK: - Delete Lyrics
 
     func deleteLyrics(for song: Song) async throws {
-        let fm = FileManager.default
         let songIdFile = "\(song.id.uuidString).lrc"
-        let fileURL = SandboxPathManager.lyricsFileURL(relativePath: songIdFile)
-        if fm.fileExists(atPath: fileURL.path) {
+        let fileURL = fileStorage.lyricsFileURL(relativePath: songIdFile)
+        if fileStorage.fileExists(at: fileURL) {
             do {
-                try fm.removeItem(at: fileURL)
+                try fileStorage.removeItem(at: fileURL)
             } catch {
                 throw AppError.lyricsDeleteFailed(error.localizedDescription)
             }
         }
         if let path = song.lyricsPath, path != songIdFile {
-            let oldURL = SandboxPathManager.lyricsFileURL(relativePath: path)
-            try? fm.removeItem(at: oldURL)
+            let oldURL = fileStorage.lyricsFileURL(relativePath: path)
+            try? fileStorage.removeItem(at: oldURL)
         }
 
         do {
@@ -206,19 +194,18 @@ final class LyricsService: ObservableObject {
     // MARK: - Query
 
     nonisolated func hasExternalLyrics(for songId: UUID) -> Bool {
-        let fileURL = SandboxPathManager.lyricsFileURL(relativePath: "\(songId.uuidString).lrc")
-        return FileManager.default.fileExists(atPath: fileURL.path)
+        let fileURL = fileStorage.lyricsFileURL(relativePath: "\(songId.uuidString).lrc")
+        return fileStorage.fileExists(at: fileURL)
     }
 
     // MARK: - LRC Parsing
 
-    // swiftlint:disable:next force_try
-    private static let lrcRegex: NSRegularExpression = {
-        try! NSRegularExpression(pattern: #"\[(\d{1,3}):(\d{2})\.(\d{2,3})\](.*)"#)
+    private static let lrcRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: #"\[(\d{1,3}):(\d{2})\.(\d{2,3})\](.*)"#)
     }()
 
     nonisolated func parseLRC(_ content: String) -> [LyricsLine] {
-        let regex = Self.lrcRegex
+        guard let regex = Self.lrcRegex else { return [] }
         var lines: [LyricsLine] = []
         let rawLines = content.components(separatedBy: "\n")
         for line in rawLines {
@@ -247,58 +234,43 @@ final class LyricsService: ObservableObject {
     // MARK: - Private: Load Methods
 
     private func loadEmbedded(song: Song) async -> LyricsData? {
-        let url = SandboxPathManager.musicFileURL(relativePath: song.fileRelativePath)
-        let asset = AVURLAsset(url: url)
-        guard let metadata = try? await asset.load(.metadata) else { return nil }
-
-        for item in metadata {
-            guard let id = item.identifier else { continue }
-            if id == .id3MetadataUnsynchronizedLyric {
-                if let text = try? await item.load(.stringValue), !text.isEmpty {
-                    let lines = parseLRC(text)
-                    if lines.isEmpty {
-                        let plainLines = buildPlainLines(from: text)
-                        return LyricsData(source: .embedded, lines: plainLines, rawText: text)
-                    }
-                    return LyricsData(source: .embedded, lines: lines, rawText: text)
-                }
-            }
-        }
-        return nil
+        let url = fileStorage.musicFileURL(relativePath: song.fileRelativePath)
+        guard let text = await embeddedReader.readEmbeddedLyrics(from: url), !text.isEmpty else { return nil }
+        return buildLyricsData(from: text, source: .embedded)
     }
 
     private func loadFromFile(relativePath: String) -> LyricsData? {
-        let url = SandboxPathManager.lyricsFileURL(relativePath: relativePath)
-        guard let content = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-        let lines = parseLRC(content)
-        if lines.isEmpty && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let plainLines = buildPlainLines(from: content)
-            return LyricsData(source: .file, lines: plainLines, rawText: content)
-        }
-        return LyricsData(source: .file, lines: lines, rawText: content)
+        let url = fileStorage.lyricsFileURL(relativePath: relativePath)
+        guard let content = fileStorage.readStringContents(at: url) else { return nil }
+        return buildLyricsData(from: content, source: .file)
     }
 
     private func loadExternalLRC(songTitle: String) -> LyricsData? {
         let candidates = ["\(songTitle).lrc"]
         for name in candidates {
-            let url = SandboxPathManager.lyricsURL.appendingPathComponent(name)
-            if let content = try? String(contentsOf: url, encoding: .utf8) {
-                let lines = parseLRC(content)
-                if lines.isEmpty && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    let plainLines = buildPlainLines(from: content)
-                    return LyricsData(source: .file, lines: plainLines, rawText: content)
-                }
-                return LyricsData(source: .file, lines: lines, rawText: content)
-            }
+            let url = fileStorage.lyricsDirectoryURL.appendingPathComponent(name)
+            guard let content = fileStorage.readStringContents(at: url) else { continue }
+            if let data = buildLyricsData(from: content, source: .file) { return data }
         }
         return nil
+    }
+
+    // MARK: - Private: Shared Parsing
+
+    private func buildLyricsData(from content: String, source: LyricsSource) -> LyricsData? {
+        let lines = parseLRC(content)
+        if lines.isEmpty && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return LyricsData(source: source, lines: buildPlainLines(from: content), rawText: content)
+        }
+        if lines.isEmpty { return nil }
+        return LyricsData(source: source, lines: lines, rawText: content)
     }
 
     // MARK: - Private: File Operations
 
     private func saveLyricsFile(_ content: String, for songId: UUID) async throws {
         let relativePath = "\(songId.uuidString).lrc"
-        let fileURL = SandboxPathManager.lyricsFileURL(relativePath: relativePath)
+        let fileURL = fileStorage.lyricsFileURL(relativePath: relativePath)
 
         do {
             try content.write(to: fileURL, atomically: true, encoding: .utf8)
@@ -314,8 +286,8 @@ final class LyricsService: ObservableObject {
     }
 
     private func cleanupOldLRC(songTitle: String) {
-        let oldURL = SandboxPathManager.lyricsURL.appendingPathComponent("\(songTitle).lrc")
-        try? FileManager.default.removeItem(at: oldURL)
+        let oldURL = fileStorage.lyricsDirectoryURL.appendingPathComponent("\(songTitle).lrc")
+        try? fileStorage.removeItem(at: oldURL)
     }
 
     private func buildPlainLines(from text: String) -> [LyricsLine] {

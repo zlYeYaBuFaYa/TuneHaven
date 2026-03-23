@@ -24,8 +24,6 @@ struct Song: Identifiable, Hashable {
     var favoriteDate: Date?
     var lastPlayedDate: Date?
 
-    static func == (lhs: Song, rhs: Song) -> Bool { lhs.id == rhs.id }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 enum LyricsSource: Int16, Codable {

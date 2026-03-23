@@ -44,8 +44,8 @@ final class WebDAVService: ObservableObject {
         loadAccounts()
     }
 
-    func deleteAccount(id: UUID) {
-        accountStore.deleteAccount(id: id)
+    func deleteAccount(id: UUID) throws {
+        try accountStore.deleteAccount(id: id)
         loadAccounts()
     }
 
@@ -81,7 +81,7 @@ final class WebDAVService: ObservableObject {
             password: password,
             trustSelfSignedCert: account.trustSelfSignedCert
         )
-        accountStore.updateLastConnected(accountId: account.id)
+        try? accountStore.updateLastConnected(accountId: account.id)
         loadAccounts()
         try await loadDirectory("/")
     }

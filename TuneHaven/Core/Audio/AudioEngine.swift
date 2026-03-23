@@ -2,24 +2,8 @@ import AVFoundation
 import Combine
 import Foundation
 
-enum PlaybackState: Equatable {
-    case idle, loading, playing, paused
-    case error(Error)
-
-    static func == (lhs: PlaybackState, rhs: PlaybackState) -> Bool {
-        switch (lhs, rhs) {
-        case (.idle, .idle), (.loading, .loading), (.playing, .playing), (.paused, .paused):
-            return true
-        case (.error(let l), .error(let r)):
-            return String(describing: l) == String(describing: r)
-        default:
-            return false
-        }
-    }
-}
-
 @MainActor
-final class AudioEngine: ObservableObject {
+final class AudioEngine: ObservableObject, AudioEngineProtocol {
     static let shared = AudioEngine()
     private let log = AppLogger.shared
 
@@ -194,6 +178,11 @@ final class AudioEngine: ObservableObject {
     private let _timeUpdateSubject = PassthroughSubject<(currentTime: TimeInterval, duration: TimeInterval), Never>()
     var playbackEndedSubject: AnyPublisher<Void, Never> { _playbackEndedSubject.eraseToAnyPublisher() }
     var timeUpdateSubject: AnyPublisher<(currentTime: TimeInterval, duration: TimeInterval), Never> { _timeUpdateSubject.eraseToAnyPublisher() }
+
+    // MARK: - AudioEngineProtocol
+    var statePublisher: AnyPublisher<PlaybackState, Never> { $state.eraseToAnyPublisher() }
+    var playbackEndedPublisher: AnyPublisher<Void, Never> { playbackEndedSubject }
+    var timeUpdatePublisher: AnyPublisher<(currentTime: TimeInterval, duration: TimeInterval), Never> { timeUpdateSubject }
 
     private func addTimeObserver() {
         removeTimeObserver()

@@ -60,7 +60,7 @@ struct SettingsStorageSection: View {
                 get: { Double(cacheLimitMB) },
                 set: {
                     cacheLimitMB = Int($0)
-                    libraryService.setCacheLimit(cacheLimitMB)
+                    libraryService.imageCache.setCacheLimit(cacheLimitMB)
                 }
             ), in: 50...300, step: 50)
             .tint(palette.primary)
@@ -80,7 +80,7 @@ struct SettingsStorageSection: View {
         .confirmationDialog("清理缓存", isPresented: $showClearCacheConfirm) {
             Button("清理", role: .destructive) {
                 Task {
-                    await libraryService.clearImageCache()
+                    await libraryService.imageCache.clearAll()
                     await calculateCacheSize()
                 }
             }
@@ -108,6 +108,10 @@ struct SettingsStorageSection: View {
     }
 
     private func calculateCacheSize() async {
-        currentCacheSize = await libraryService.formattedCacheSize()
+        let bytes = await libraryService.imageCache.cacheSizeAsync()
+        let mb = Double(bytes) / 1024 / 1024
+        currentCacheSize = mb < 1
+            ? String(format: "%.0f KB", Double(bytes) / 1024)
+            : String(format: "%.1f MB", mb)
     }
 }

@@ -18,7 +18,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "七里香", artist: "周杰伦", album: "七里香"),
         ]
 
-        let groups = ArtistGroup.group(from: songs)
+        let groups = LibraryGrouping.artistGroups(from: songs)
 
         #expect(groups.count == 1)
         #expect(groups[0].name == "周杰伦")
@@ -33,7 +33,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "Hello", artist: "Adele", album: "25"),
         ]
 
-        let groups = ArtistGroup.group(from: songs)
+        let groups = LibraryGrouping.artistGroups(from: songs)
 
         #expect(groups.count == 3)
     }
@@ -47,7 +47,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S4", artist: "周杰伦", album: "专辑C"),
         ]
 
-        let groups = ArtistGroup.group(from: songs)
+        let groups = LibraryGrouping.artistGroups(from: songs)
 
         #expect(groups.count == 1)
         #expect(groups[0].albumCount == 3) // 3个不同专辑
@@ -62,7 +62,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S3", artist: "Middle", album: "C"),
         ]
 
-        let groups = ArtistGroup.group(from: songs)
+        let groups = LibraryGrouping.artistGroups(from: songs)
 
         #expect(groups[0].name == "Apple")
         #expect(groups[1].name == "Middle")
@@ -71,7 +71,7 @@ struct MusicLibraryServiceGroupingTests {
 
     @Test("艺术家分组：空列表返回空数组")
     func testGroupByArtistEmptyList() {
-        let groups = ArtistGroup.group(from: [])
+        let groups = LibraryGrouping.artistGroups(from: [])
         #expect(groups.isEmpty)
     }
 
@@ -91,7 +91,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S3", artist: "周杰伦", album: "七里香"),
         ]
 
-        let groups = AlbumGroup.group(from: songs)
+        let groups = LibraryGrouping.albumGroups(from: songs)
 
         #expect(groups.count == 1)
         #expect(groups[0].name == "七里香")
@@ -106,7 +106,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S2", artist: "艺术家B", album: "同名专辑"),
         ]
 
-        let groups = AlbumGroup.group(from: songs)
+        let groups = LibraryGrouping.albumGroups(from: songs)
 
         #expect(groups.count == 2)
     }
@@ -118,7 +118,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S2", artist: "周杰伦", album: "七里香", year: 2004),
         ]
 
-        let groups = AlbumGroup.group(from: songs)
+        let groups = LibraryGrouping.albumGroups(from: songs)
 
         #expect(groups[0].year == 2004)
     }
@@ -131,7 +131,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S3", artist: "Artist", album: "M Album"),
         ]
 
-        let groups = AlbumGroup.group(from: songs)
+        let groups = LibraryGrouping.albumGroups(from: songs)
 
         #expect(groups[0].name == "A Album")
         #expect(groups[1].name == "M Album")
@@ -146,7 +146,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S2", artist: "A", album: "Album", coverImagePath: "cover_second.jpg"),
         ]
 
-        let groups = AlbumGroup.group(from: songs)
+        let groups = LibraryGrouping.albumGroups(from: songs)
 
         #expect(groups[0].coverImagePath == firstCover)
     }

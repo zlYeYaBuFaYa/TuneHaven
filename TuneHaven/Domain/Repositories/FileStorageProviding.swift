@@ -10,4 +10,11 @@ protocol FileStorageProviding: AnyObject {
     func fileSize(at url: URL) -> Int64
     func createDirectoryIfNeeded(at url: URL) throws
     func removeItem(at url: URL) throws
+
+    func musicFileURL(relativePath: String) -> URL
+    func lyricsFileURL(relativePath: String) -> URL
+    var lyricsDirectoryURL: URL { get }
+    func fileExists(at url: URL) -> Bool
+    func isReadableFile(at url: URL) -> Bool
+    func readStringContents(at url: URL) -> String?
 }

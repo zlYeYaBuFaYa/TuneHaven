@@ -6,19 +6,6 @@ struct ArtistGroup: Identifiable, Hashable {
     let albumCount: Int
     /// id 使用艺术家名称，假定名称在数据库中唯一；如果不同来源存在同名艺术家，需要额外区分键。
     var id: String { name }
-
-    static func group(from songs: [Song]) -> [ArtistGroup] {
-        var groups: [String: (songCount: Int, albums: Set<String>)] = [:]
-        for song in songs {
-            var g = groups[song.artist] ?? (0, [])
-            g.songCount += 1
-            g.albums.insert(song.album)
-            groups[song.artist] = g
-        }
-        return groups
-            .map { ArtistGroup(name: $0.key, songCount: $0.value.songCount, albumCount: $0.value.albums.count) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-    }
 }
 
 struct AlbumKey: Hashable {
@@ -34,21 +21,6 @@ struct AlbumGroup: Identifiable, Hashable {
     let coverImagePath: String?
     /// Uses null separator U+0000 to avoid collisions when artist or album names contain "/"
     var id: String { "\(artist)\0\(name)" }
-
-    static func group(from songs: [Song]) -> [AlbumGroup] {
-        var groups: [AlbumKey: (year: Int?, count: Int, cover: String?)] = [:]
-        for song in songs {
-            let key = AlbumKey(artist: song.artist, album: song.album)
-            var g = groups[key] ?? (song.metadata.year, 0, song.coverImagePath)
-            g.count += 1
-            groups[key] = g
-        }
-        return groups
-            .map { AlbumGroup(name: $0.key.album, artist: $0.key.artist,
-                              year: $0.value.year, songCount: $0.value.count,
-                              coverImagePath: $0.value.cover) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-    }
 }
 
 struct ArtistDetail {
@@ -106,6 +78,11 @@ enum PlayMode: Int, CaseIterable {
     case shuffle
 }
 
+enum SpeedMemoryMode: Int, CaseIterable {
+    case global = 0
+    case perSong = 1
+}
+
 enum PlayContext {
     case allSongs(sortBy: SongSortOption)
     case album(name: String, artist: String)
@@ -121,6 +98,20 @@ enum ImportFileStatus: Equatable {
     case skippedUnsupportedFormat
     case skippedOversize
     case failed
+}
+
+struct ImportOverrides {
+    let title: String?
+    let artist: String?
+    let album: String?
+    let coverData: Data?
+
+    init(title: String? = nil, artist: String? = nil, album: String? = nil, coverData: Data? = nil) {
+        self.title = title
+        self.artist = artist
+        self.album = album
+        self.coverData = coverData
+    }
 }
 
 struct ImportProgress {
@@ -189,7 +180,6 @@ struct LyricsLine: Identifiable {
     }
 }
 
-@MainActor
 class UndoToken {
     struct MovedFile {
         let tempPath: String
@@ -200,7 +190,7 @@ class UndoToken {
     let expiresAt: Date
     var timerKey: UUID?
 
-    nonisolated init(songIds: [UUID], movedFiles: [MovedFile], expiresAt: Date) {
+    init(songIds: [UUID], movedFiles: [MovedFile], expiresAt: Date) {
         self.songIds = songIds
         self.movedFiles = movedFiles
         self.expiresAt = expiresAt

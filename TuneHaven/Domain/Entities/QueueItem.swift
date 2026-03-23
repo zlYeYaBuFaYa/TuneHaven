@@ -13,8 +13,6 @@ struct QueueItem: Identifiable, Hashable {
         self.addedAt = Date()
     }
 
-    static func == (lhs: QueueItem, rhs: QueueItem) -> Bool { lhs.id == rhs.id }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 enum QueueAddResult: Equatable {

@@ -1,9 +1,9 @@
 import Foundation
 
 protocol UserPreferencesProviding: AnyObject {
-    var playMode: Int { get set }
+    var playMode: PlayMode { get set }
     var playbackSpeed: Float { get set }
-    var speedMemoryMode: Int { get }
+    var speedMemoryMode: SpeedMemoryMode { get }
     var autoMatchLyrics: Bool { get }
     var lastPlayedSongId: String? { get set }
     var songDislikes: [String: Int] { get set }

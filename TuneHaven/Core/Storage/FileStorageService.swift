@@ -94,4 +94,28 @@ extension FileStorageService: FileStorageProviding {
     func removeItem(at url: URL) throws {
         try FileManager.default.removeItem(at: url)
     }
+
+    func musicFileURL(relativePath: String) -> URL {
+        SandboxPathManager.musicFileURL(relativePath: relativePath)
+    }
+
+    func lyricsFileURL(relativePath: String) -> URL {
+        SandboxPathManager.lyricsFileURL(relativePath: relativePath)
+    }
+
+    var lyricsDirectoryURL: URL {
+        SandboxPathManager.lyricsURL
+    }
+
+    func fileExists(at url: URL) -> Bool {
+        FileManager.default.fileExists(atPath: url.path)
+    }
+
+    func isReadableFile(at url: URL) -> Bool {
+        FileManager.default.isReadableFile(atPath: url.path)
+    }
+
+    func readStringContents(at url: URL) -> String? {
+        try? String(contentsOf: url, encoding: .utf8)
+    }
 }

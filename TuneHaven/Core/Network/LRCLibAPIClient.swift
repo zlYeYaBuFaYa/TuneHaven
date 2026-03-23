@@ -1,20 +1,8 @@
 import Foundation
 
-protocol LRCLibAPIClientProtocol {
-    func get(
-        trackName: String,
-        artistName: String,
-        albumName: String,
-        duration: Int
-    ) async throws -> LRCLibTrack?
+typealias LRCLibAPIClientProtocol = LyricsAPIProviding
 
-    func search(
-        trackName: String,
-        artistName: String?
-    ) async throws -> [LRCLibTrack]
-}
-
-final class LRCLibAPIClient: LRCLibAPIClientProtocol {
+final class LRCLibAPIClient: LyricsAPIProviding {
     static let shared = LRCLibAPIClient()
 
     private let baseURL = "https://lrclib.net/api"

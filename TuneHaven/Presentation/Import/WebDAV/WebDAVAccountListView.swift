@@ -79,7 +79,7 @@ struct WebDAVAccountListView: View {
             .onDelete { indices in
                 let validIndices = indices.filter { $0 < webDAVService.accounts.count }
                 for index in validIndices {
-                    webDAVService.deleteAccount(id: webDAVService.accounts[index].id)
+                    try? webDAVService.deleteAccount(id: webDAVService.accounts[index].id)
                 }
             }
         } header: {
@@ -124,7 +124,7 @@ struct WebDAVAccountListView: View {
         .listRowBackground(palette.surface)
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
-                webDAVService.deleteAccount(id: account.id)
+                try? webDAVService.deleteAccount(id: account.id)
             } label: { Label("删除", systemImage: "trash") }
 
             Button { editingAccount = account } label: {

@@ -9,7 +9,7 @@ final class MusicLibraryService: ObservableObject {
     @Published private(set) var isLoading = false
 
     private let songRepo: SongRepository
-    private let imageCache: ImageCacheManaging
+    let imageCache: ImageCacheManaging
     private var pendingUndoTokens: [UndoToken] = []
     private var undoTimers: [UUID: Timer] = [:]
 
@@ -129,21 +129,4 @@ final class MusicLibraryService: ObservableObject {
         undoTimers.removeValue(forKey: tokenKey)
     }
 
-    // MARK: - Cache Management
-
-    func setCacheLimit(_ megabytes: Int) {
-        imageCache.setCacheLimit(megabytes)
-    }
-
-    func clearImageCache() async {
-        await imageCache.clearAll()
-    }
-
-    func formattedCacheSize() async -> String {
-        let bytes = await imageCache.cacheSizeAsync()
-        let mb = Double(bytes) / 1024 / 1024
-        return mb < 1
-            ? String(format: "%.0f KB", Double(bytes) / 1024)
-            : String(format: "%.1f MB", mb)
-    }
 }

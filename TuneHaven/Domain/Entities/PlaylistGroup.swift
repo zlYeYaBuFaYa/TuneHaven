@@ -6,8 +6,6 @@ struct PlaylistGroup: Identifiable, Hashable {
     let createdAt: Date
     var sortOrder: Int
 
-    static func == (lhs: PlaylistGroup, rhs: PlaylistGroup) -> Bool { lhs.id == rhs.id }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 struct PlaylistGroupDetail: Identifiable {

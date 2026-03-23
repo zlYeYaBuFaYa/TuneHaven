@@ -14,10 +14,6 @@ struct Playlist: Identifiable, Hashable {
     var createdAt: Date
     var updatedAt: Date
 
-    static func == (lhs: Playlist, rhs: Playlist) -> Bool {
-        lhs.id == rhs.id
-    }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 enum SystemPlaylistType: Int16 {
@@ -32,7 +28,9 @@ enum SystemPlaylistName {
     static let recentlyPlayed = "最近播放"
 }
 
-struct PlaylistDetail {
+struct PlaylistDetail: Identifiable {
     let playlist: Playlist
     let songs: [Song]
+
+    var id: UUID { playlist.id }
 }

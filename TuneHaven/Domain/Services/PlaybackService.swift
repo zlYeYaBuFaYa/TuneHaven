@@ -1,4 +1,3 @@
-import AVFoundation
 import Combine
 import Foundation
 
@@ -15,7 +14,7 @@ final class PlaybackService: ObservableObject {
     var sleepTimerRemaining: TimeInterval? { sleepTimer.remaining }
     var sleepTimerOriginalMinutes: Int? { sleepTimer.originalMinutes }
 
-    private let engine: AudioEngine
+    private let engine: any AudioEngineProtocol
     private let queueService: PlayQueueService
     private let libraryService: MusicLibraryService
     private let playlistRepo: PlaylistRepository
@@ -33,7 +32,7 @@ final class PlaybackService: ObservableObject {
          songRepo: SongRepository,
          queueService: PlayQueueService,
          libraryService: MusicLibraryService,
-         engine: AudioEngine,
+         engine: any AudioEngineProtocol,
          audioSession: AudioSessionManaging,
          nowPlaying: NowPlayingManaging,
          fileStorage: FileStorageProviding,
@@ -49,7 +48,7 @@ final class PlaybackService: ObservableObject {
         self.fileStorage = fileStorage
         self.preferences = preferences
         self.sleepTimer = sleepTimer
-        self.playMode = PlayMode(rawValue: preferences.playMode) ?? .sequential
+        self.playMode = preferences.playMode
         self.playbackSpeed = preferences.playbackSpeed
         setupBindings()
         sleepTimer.configure { [weak self] in
@@ -182,7 +181,7 @@ final class PlaybackService: ObservableObject {
     func setPlayMode(_ mode: PlayMode) {
         playMode = mode
         log.info("切换播放模式: \(mode.rawValue)")
-        preferences.playMode = mode.rawValue
+        preferences.playMode = mode
     }
 
     // MARK: - Speed
@@ -192,7 +191,7 @@ final class PlaybackService: ObservableObject {
         playbackSpeed = speed
         engine.setSpeed(speed)
 
-        if preferences.speedMemoryMode == 1, let song = currentSong {
+        if preferences.speedMemoryMode == .perSong, let song = currentSong {
             var perSongSpeeds = preferences.perSongSpeeds
             perSongSpeeds[song.id.uuidString] = speed
             preferences.perSongSpeeds = perSongSpeeds
@@ -202,7 +201,7 @@ final class PlaybackService: ObservableObject {
     }
 
     private func applySpeedForSong(_ song: Song) {
-        if preferences.speedMemoryMode == 1 {
+        if preferences.speedMemoryMode == .perSong {
             let speed = preferences.perSongSpeeds[song.id.uuidString] ?? 1.0
             playbackSpeed = speed
             engine.setSpeed(speed)
@@ -243,19 +242,19 @@ final class PlaybackService: ObservableObject {
         switch context {
         case .allSongs(let sortBy):
             songs = await songRepo.fetchAll(sortBy: sortBy, ascending: true)
-            startIndex = songs.firstIndex(of: song) ?? 0
+            startIndex = songs.firstIndex(where: { $0.id == song.id }) ?? 0
         case .album(let name, let artist):
             let detail = await libraryService.fetchAlbumDetail(album: name, artist: artist)
             songs = detail.songs
-            startIndex = songs.firstIndex(of: song) ?? 0
+            startIndex = songs.firstIndex(where: { $0.id == song.id }) ?? 0
         case .artist(let name):
             let detail = await libraryService.fetchArtistDetail(artist: name)
             songs = detail.allSongs
-            startIndex = songs.firstIndex(of: song) ?? 0
+            startIndex = songs.firstIndex(where: { $0.id == song.id }) ?? 0
         case .playlist(let id):
             if let detail = await playlistRepo.fetchPlaylistDetail(id: id) {
                 songs = detail.songs
-                startIndex = songs.firstIndex(of: song) ?? 0
+                startIndex = songs.firstIndex(where: { $0.id == song.id }) ?? 0
             } else {
                 songs = [song]
                 startIndex = 0
@@ -268,10 +267,9 @@ final class PlaybackService: ObservableObject {
     }
 
     private func loadAndPlay(song: Song, autoPlay: Bool = true) async {
-        let fileURL = SandboxPathManager.musicFileURL(relativePath: song.fileRelativePath)
+        let fileURL = fileStorage.musicFileURL(relativePath: song.fileRelativePath)
         guard fileStorage.fileExists(relativePath: song.fileRelativePath) else {
-            ErrorLogger.shared.log(.playbackFileNotFound(song.id), context: "PlaybackService.loadAndPlay")
-            log.error("播放文件不存在: \(song.fileRelativePath)")
+            log.error(AppError.playbackFileNotFound(song.id), context: "PlaybackService.loadAndPlay")
             consecutivePlayNextFailures += 1
             if consecutivePlayNextFailures >= Self.maxConsecutiveFailures {
                 log.error("连续 \(consecutivePlayNextFailures) 首文件不存在，停止播放")
@@ -297,7 +295,6 @@ final class PlaybackService: ObservableObject {
             do {
                 try await libraryService.recordPlay(songId: song.id)
             } catch {
-                ErrorLogger.shared.log(.databaseError(error), context: "PlaybackService: recordPlay 失败 songId=\(song.id)")
                 log.error(error, context: "recordPlay 记录播放失败")
             }
         }
@@ -328,7 +325,7 @@ final class PlaybackService: ObservableObject {
             self?.objectWillChange.send()
         }.store(in: &cancellables)
 
-        engine.$state.sink { [weak self] state in
+        engine.statePublisher.sink { [weak self] state in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if case .playing = state {
@@ -343,14 +340,14 @@ final class PlaybackService: ObservableObject {
             }
         }.store(in: &cancellables)
 
-        engine.playbackEndedSubject
+        engine.playbackEndedPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 Task { @MainActor [weak self] in self?.playNext() }
             }
             .store(in: &cancellables)
 
-        engine.timeUpdateSubject
+        engine.timeUpdatePublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] currentTime, duration in
                 Task { @MainActor [weak self] in

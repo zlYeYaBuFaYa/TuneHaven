@@ -19,7 +19,7 @@ final class PlaylistGroupService: ObservableObject {
 
     /// 创建分组
     func createGroup(name: String) async throws -> PlaylistGroup {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw AppError.playlistNameEmpty }
         log.info("创建歌单分组: \(trimmed)")
         let group = try await repo.create(name: trimmed)
@@ -29,7 +29,7 @@ final class PlaylistGroupService: ObservableObject {
 
     /// 重命名分组
     func renameGroup(id: UUID, name: String) async throws {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw AppError.playlistNameEmpty }
         try await repo.rename(id: id, name: trimmed)
         await loadGroups()
