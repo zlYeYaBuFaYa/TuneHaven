@@ -23,16 +23,18 @@ final class PlaybackService: ObservableObject {
     private let imageCacheManager = ImageCacheManager.shared
     private var cancellables = Set<AnyCancellable>()
     private var currentCover: UIImage?
+    private var consecutivePlayNextFailures = 0
+    private static let maxConsecutiveFailures = 5
     private var dislikes: [String: Int] {
         UserDefaults.standard.dictionary(forKey: AppStorageKey.songDislikes) as? [String: Int] ?? [:]
     }
 
     private static let lastPlayedSongIdKey = AppStorageKey.lastPlayedSongId
 
-    init(playlistRepo: PlaylistRepository = CoreDataPlaylistRepository(),
-         songRepo: SongRepository = CoreDataSongRepository()) {
+    init(playlistRepo: PlaylistRepository,
+         songRepo: SongRepository) {
         self.queueService = PlayQueueService()
-        self.libraryService = MusicLibraryService()
+        self.libraryService = MusicLibraryService(songRepo: songRepo)
         self.playlistRepo = playlistRepo
         self.songRepo = songRepo
         setupBindings()
@@ -264,9 +266,17 @@ final class PlaybackService: ObservableObject {
         guard FileStorageService.shared.fileExists(relativePath: song.fileRelativePath) else {
             ErrorLogger.shared.log(.playbackFileNotFound(song.id), context: "PlaybackService.loadAndPlay")
             log.error("播放文件不存在: \(song.fileRelativePath)")
+            consecutivePlayNextFailures += 1
+            if consecutivePlayNextFailures >= Self.maxConsecutiveFailures {
+                log.error("连续 \(consecutivePlayNextFailures) 首文件不存在，停止播放")
+                consecutivePlayNextFailures = 0
+                stop()
+                return
+            }
             playNext()
             return
         }
+        consecutivePlayNextFailures = 0
         currentSong = song
         UserDefaults.standard.set(song.id.uuidString, forKey: Self.lastPlayedSongIdKey)
 
@@ -278,7 +288,12 @@ final class PlaybackService: ObservableObject {
         if autoPlay {
             engine.play()
             isPlaying = true
-            try? await libraryService.recordPlay(songId: song.id)
+            do {
+                try await libraryService.recordPlay(songId: song.id)
+            } catch {
+                ErrorLogger.shared.log(.databaseError(error), context: "PlaybackService: recordPlay 失败 songId=\(song.id)")
+                log.error(error, context: "recordPlay 记录播放失败")
+            }
         }
 
         currentCover = loadCoverSync(for: song)

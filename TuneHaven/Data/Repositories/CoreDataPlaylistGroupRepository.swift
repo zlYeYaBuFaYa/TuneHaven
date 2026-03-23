@@ -29,7 +29,11 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
             let maxReq = PlaylistGroupEntity.fetchRequest()
             let allGroups = (try? ctx.fetch(maxReq)) ?? []
             entity.sortOrder = Int32((allGroups.map { $0.sortOrder }.max() ?? -1) + 1)
-            return PlaylistGroup(id: entity.id!, name: name, createdAt: entity.createdAt!, sortOrder: Int(entity.sortOrder))
+            guard let id = entity.id, let createdAt = entity.createdAt else {
+                throw AppError.databaseError(NSError(domain: "CoreDataPlaylistGroupRepository", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "创建分组后属性为空"]))
+            }
+            return PlaylistGroup(id: id, name: name, createdAt: createdAt, sortOrder: Int(entity.sortOrder))
         }
     }
 

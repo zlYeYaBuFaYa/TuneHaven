@@ -17,7 +17,11 @@ extension Color {
         case 8:
             (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
         default:
+            #if DEBUG
+            (a, r, g, b) = (255, 255, 0, 255)
+            #else
             (a, r, g, b) = (255, 0, 0, 0)
+            #endif
         }
         self.init(
             .sRGB,

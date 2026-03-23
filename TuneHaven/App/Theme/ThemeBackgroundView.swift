@@ -78,12 +78,17 @@ struct ThemeBackgroundView: View {
         switch config.backgroundType {
         case .solidColor:
             palette.background
-        case .codeGenerated:
-            LinearGradient(
-                colors: [palette.gradientStart, palette.gradientEnd],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+        case .codeGenerated(let pattern):
+            switch pattern {
+            case .cosmicParticles:
+                CosmicParticlesBackground()
+            default:
+                LinearGradient(
+                    colors: [palette.gradientStart, palette.gradientEnd],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
         case .userWallpaper:
             palette.background
         }

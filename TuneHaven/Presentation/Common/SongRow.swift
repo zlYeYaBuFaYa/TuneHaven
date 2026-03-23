@@ -111,9 +111,3 @@ struct SongRow: View {
         }
     }
 }
-
-extension TimeInterval {
-    var formattedTime: String {
-        DurationFormatter.format(self)
-    }
-}

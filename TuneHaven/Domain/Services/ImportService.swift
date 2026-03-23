@@ -11,8 +11,8 @@ final class ImportService: ObservableObject {
     private let songRepo: SongRepository
     private let fileService: FileStorageService
 
-    init(songRepo: SongRepository = CoreDataSongRepository(),
-         fileService: FileStorageService = .shared) {
+    init(songRepo: SongRepository,
+         fileService: FileStorageService) {
         self.songRepo = songRepo
         self.fileService = fileService
     }

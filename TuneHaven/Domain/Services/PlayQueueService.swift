@@ -1,6 +1,14 @@
 import Foundation
 import Combine
 
+enum PlayQueueConstants {
+    static let maxCount = 999
+    static let persist = false
+    static let removePlayed = false
+    static let markAsPlayed = true
+    static let dislikeSkipThreshold = 3
+}
+
 @MainActor
 final class PlayQueueService: ObservableObject {
     private let log = AppLogger.shared
@@ -89,6 +97,9 @@ final class PlayQueueService: ObservableObject {
             resetAllPlayedMarks()
             return nextUnplayed(from: 0, dislikes: dislikes) ?? queue.first
         case .shuffle:
+            if let item = weightedRandom(dislikes: dislikes) { return item }
+            guard !queue.isEmpty else { return nil }
+            resetAllPlayedMarks()
             return weightedRandom(dislikes: dislikes)
         }
     }

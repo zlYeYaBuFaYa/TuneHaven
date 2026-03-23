@@ -5,6 +5,7 @@ struct BatchAddSongsView: View {
 
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var libraryService: MusicLibraryService
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -250,8 +251,12 @@ struct BatchAddSongsView: View {
 
     private func addSelected() async {
         isSaving = true
-        try? await playlistService.addSongs(Array(selectedIds), to: playlistId)
+        do {
+            try await playlistService.addSongs(Array(selectedIds), to: playlistId)
+            dismiss()
+        } catch {
+            snackbar.show(message: "添加歌曲失败，请重试")
+        }
         isSaving = false
-        dismiss()
     }
 }

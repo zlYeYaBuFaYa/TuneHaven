@@ -9,7 +9,7 @@ final class PlaylistGroupService: ObservableObject {
 
     private let repo: PlaylistGroupRepository
 
-    init(repo: PlaylistGroupRepository = CoreDataPlaylistGroupRepository()) {
+    init(repo: PlaylistGroupRepository) {
         self.repo = repo
     }
 

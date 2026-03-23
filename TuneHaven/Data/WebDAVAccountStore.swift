@@ -9,6 +9,10 @@ final class WebDAVAccountStore {
     private func passwordKey(for id: UUID) -> String { "webdav_pwd_\(id.uuidString)" }
 
     func loadAccounts() -> [WebDAVAccount] {
+        queue.sync { _loadAccounts() }
+    }
+
+    private func _loadAccounts() -> [WebDAVAccount] {
         guard let data = UserDefaults.standard.data(forKey: accountsKey),
               let accounts = try? JSONDecoder().decode([WebDAVAccount].self, from: data) else {
             return []
@@ -18,7 +22,7 @@ final class WebDAVAccountStore {
 
     func saveAccount(_ account: WebDAVAccount, password: String?) throws {
         try queue.sync {
-            var accounts = loadAccounts()
+            var accounts = _loadAccounts()
             if let index = accounts.firstIndex(where: { $0.id == account.id }) {
                 accounts[index] = account
             } else {
@@ -35,7 +39,7 @@ final class WebDAVAccountStore {
 
     func deleteAccount(id: UUID) {
         queue.sync {
-            var accounts = loadAccounts()
+            var accounts = _loadAccounts()
             accounts.removeAll { $0.id == id }
             if let data = try? JSONEncoder().encode(accounts) {
                 UserDefaults.standard.set(data, forKey: accountsKey)
@@ -50,7 +54,7 @@ final class WebDAVAccountStore {
 
     func updateLastConnected(accountId: UUID) {
         queue.sync {
-            var accounts = loadAccounts()
+            var accounts = _loadAccounts()
             if let index = accounts.firstIndex(where: { $0.id == accountId }) {
                 accounts[index].lastConnectedAt = Date()
                 if let data = try? JSONEncoder().encode(accounts) {

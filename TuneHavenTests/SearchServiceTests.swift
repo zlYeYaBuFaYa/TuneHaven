@@ -63,7 +63,7 @@ struct SearchServiceTests {
 
     @Test("空查询返回空结果", .serialized)
     @MainActor func testSearchEmptyQuery() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "", tab: .all, allSongs: testSongs)
 
         #expect(result.songs.isEmpty)
@@ -74,7 +74,7 @@ struct SearchServiceTests {
 
     @Test("纯空白字符查询返回空结果", .serialized)
     @MainActor func testSearchWhitespaceQuery() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "   ", tab: .all, allSongs: testSongs)
 
         #expect(result.songs.isEmpty)
@@ -85,7 +85,7 @@ struct SearchServiceTests {
 
     @Test("按歌曲名称前缀搜索", .serialized)
     @MainActor func testSearchByTitlePrefix() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "夜", tab: .all, allSongs: testSongs)
 
         #expect(result.totalSongCount == 1)
@@ -94,7 +94,7 @@ struct SearchServiceTests {
 
     @Test("按歌曲名称搜索匹配多首歌曲", .serialized)
     @MainActor func testSearchByTitleMultipleMatches() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         // "P" 匹配 "Perfect"
         let result = await service.search(query: "P", tab: .all, allSongs: testSongs)
 
@@ -104,7 +104,7 @@ struct SearchServiceTests {
 
     @Test("歌曲名称搜索中间部分不匹配（前缀匹配）", .serialized)
     @MainActor func testSearchTitleMiddleNotMatched() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         // "曲" 不是 "夜曲" 的前缀
         let result = await service.search(query: "曲", tab: .all, allSongs: testSongs)
 
@@ -116,7 +116,7 @@ struct SearchServiceTests {
 
     @Test("按艺术家名称前缀搜索", .serialized)
     @MainActor func testSearchByArtistPrefix() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "周杰伦", tab: .all, allSongs: testSongs)
 
         #expect(result.totalSongCount == 6)
@@ -125,7 +125,7 @@ struct SearchServiceTests {
 
     @Test("搜索艺术家时分组统计正确", .serialized)
     @MainActor func testSearchArtistGrouping() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "周", tab: .all, allSongs: testSongs)
 
         #expect(result.totalArtistCount == 1)
@@ -135,7 +135,7 @@ struct SearchServiceTests {
 
     @Test("搜索返回多个艺术家分组", .serialized)
     @MainActor func testSearchMultipleArtists() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         // "A" 匹配 "Adele"
         let result = await service.search(query: "A", tab: .all, allSongs: testSongs)
 
@@ -147,7 +147,7 @@ struct SearchServiceTests {
 
     @Test("按专辑名称前缀搜索", .serialized)
     @MainActor func testSearchByAlbumPrefix() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "七里香", tab: .all, allSongs: testSongs)
 
         #expect(result.totalAlbumCount == 1)
@@ -156,7 +156,7 @@ struct SearchServiceTests {
 
     @Test("搜索专辑时统计歌曲数量正确", .serialized)
     @MainActor func testSearchAlbumSongCount() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         // "÷" 匹配 Ed Sheeran 的专辑 "÷ (Divide)"，包含2首歌
         let result = await service.search(query: "÷", tab: .all, allSongs: testSongs)
 
@@ -168,7 +168,7 @@ struct SearchServiceTests {
 
     @Test("搜索大小写不敏感", .serialized)
     @MainActor func testSearchCaseInsensitive() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let resultLower = await service.search(query: "perfect", tab: .all, allSongs: testSongs)
         let resultUpper = await service.search(query: "PERFECT", tab: .all, allSongs: testSongs)
         let resultMixed = await service.search(query: "Perfect", tab: .all, allSongs: testSongs)
@@ -180,7 +180,7 @@ struct SearchServiceTests {
 
     @Test("搜索中文歌曲不受大小写影响", .serialized)
     @MainActor func testSearchChineseCaseInsensitive() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "晴天", tab: .all, allSongs: testSongs)
         #expect(result.totalSongCount == 1)
         #expect(result.songs.first?.title == "晴天")
@@ -190,7 +190,7 @@ struct SearchServiceTests {
 
     @Test("无匹配结果时返回空", .serialized)
     @MainActor func testSearchNoMatch() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "不存在的歌曲XYZ", tab: .all, allSongs: testSongs)
 
         #expect(result.songs.isEmpty)
@@ -205,7 +205,7 @@ struct SearchServiceTests {
 
     @Test("搜索结果包含正确的统计信息", .serialized)
     @MainActor func testSearchResultCounts() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "Ed", tab: .all, allSongs: testSongs)
 
         // Ed Sheeran: 2首歌曲，1个艺术家，1个专辑
@@ -219,7 +219,7 @@ struct SearchServiceTests {
 
     @Test("艺术家分组按名称排序", .serialized)
     @MainActor func testSearchArtistsSorted() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         // 搜索所有歌曲（使用通用前缀）
         let mixedSongs = [
             makeSong(title: "S1", artist: "Zebra Band"),
@@ -234,7 +234,7 @@ struct SearchServiceTests {
 
     @Test("专辑分组按名称排序", .serialized)
     @MainActor func testSearchAlbumsSorted() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let mixedSongs = [
             makeSong(title: "S1", artist: "A", album: "Z Album"),
             makeSong(title: "S2", artist: "A", album: "A Album"),
@@ -250,7 +250,7 @@ struct SearchServiceTests {
 
     @Test("查询前后空白被裁剪", .serialized)
     @MainActor func testSearchTrimsWhitespace() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let resultWithSpaces = await service.search(query: "  晴天  ", tab: .all, allSongs: testSongs)
         let resultClean = await service.search(query: "晴天", tab: .all, allSongs: testSongs)
 
@@ -261,10 +261,40 @@ struct SearchServiceTests {
 
     @Test("空歌库搜索返回空结果", .serialized)
     @MainActor func testSearchEmptyLibrary() async {
-        let service = SearchService()
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "周杰伦", tab: .all, allSongs: [])
 
         #expect(result.songs.isEmpty)
         #expect(result.totalSongCount == 0)
+    }
+
+    // MARK: - 不同 Tab 搜索
+
+    @Test("使用 artist tab 搜索返回结果", .serialized)
+    @MainActor func testSearchWithArtistTab() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let result = await service.search(query: "周杰伦", tab: .artist, allSongs: testSongs)
+
+        #expect(result.totalSongCount == 6)
+        #expect(result.totalArtistCount >= 1)
+    }
+
+    @Test("使用 album tab 搜索返回结果", .serialized)
+    @MainActor func testSearchWithAlbumTab() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let result = await service.search(query: "七里香", tab: .album, allSongs: testSongs)
+
+        #expect(result.totalAlbumCount >= 1)
+    }
+
+    @Test("不同 tab 下相同查询返回一致结果", .serialized)
+    @MainActor func testSearchConsistentAcrossTabs() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let resultAll = await service.search(query: "Ed", tab: .all, allSongs: testSongs)
+        let resultArtist = await service.search(query: "Ed", tab: .artist, allSongs: testSongs)
+        let resultAlbum = await service.search(query: "Ed", tab: .album, allSongs: testSongs)
+
+        #expect(resultAll.totalSongCount == resultArtist.totalSongCount)
+        #expect(resultAll.totalSongCount == resultAlbum.totalSongCount)
     }
 }

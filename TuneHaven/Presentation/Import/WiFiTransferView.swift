@@ -7,7 +7,7 @@ struct WiFiTransferView: View {
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var server = WiFiTransferServer()
-    @State private var passwordEnabled = true
+    @AppStorage(AppStorageKey.wifiPasswordEnabled) private var passwordEnabled = true
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var receivedFiles: [String] = []

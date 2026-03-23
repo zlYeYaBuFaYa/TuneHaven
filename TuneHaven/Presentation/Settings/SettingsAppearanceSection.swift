@@ -70,9 +70,9 @@ struct SettingsAppearanceSection: View {
                 if isSelected {
                     Image(systemName: "checkmark")
                         .font(.caption.bold())
-                        .foregroundColor(.white)
+                        .foregroundColor(style.palette.onPrimary)
                         .padding(4)
-                        .background(Circle().fill(palette.surface.opacity(0.3)))
+                        .background(Circle().fill(style.palette.surface.opacity(0.3)))
                 }
             }
             Text(style.displayName)
@@ -117,7 +117,7 @@ struct SettingsAppearanceSection: View {
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: 18))
-                                .foregroundStyle(.white, Color.red)
+                                .foregroundStyle(palette.onPrimary, SemanticColor.danger)
                         }
                         .offset(x: 6, y: -6)
                     }

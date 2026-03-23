@@ -2,12 +2,9 @@ import SwiftUI
 
 struct LibraryTabView: View {
     @EnvironmentObject private var router: AppRouter
-    @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var wallpaperManager: WallpaperManager
     @Environment(\.themePalette) private var palette
-
-    @EnvironmentObject private var groupService: PlaylistGroupService
 
     var body: some View {
         let hasCustomBg = themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper

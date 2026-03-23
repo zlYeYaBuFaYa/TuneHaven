@@ -23,7 +23,6 @@ private struct MiniPlayerProgressBar: View {
 
 struct MiniPlayerBar: View {
     @EnvironmentObject private var router: AppRouter
-    @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var playback: PlaybackService
     @Environment(\.themePalette) private var palette
 

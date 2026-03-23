@@ -7,6 +7,7 @@ struct PlaylistDetailView: View {
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playback: PlaybackService
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
 
     @State private var detail: PlaylistDetail?
@@ -71,9 +72,13 @@ struct PlaylistDetailView: View {
         .confirmationDialog("删除歌单", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("删除", role: .destructive) {
                 Task {
-                    isDeleted = true
-                    try? await playlistService.deletePlaylist(id: playlistId)
-                    router.popToRoot()
+                    do {
+                        try await playlistService.deletePlaylist(id: playlistId)
+                        isDeleted = true
+                        router.popToRoot()
+                    } catch {
+                        snackbar.show(message: "删除歌单失败，请重试")
+                    }
                 }
             }
         } message: {
@@ -233,7 +238,7 @@ struct PlaylistHeaderSection: View {
                         Text("播放全部")
                     }
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(palette.onPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(palette.primary)

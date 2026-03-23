@@ -26,16 +26,6 @@ struct Song: Identifiable, Hashable {
 
     static func == (lhs: Song, rhs: Song) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
-
-    func formatDuration() -> String {
-        DurationFormatter.format(duration)
-    }
-
-    /// 文件大小友好展示
-    func formatFileSize() -> String {
-        let mb = Double(fileSize) / 1024 / 1024
-        return mb >= 1 ? String(format: "%.1f MB", mb) : String(format: "%d KB", fileSize / 1024)
-    }
 }
 
 enum LyricsSource: Int16, Codable {

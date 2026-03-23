@@ -12,7 +12,7 @@ final class MusicLibraryService: ObservableObject {
     private var pendingUndoTokens: [UndoToken] = []
     private var undoTimers: [UUID: Timer] = [:]
 
-    init(songRepo: SongRepository = CoreDataSongRepository()) {
+    init(songRepo: SongRepository) {
         self.songRepo = songRepo
     }
 
@@ -103,7 +103,8 @@ final class MusicLibraryService: ObservableObject {
     }
 
     private func scheduleCommit(token: UndoToken) {
-        guard let tokenKey = token.songIds.first else { return }
+        let tokenKey = UUID()
+        token.timerKey = tokenKey
         undoTimers[tokenKey]?.invalidate()
         let timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
@@ -121,7 +122,7 @@ final class MusicLibraryService: ObservableObject {
     }
 
     private func invalidateTimer(for token: UndoToken) {
-        guard let tokenKey = token.songIds.first else { return }
+        guard let tokenKey = token.timerKey else { return }
         undoTimers[tokenKey]?.invalidate()
         undoTimers.removeValue(forKey: tokenKey)
     }

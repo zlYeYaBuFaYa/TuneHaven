@@ -30,14 +30,14 @@ struct ImportServiceProgressTests {
     @Test("ImportService 初始 progress 为 nil")
     @MainActor
     func testInitialProgressIsNil() {
-        let service = ImportService()
+        let service = ImportService(songRepo: MockSongRepository(), fileService: .shared)
         #expect(service.progress == nil)
     }
 
     @Test("ImportService 初始 isImporting 为 false")
     @MainActor
     func testInitialIsImportingIsFalse() {
-        let service = ImportService()
+        let service = ImportService(songRepo: MockSongRepository(), fileService: .shared)
         #expect(service.isImporting == false)
     }
 }
@@ -102,13 +102,8 @@ struct PlayQueueEmptyGuardTests {
 @Suite("AlbumKey Separator Tests")
 struct AlbumKeySeparatorTests {
 
-    @Test("MusicLibraryService AlbumKey 结构体的 artist 和 album 独立哈希")
+    @Test("AlbumKey 结构体的 artist 和 album 独立哈希")
     func testAlbumKeyWithSlash() {
-        struct AlbumKey: Hashable {
-            let artist: String
-            let album: String
-        }
-
         let key1 = AlbumKey(artist: "AC/DC", album: "Back in Black")
         let key2 = AlbumKey(artist: "AC", album: "DC/Back in Black")
         #expect(key1 != key2)
@@ -116,11 +111,6 @@ struct AlbumKeySeparatorTests {
 
     @Test("含 '/' 的艺术家名作为 AlbumKey 不会混淆")
     func testAlbumKeyArtistWithSlash() {
-        struct AlbumKey: Hashable {
-            let artist: String
-            let album: String
-        }
-
         let key1 = AlbumKey(artist: "AC/DC", album: "Highway to Hell")
         let key2 = AlbumKey(artist: "AC/DC", album: "Back in Black")
         #expect(key1 != key2)
@@ -138,7 +128,7 @@ struct CustomCoverErrorTests {
     @Test("setCustomCover 无效图片数据应抛出错误")
     @MainActor
     func testSetCustomCoverInvalidDataThrows() async {
-        let service = PlaylistService()
+        let service = PlaylistService(repo: MockPlaylistRepository(), songRepo: MockSongRepository())
         let invalidData = "not an image".data(using: .utf8)!
 
         do {

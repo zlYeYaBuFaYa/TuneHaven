@@ -13,6 +13,7 @@ struct CloudDriveImportView: View {
     @State private var importResult: ImportResult?
     @State private var selectedProvider: (any CloudDriveProvider)?
     @State private var showBaiduGuide = false
+    @State private var filePickerError: String?
 
     private let providers = CloudDriveRegistry.allProviders
 
@@ -46,9 +47,20 @@ struct CloudDriveImportView: View {
             allowedContentTypes: UTType.allSupportedAudio,
             allowsMultipleSelection: true
         ) { result in
-            if case .success(let urls) = result {
+            switch result {
+            case .success(let urls):
                 startImport(urls: urls)
+            case .failure(let error):
+                filePickerError = "文件选择失败：\(error.localizedDescription)"
             }
+        }
+        .alert("提示", isPresented: .init(
+            get: { filePickerError != nil },
+            set: { if !$0 { filePickerError = nil } }
+        )) {
+            Button("确定") { filePickerError = nil }
+        } message: {
+            Text(filePickerError ?? "")
         }
         .alert("即将跳转到百度网盘", isPresented: $showBaiduGuide) {
             Button("取消", role: .cancel) { }
@@ -103,7 +115,7 @@ struct CloudDriveImportView: View {
 
                 Spacer()
 
-                if provider.isInstalled {
+                if CloudDriveInstallChecker.isInstalled(provider) {
                     Label("已安装", systemImage: "checkmark.circle.fill")
                         .font(.caption)
                         .foregroundColor(palette.primary)

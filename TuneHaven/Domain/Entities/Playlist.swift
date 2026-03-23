@@ -35,10 +35,3 @@ struct PlaylistDetail {
     let playlist: Playlist
     let songs: [Song]
 }
-
-struct PagedResult<T> {
-    let items: [T]
-    let totalCount: Int
-    let currentPage: Int
-    let hasMore: Bool
-}

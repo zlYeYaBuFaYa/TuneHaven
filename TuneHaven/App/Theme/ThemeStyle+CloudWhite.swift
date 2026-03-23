@@ -28,6 +28,7 @@ extension ThemeStyle {
             iconSecondary:      Color(hex: "#AEAEB2"),
             tagBackground:      Color(hex: "#E8F5EE"),
             tagText:            Color(hex: "#3D9B70"),
+            onPrimary:          .white,
             elevatedSurface:    Color(hex: "#FFFFFF"),
             cardShadow:         Color.black.opacity(0.06),
             miniPlayerBg:       Color(hex: "#F7F6F3").opacity(0.92),

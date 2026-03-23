@@ -22,7 +22,7 @@ struct SearchResultView: View {
                             isPlaying: playback.currentSong?.id == song.id,
                             onTap: {
                                 Task {
-                                    await playback.prepare(song: song, in: .allSongs(sortBy: .title))
+                                    await playback.prepare(song: song, in: playContext(for: song))
                                     router.openPlayer()
                                 }
                             },
@@ -92,5 +92,16 @@ struct SearchResultView: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .adaptiveBackground()
+    }
+
+    private func playContext(for song: Song) -> PlayContext {
+        switch tab {
+        case .artist:
+            return .artist(name: song.artist)
+        case .album:
+            return .album(name: song.album, artist: song.artist)
+        case .all:
+            return .allSongs(sortBy: .title)
+        }
     }
 }

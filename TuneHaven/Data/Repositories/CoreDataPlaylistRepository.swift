@@ -180,7 +180,7 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
     }
 
     func reorder(orderedIds: [UUID]) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = PlaylistEntity.fetchRequest()
             request.predicate = NSPredicate(format: "isSystem == NO")
             let entities = try ctx.fetch(request)
@@ -189,14 +189,16 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
                 return (id, e)
             })
             for (i, id) in orderedIds.enumerated() {
+                if idToEntity[id] == nil {
+                    log.debug("reorder: 未找到歌单 id=\(id)，跳过")
+                }
                 idToEntity[id]?.sortOrder = Int32(i)
             }
         }
     }
 
-    /// 调整歌单内歌曲排序（TDD Section 3.3）
     func reorderSongs(in playlistId: UUID, orderedSongIds: [UUID]) async throws {
-        try await stack.performBackground { ctx in
+        try await stack.performBackground { [log] ctx in
             let request = PlaylistSongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "playlistId == %@", playlistId as CVarArg)
             let links = try ctx.fetch(request)
@@ -205,6 +207,9 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
                 return (sid, l)
             })
             for (i, songId) in orderedSongIds.enumerated() {
+                if idToLink[songId] == nil {
+                    log.debug("reorderSongs: 未找到歌曲链接 songId=\(songId) in playlist=\(playlistId)")
+                }
                 idToLink[songId]?.sortOrder = Int32(i)
             }
         }
@@ -253,9 +258,17 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
     }
 
     private func maxSortOrder(ctx: NSManagedObjectContext) throws -> Int {
-        let request = PlaylistEntity.fetchRequest()
+        let request: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "PlaylistEntity")
+        request.resultType = .dictionaryResultType
         request.predicate = NSPredicate(format: "isSystem == NO")
-        let entities = try ctx.fetch(request)
-        return Int(entities.map { $0.sortOrder }.max() ?? 0)
+        let expr = NSExpression(forKeyPath: "sortOrder")
+        let maxExpr = NSExpression(forFunction: "max:", arguments: [expr])
+        let desc = NSExpressionDescription()
+        desc.name = "maxSortOrder"
+        desc.expression = maxExpr
+        desc.expressionResultType = .integer32AttributeType
+        request.propertiesToFetch = [desc]
+        let results = try ctx.fetch(request)
+        return (results.first?["maxSortOrder"] as? Int) ?? 0
     }
 }

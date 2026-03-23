@@ -17,14 +17,6 @@ struct QueueItem: Identifiable, Hashable {
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
-enum PlayQueueConstants {
-    static let maxCount = 999
-    static let persist = false
-    static let removePlayed = false
-    static let markAsPlayed = true
-    static let dislikeSkipThreshold = 3
-}
-
 enum QueueAddResult: Equatable {
     case success
     case queueFull(currentCount: Int)

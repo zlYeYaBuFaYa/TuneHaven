@@ -203,36 +203,64 @@ struct ThemeColorPaletteTests {
 @Suite("Color+Hex Tests")
 struct ColorHexTests {
 
-    @Test("6 位 HEX 带 # 号可正常初始化")
-    func testHex6DigitWithHash() {
-        _ = Color(hex: "#10B981")
-        _ = Color(hex: "#FFFFFF")
-        _ = Color(hex: "#000000")
+    private func rgb(_ color: Color) -> (r: Double, g: Double, b: Double, a: Double) {
+        let resolved = color.resolve(in: EnvironmentValues())
+        return (Double(resolved.red), Double(resolved.green), Double(resolved.blue), Double(resolved.opacity))
     }
 
-    @Test("6 位 HEX 不带 # 号可正常初始化")
+    @Test("6 位 HEX #FF0000 解析为纯红")
+    func testHex6Red() {
+        let c = rgb(Color(hex: "#FF0000"))
+        #expect(abs(c.r - 1.0) < 0.01, "红色分量应约为 1.0")
+        #expect(abs(c.g) < 0.01, "绿色分量应约为 0")
+        #expect(abs(c.b) < 0.01, "蓝色分量应约为 0")
+    }
+
+    @Test("6 位 HEX #FFFFFF 解析为白色")
+    func testHex6White() {
+        let c = rgb(Color(hex: "#FFFFFF"))
+        #expect(abs(c.r - 1.0) < 0.01)
+        #expect(abs(c.g - 1.0) < 0.01)
+        #expect(abs(c.b - 1.0) < 0.01)
+    }
+
+    @Test("6 位 HEX #000000 解析为黑色")
+    func testHex6Black() {
+        let c = rgb(Color(hex: "#000000"))
+        #expect(abs(c.r) < 0.01)
+        #expect(abs(c.g) < 0.01)
+        #expect(abs(c.b) < 0.01)
+    }
+
+    @Test("6 位 HEX 不带 # 号可正常初始化并解析正确")
     func testHex6DigitWithoutHash() {
-        _ = Color(hex: "10B981")
-        _ = Color(hex: "FF0000")
+        let c = rgb(Color(hex: "FF0000"))
+        #expect(abs(c.r - 1.0) < 0.01)
+        #expect(abs(c.g) < 0.01)
     }
 
-    @Test("3 位 HEX 可正常初始化（扩展为 6 位）")
+    @Test("3 位 HEX #F00 扩展为纯红")
     func testHex3Digit() {
-        _ = Color(hex: "#FFF")
-        _ = Color(hex: "#000")
-        _ = Color(hex: "#F00")
+        let c = rgb(Color(hex: "#F00"))
+        #expect(abs(c.r - 1.0) < 0.01)
+        #expect(abs(c.g) < 0.01)
+        #expect(abs(c.b) < 0.01)
     }
 
-    @Test("8 位 HEX（含 alpha 通道）可正常初始化")
+    @Test("8 位 HEX 含 alpha 通道正确解析")
     func testHex8Digit() {
-        _ = Color(hex: "#FF10B981")
-        _ = Color(hex: "#80FFFFFF")
+        let c = rgb(Color(hex: "#80FF0000"))
+        #expect(abs(c.r - 1.0) < 0.01, "红色分量应约为 1.0")
+        #expect(abs(c.a - 0.502) < 0.02, "alpha 应约为 0.5 (0x80/0xFF≈0.502)")
     }
 
-    @Test("小写 HEX 可正常初始化")
+    @Test("小写 HEX 与大写等价")
     func testHexLowercase() {
-        _ = Color(hex: "#10b981")
-        _ = Color(hex: "ff0000")
+        let u = rgb(Color(hex: "#FF0000"))
+        let l = rgb(Color(hex: "#ff0000"))
+        #expect(abs(u.r - l.r) < 0.01)
+        #expect(abs(u.g - l.g) < 0.01)
+        #expect(abs(u.b - l.b) < 0.01)
     }
 }
 

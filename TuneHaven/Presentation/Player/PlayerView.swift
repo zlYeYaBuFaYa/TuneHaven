@@ -8,6 +8,7 @@ struct PlayerView: View {
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
     @EnvironmentObject private var lyricsService: LyricsService
+    @Environment(\.themePalette) private var palette
     private enum ActiveSheet: Identifiable {
         case moreActions
         case sleepTimer
@@ -39,9 +40,6 @@ struct PlayerView: View {
 
     @AppStorage(AppStorageKey.lyricsPreferSimplified) private var lyricsPreferSimplified: Bool = true
 
-    private var palette: ThemeColorPalette {
-        themeManager.palette
-    }
 
     var body: some View {
         ZStack {
@@ -592,7 +590,7 @@ struct PlayerView: View {
                         .shadow(color: palette.gradientStart.opacity(0.35), radius: 10, y: 4)
                     Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
                         .font(.title2)
-                        .foregroundColor(.white)
+                        .foregroundColor(palette.onPrimary)
                 }
             }
             .buttonStyle(PressableButtonStyle())

@@ -395,15 +395,21 @@ struct LyricsSearchView: View {
         Task {
             do {
                 let artist = artistName.trimmingCharacters(in: .whitespaces)
-                results = try await lyricsService.searchOnline(
+                let found = try await lyricsService.searchOnline(
                     title: query,
                     artist: artist.isEmpty ? nil : artist
                 )
-                hasSearched = true
+                await MainActor.run {
+                    results = found
+                    hasSearched = true
+                    isSearching = false
+                }
             } catch {
-                searchError = "搜索失败，请检查网络连接"
+                await MainActor.run {
+                    searchError = "搜索失败，请检查网络连接"
+                    isSearching = false
+                }
             }
-            isSearching = false
         }
     }
 

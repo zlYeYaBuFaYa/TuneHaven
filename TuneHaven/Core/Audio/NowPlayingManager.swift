@@ -35,6 +35,8 @@ final class NowPlayingManager {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
+    /// Call only once during app lifecycle. Uses `removeTarget(nil)` to clear all prior
+    /// handlers before registering new ones, so repeated calls are safe but unnecessary.
     func setupRemoteCommands(
         onPlay: @escaping @Sendable () -> Void,
         onPause: @escaping @Sendable () -> Void,

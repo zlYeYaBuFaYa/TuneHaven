@@ -16,11 +16,18 @@ final class WallpaperManager: ObservableObject {
         }
     }
 
-    func setWallpaper(_ image: UIImage) {
-        currentWallpaper = image
-        useCustomWallpaper = true
-        UserDefaults.standard.set(true, forKey: AppStorageKey.useCustomWallpaper)
-        saveToDisk(image)
+    @discardableResult
+    func setWallpaper(_ image: UIImage) -> Bool {
+        do {
+            try saveToDisk(image)
+            currentWallpaper = image
+            useCustomWallpaper = true
+            UserDefaults.standard.set(true, forKey: AppStorageKey.useCustomWallpaper)
+            return true
+        } catch {
+            ErrorLogger.log(error)
+            return false
+        }
     }
 
     func removeWallpaper() {
@@ -34,9 +41,11 @@ final class WallpaperManager: ObservableObject {
         SandboxPathManager.documentsURL.appendingPathComponent(wallpaperFileName)
     }
 
-    private func saveToDisk(_ image: UIImage) {
-        guard let data = image.jpegData(compressionQuality: 0.85) else { return }
-        try? data.write(to: wallpaperURL)
+    private func saveToDisk(_ image: UIImage) throws {
+        guard let data = image.jpegData(compressionQuality: 0.85) else {
+            throw AppError.fileSystemError("无法生成 JPEG 数据")
+        }
+        try data.write(to: wallpaperURL)
     }
 
     private func loadFromDisk() -> UIImage? {

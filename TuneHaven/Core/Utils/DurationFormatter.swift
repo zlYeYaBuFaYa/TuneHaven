@@ -13,3 +13,9 @@ enum DurationFormatter {
         return String(format: "%d:%02d", m, s)
     }
 }
+
+extension TimeInterval {
+    var formattedTime: String {
+        DurationFormatter.format(self)
+    }
+}

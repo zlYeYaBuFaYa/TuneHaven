@@ -9,13 +9,13 @@ protocol CloudDriveProvider: Identifiable {
     var iconName: String { get }
     var urlScheme: String { get }
     var description: String { get }
-    var isInstalled: Bool { get }
 }
 
-extension CloudDriveProvider {
-    var isInstalled: Bool {
+enum CloudDriveInstallChecker {
+    @MainActor
+    static func isInstalled(_ provider: any CloudDriveProvider) -> Bool {
         #if canImport(UIKit)
-        guard let url = URL(string: "\(urlScheme)://") else { return false }
+        guard let url = URL(string: "\(provider.urlScheme)://") else { return false }
         return UIApplication.shared.canOpenURL(url)
         #else
         return false

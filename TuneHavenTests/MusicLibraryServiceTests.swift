@@ -60,7 +60,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "七里香", artist: "周杰伦", album: "七里香"),
         ]
 
-        let groups = groupSongsByArtist(songs)
+        let groups = ArtistGroup.group(from: songs)
 
         #expect(groups.count == 1)
         #expect(groups[0].name == "周杰伦")
@@ -75,7 +75,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "Hello", artist: "Adele", album: "25"),
         ]
 
-        let groups = groupSongsByArtist(songs)
+        let groups = ArtistGroup.group(from: songs)
 
         #expect(groups.count == 3)
     }
@@ -89,7 +89,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S4", artist: "周杰伦", album: "专辑C"),
         ]
 
-        let groups = groupSongsByArtist(songs)
+        let groups = ArtistGroup.group(from: songs)
 
         #expect(groups.count == 1)
         #expect(groups[0].albumCount == 3) // 3个不同专辑
@@ -104,7 +104,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S3", artist: "Middle", album: "C"),
         ]
 
-        let groups = groupSongsByArtist(songs)
+        let groups = ArtistGroup.group(from: songs)
 
         #expect(groups[0].name == "Apple")
         #expect(groups[1].name == "Middle")
@@ -113,7 +113,7 @@ struct MusicLibraryServiceGroupingTests {
 
     @Test("艺术家分组：空列表返回空数组")
     func testGroupByArtistEmptyList() {
-        let groups = groupSongsByArtist([])
+        let groups = ArtistGroup.group(from: [])
         #expect(groups.isEmpty)
     }
 
@@ -133,7 +133,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S3", artist: "周杰伦", album: "七里香"),
         ]
 
-        let groups = groupSongsByAlbum(songs)
+        let groups = AlbumGroup.group(from: songs)
 
         #expect(groups.count == 1)
         #expect(groups[0].name == "七里香")
@@ -148,7 +148,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S2", artist: "艺术家B", album: "同名专辑"),
         ]
 
-        let groups = groupSongsByAlbum(songs)
+        let groups = AlbumGroup.group(from: songs)
 
         #expect(groups.count == 2)
     }
@@ -160,7 +160,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S2", artist: "周杰伦", album: "七里香", year: 2004),
         ]
 
-        let groups = groupSongsByAlbum(songs)
+        let groups = AlbumGroup.group(from: songs)
 
         #expect(groups[0].year == 2004)
     }
@@ -173,7 +173,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S3", artist: "Artist", album: "M Album"),
         ]
 
-        let groups = groupSongsByAlbum(songs)
+        let groups = AlbumGroup.group(from: songs)
 
         #expect(groups[0].name == "A Album")
         #expect(groups[1].name == "M Album")
@@ -188,7 +188,7 @@ struct MusicLibraryServiceGroupingTests {
             makeSong(title: "S2", artist: "A", album: "Album", coverImagePath: "cover_second.jpg"),
         ]
 
-        let groups = groupSongsByAlbum(songs)
+        let groups = AlbumGroup.group(from: songs)
 
         #expect(groups[0].coverImagePath == firstCover)
     }
@@ -230,39 +230,6 @@ struct MusicLibraryServiceGroupingTests {
     }
 }
 
-// MARK: - Helper functions (mirrors MusicLibraryService logic for unit testing)
-
-private func groupSongsByArtist(_ songs: [Song]) -> [ArtistGroup] {
-    var groups: [String: (songCount: Int, albums: Set<String>)] = [:]
-    for song in songs {
-        var g = groups[song.artist] ?? (0, [])
-        g.songCount += 1
-        g.albums.insert(song.album)
-        groups[song.artist] = g
-    }
-    return groups
-        .map { ArtistGroup(name: $0.key, songCount: $0.value.songCount, albumCount: $0.value.albums.count) }
-        .sorted { $0.name < $1.name }
-}
-
-private func groupSongsByAlbum(_ songs: [Song]) -> [AlbumGroup] {
-    var groups: [String: (artist: String, year: Int?, count: Int, cover: String?)] = [:]
-    for song in songs {
-        let key = "\(song.artist)/\(song.album)"
-        var g = groups[key] ?? (song.artist, song.metadata.year, 0, song.coverImagePath)
-        g.count += 1
-        groups[key] = g
-    }
-    return groups
-        .map { AlbumGroup(
-            name: String($0.key.split(separator: "/").last ?? ""),
-            artist: $0.value.artist,
-            year: $0.value.year,
-            songCount: $0.value.count,
-            coverImagePath: $0.value.cover
-        )}
-        .sorted { $0.name < $1.name }
-}
 
 // MARK: - SongSortOption Tests
 

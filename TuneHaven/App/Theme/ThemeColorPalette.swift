@@ -34,6 +34,9 @@ struct ThemeColorPalette {
     let tagBackground: Color
     let tagText: Color
 
+    // MARK: - 对比色
+    let onPrimary: Color
+
     // MARK: - Spotify 升级新增
     let elevatedSurface: Color
     let cardShadow: Color

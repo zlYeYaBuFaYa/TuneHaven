@@ -107,6 +107,8 @@ final class AudioMetadataParser {
             }
         } catch {
             isIncomplete = true
+            ErrorLogger.shared.log(.importFailed(url.lastPathComponent, error.localizedDescription),
+                                   context: "AudioMetadataParser: 元数据解析不完整")
         }
 
         if title == fileName && artist == SongDefaults.unknownArtist { isIncomplete = true }

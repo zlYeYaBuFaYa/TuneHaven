@@ -5,6 +5,24 @@ struct ArtistGroup: Identifiable, Hashable {
     let songCount: Int
     let albumCount: Int
     var id: String { name }
+
+    static func group(from songs: [Song]) -> [ArtistGroup] {
+        var groups: [String: (songCount: Int, albums: Set<String>)] = [:]
+        for song in songs {
+            var g = groups[song.artist] ?? (0, [])
+            g.songCount += 1
+            g.albums.insert(song.album)
+            groups[song.artist] = g
+        }
+        return groups
+            .map { ArtistGroup(name: $0.key, songCount: $0.value.songCount, albumCount: $0.value.albums.count) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+}
+
+struct AlbumKey: Hashable {
+    let artist: String
+    let album: String
 }
 
 struct AlbumGroup: Identifiable, Hashable {
@@ -13,7 +31,23 @@ struct AlbumGroup: Identifiable, Hashable {
     let year: Int?
     let songCount: Int
     let coverImagePath: String?
-    var id: String { "\(artist)/\(name)" }
+    /// Uses null separator U+0000 to avoid collisions when artist or album names contain "/"
+    var id: String { "\(artist)\0\(name)" }
+
+    static func group(from songs: [Song]) -> [AlbumGroup] {
+        var groups: [AlbumKey: (year: Int?, count: Int, cover: String?)] = [:]
+        for song in songs {
+            let key = AlbumKey(artist: song.artist, album: song.album)
+            var g = groups[key] ?? (song.metadata.year, 0, song.coverImagePath)
+            g.count += 1
+            groups[key] = g
+        }
+        return groups
+            .map { AlbumGroup(name: $0.key.album, artist: $0.key.artist,
+                              year: $0.value.year, songCount: $0.value.count,
+                              coverImagePath: $0.value.cover) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
 }
 
 struct ArtistDetail {
@@ -197,7 +231,7 @@ struct LyricsLine: Identifiable {
     }
 }
 
-struct UndoToken {
+class UndoToken {
     struct MovedFile {
         let tempPath: String
         let originalRelativePath: String
@@ -205,4 +239,11 @@ struct UndoToken {
     let songIds: [UUID]
     let movedFiles: [MovedFile]
     let expiresAt: Date
+    var timerKey: UUID?
+
+    init(songIds: [UUID], movedFiles: [MovedFile], expiresAt: Date) {
+        self.songIds = songIds
+        self.movedFiles = movedFiles
+        self.expiresAt = expiresAt
+    }
 }

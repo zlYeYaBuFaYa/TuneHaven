@@ -10,8 +10,8 @@ enum PlaybackState: Equatable {
         switch (lhs, rhs) {
         case (.idle, .idle), (.loading, .loading), (.playing, .playing), (.paused, .paused):
             return true
-        case (.error, .error):
-            return true
+        case (.error(let l), .error(let r)):
+            return l.localizedDescription == r.localizedDescription
         default:
             return false
         }
@@ -62,6 +62,7 @@ final class AudioEngine: ObservableObject {
     }
 
     func load(url: URL) async {
+        stop()
         state = .loading
         log.info("加载音频: \(url.lastPathComponent)")
 
@@ -138,6 +139,7 @@ final class AudioEngine: ObservableObject {
 
     func play() {
         guard AudioSessionManager.shared.ensureActive() else {
+            state = .error(AppError.playbackSessionFailed)
             log.error("音频会话激活失败，无法播放")
             return
         }
@@ -159,7 +161,8 @@ final class AudioEngine: ObservableObject {
     }
 
     func seek(to time: TimeInterval) {
-        let cmTime = CMTime(seconds: time, preferredTimescale: 1000)
+        let clamped = max(0, min(time, duration))
+        let cmTime = CMTime(seconds: clamped, preferredTimescale: 1000)
         player.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
     }
 

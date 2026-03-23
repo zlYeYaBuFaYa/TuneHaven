@@ -10,8 +10,8 @@ final class LyricsService: ObservableObject {
     private static let cooldownKey = "lyrics_match_cooldown"
     private static let cooldownDuration: TimeInterval = 7 * 24 * 3600
 
-    init(repo: SongRepository = CoreDataSongRepository(),
-         api: LRCLibAPIClientProtocol = LRCLibAPIClient.shared) {
+    init(repo: SongRepository,
+         api: LRCLibAPIClientProtocol) {
         self.repo = repo
         self.api = api
     }
@@ -152,10 +152,14 @@ final class LyricsService: ObservableObject {
     // MARK: - Import Lyrics File
 
     func importLyricsFile(url: URL, for song: Song) async throws {
-        guard url.startAccessingSecurityScopedResource() else {
-            throw AppError.lyricsImportFailed("无法访问文件")
+        let didAccess = url.startAccessingSecurityScopedResource()
+        if !didAccess {
+            log.error("startAccessingSecurityScopedResource 返回 false: \(url.lastPathComponent)，尝试直接读取")
+            guard FileManager.default.isReadableFile(atPath: url.path) else {
+                throw AppError.lyricsImportFailed("无法访问文件（安全范围授权失败）")
+            }
         }
-        defer { url.stopAccessingSecurityScopedResource() }
+        defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
 
         let content: String
         do {

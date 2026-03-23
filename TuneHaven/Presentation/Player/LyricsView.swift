@@ -27,10 +27,18 @@ struct LyricsPageView: View {
 
     private var currentLineIndex: Int? {
         guard let lines = lyricsData?.lines, !lines.isEmpty else { return nil }
-        for (i, line) in lines.enumerated().reversed() {
-            if engine.currentTime >= line.timestamp { return i }
+        let time = engine.currentTime
+        if time < lines[0].timestamp { return nil }
+        var lo = 0, hi = lines.count - 1
+        while lo < hi {
+            let mid = lo + (hi - lo + 1) / 2
+            if lines[mid].timestamp <= time {
+                lo = mid
+            } else {
+                hi = mid - 1
+            }
         }
-        return nil
+        return lo
     }
 
     var body: some View {
@@ -231,7 +239,7 @@ struct LyricsPageView: View {
     private func syncedLyricsSection(data: LyricsData) -> some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .center, spacing: 24) {
+                LazyVStack(alignment: .center, spacing: 24) {
                     Color.clear.frame(height: 20)
 
                     ForEach(Array(data.lines.enumerated()), id: \.element.id) { index, line in
@@ -444,7 +452,7 @@ struct LyricsPageView: View {
                         .shadow(color: palette.gradientStart.opacity(0.25), radius: 8, y: 3)
                     Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
                         .font(.body.weight(.semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(palette.onPrimary)
                 }
             }
             .frame(maxWidth: .infinity)

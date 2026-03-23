@@ -73,7 +73,9 @@ struct RootTabView: View {
                 .environmentObject(engine)
         }
         .onAppear {
+            #if DEBUG
             AppLogger.shared.debug("[RootTabView] onAppear — palette.background=\(palette.background)")
+            #endif
         }
     }
 
@@ -97,7 +99,9 @@ struct RootTabView: View {
     private func tabButton(_ tab: AppTab, label: String) -> some View {
         Button {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                #if DEBUG
                 AppLogger.shared.debug("[RootTabView] tab switch: \(router.selectedTab) → \(tab)")
+                #endif
                 router.selectedTab = tab
             }
         } label: {

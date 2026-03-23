@@ -23,7 +23,8 @@ final class ImageCacheManager {
     }
 
     func setCacheLimit(_ megabytes: Int) {
-        cacheLimitMB = min(megabytes, 300)
+        let clamped = min(megabytes, 300)
+        fileQueue.async { [weak self] in self?.cacheLimitMB = clamped }
     }
 
     func image(forKey key: String) -> UIImage? {
@@ -36,6 +37,28 @@ final class ImageCacheManager {
               let image = UIImage(data: data) else { return nil }
         memoryCache.setObject(image, forKey: key as NSString, cost: data.count)
         return image
+    }
+
+    func imageAsync(forKey key: String) async -> UIImage? {
+        if let cached = memoryCache.object(forKey: key as NSString) {
+            return cached
+        }
+        let url = cacheFileURL(key: key)
+        return await withCheckedContinuation { continuation in
+            fileQueue.async { [weak self] in
+                guard let self,
+                      self.fileManager.fileExists(atPath: url.path),
+                      let data = try? Data(contentsOf: url),
+                      let image = UIImage(data: data) else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                DispatchQueue.main.async {
+                    self.memoryCache.setObject(image, forKey: key as NSString, cost: data.count)
+                    continuation.resume(returning: image)
+                }
+            }
+        }
     }
 
     func store(image: UIImage, forKey key: String) {
@@ -91,7 +114,11 @@ final class ImageCacheManager {
     }
 
     private func cacheFileURL(key: String) -> URL {
-        SandboxPathManager.coverImagesURL.appendingPathComponent(key)
+        let sanitized = key
+            .replacingOccurrences(of: "..", with: "")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "\\", with: "_")
+        return SandboxPathManager.coverImagesURL.appendingPathComponent(sanitized)
     }
 
     private func evictIfNeeded() {

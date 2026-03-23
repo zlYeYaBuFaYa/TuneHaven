@@ -19,7 +19,7 @@ extension EnvironmentValues {
 final class ThemeManager: ObservableObject {
     @Published private(set) var currentStyle: ThemeStyle
 
-    @AppStorage("theme_style") private var storedThemeStyle: String = "cloud_white"
+    @AppStorage(AppStorageKey.themeStyle) private var storedThemeStyle: String = ThemeRegistry.shared.defaultTheme.id
 
     private let registry = ThemeRegistry.shared
 
@@ -48,11 +48,11 @@ final class ThemeManager: ObservableObject {
     init() {
         registry.bootstrap()
 
-        var styleId = UserDefaults.standard.string(forKey: "theme_style") ?? "cloud_white"
+        var styleId = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) ?? registry.defaultTheme.id
 
         if let migrated = Self.legacyMapping[styleId] {
             styleId = migrated
-            UserDefaults.standard.set(migrated, forKey: "theme_style")
+            UserDefaults.standard.set(migrated, forKey: AppStorageKey.themeStyle)
         }
 
         currentStyle = registry.theme(for: styleId) ?? registry.defaultTheme

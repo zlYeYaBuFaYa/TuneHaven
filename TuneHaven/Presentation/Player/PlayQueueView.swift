@@ -40,7 +40,7 @@ struct PlayQueueView: View {
             } else {
                 List {
                     ForEach(Array(playback.queue.queue.enumerated()), id: \.element.id) { idx, item in
-                        let isCurrent = playback.queue.queue.firstIndex(where: { $0.id == item.id }) == playback.queue.currentIndex
+                        let isCurrent = idx == playback.queue.currentIndex
                         HStack(spacing: 12) {
                             CoverImageView(path: item.song.coverImagePath, size: 40)
                             VStack(alignment: .leading, spacing: 2) {

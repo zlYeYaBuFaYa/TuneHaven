@@ -42,7 +42,7 @@ final class ThumbnailGenerator {
                 let col = CGFloat(i % 2)
                 let row = CGFloat(i / 2)
                 let rect = CGRect(x: col * cellSize, y: row * cellSize, width: cellSize, height: cellSize)
-                if let img = images.count > i ? images[i] : nil {
+                if let img = i < images.count ? images[i] : nil {
                     img.draw(in: rect)
                 } else {
                     placeholderColor.setFill()

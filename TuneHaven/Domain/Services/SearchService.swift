@@ -9,7 +9,7 @@ final class SearchService: ObservableObject {
 
     private let historyRepo: SearchHistoryRepository
 
-    init(historyRepo: SearchHistoryRepository = CoreDataSearchHistoryRepository()) {
+    init(historyRepo: SearchHistoryRepository) {
         self.historyRepo = historyRepo
     }
 
@@ -20,30 +20,30 @@ final class SearchService: ObservableObject {
         }
 
         log.debug("搜索: query=\(q), tab=\(tab)")
-        let matched = allSongs.filter {
-            $0.title.lowercased().contains(q) ||
-            $0.artist.lowercased().contains(q) ||
-            $0.album.lowercased().contains(q)
-        }
 
-        var artistCounts: [String: (songs: Int, albums: Set<String>)] = [:]
-        for song in matched {
-            var g = artistCounts[song.artist] ?? (0, [])
-            g.songs += 1; g.albums.insert(song.album)
-            artistCounts[song.artist] = g
-        }
-        let artists = artistCounts.map { ArtistGroup(name: $0.key, songCount: $0.value.songs, albumCount: $0.value.albums.count) }.sorted { $0.name < $1.name }
+        let searchResult: SearchResult = await Task.detached(priority: .userInitiated) {
+            let matched = allSongs.filter {
+                $0.title.lowercased().contains(q) ||
+                $0.artist.lowercased().contains(q) ||
+                $0.album.lowercased().contains(q)
+            }
 
-        struct AlbumKey: Hashable { let artist: String; let album: String }
-        var albumData: [AlbumKey: (year: Int?, count: Int, cover: String?)] = [:]
-        for song in matched {
-            let key = AlbumKey(artist: song.artist, album: song.album)
-            var g = albumData[key] ?? (song.metadata.year, 0, song.coverImagePath)
-            g.count += 1; albumData[key] = g
-        }
-        let albums = albumData.map { AlbumGroup(name: $0.key.album, artist: $0.key.artist, year: $0.value.year, songCount: $0.value.count, coverImagePath: $0.value.cover) }.sorted { $0.name < $1.name }
+            let filteredSongs: [Song]
+            switch tab {
+            case .artist:
+                filteredSongs = matched.filter { $0.artist.lowercased().contains(q) }
+            case .album:
+                filteredSongs = matched.filter { $0.album.lowercased().contains(q) }
+            case .all:
+                filteredSongs = matched
+            }
 
-        let searchResult = SearchResult(songs: matched, artists: artists, albums: albums, totalSongCount: matched.count, totalArtistCount: artists.count, totalAlbumCount: albums.count)
+            let artists = ArtistGroup.group(from: matched)
+            let albums = AlbumGroup.group(from: matched)
+
+            return SearchResult(songs: filteredSongs, artists: artists, albums: albums, totalSongCount: matched.count, totalArtistCount: artists.count, totalAlbumCount: albums.count)
+        }.value
+
         self.result = searchResult
         return searchResult
     }

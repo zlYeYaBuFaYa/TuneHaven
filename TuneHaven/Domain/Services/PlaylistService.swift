@@ -11,8 +11,8 @@ final class PlaylistService: ObservableObject {
     private let songRepo: SongRepository
     private let imageCache = ImageCacheManager.shared
 
-    init(repo: PlaylistRepository = CoreDataPlaylistRepository(),
-         songRepo: SongRepository = CoreDataSongRepository()) {
+    init(repo: PlaylistRepository,
+         songRepo: SongRepository) {
         self.repo = repo
         self.songRepo = songRepo
     }

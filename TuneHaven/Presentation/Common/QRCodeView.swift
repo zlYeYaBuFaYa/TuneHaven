@@ -7,6 +7,14 @@ struct QRCodeView: View {
     @Environment(\.themePalette) private var palette
     @State private var qrImage: UIImage?
 
+    private func generateQR(from text: String) async {
+        let s = size
+        let image = await Task.detached {
+            QRCodeGenerator.generate(from: text, size: s)
+        }.value
+        qrImage = image
+    }
+
     var body: some View {
         Group {
             if let img = qrImage {
@@ -22,9 +30,9 @@ struct QRCodeView: View {
                     .overlay(ProgressView())
             }
         }
-        .task { qrImage = QRCodeGenerator.generate(from: content, size: size) }
+        .task { await generateQR(from: content) }
         .onChange(of: content) { _, new in
-            qrImage = QRCodeGenerator.generate(from: new, size: size)
+            Task { await generateQR(from: new) }
         }
     }
 }

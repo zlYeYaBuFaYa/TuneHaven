@@ -27,9 +27,11 @@ final class SleepTimerService: ObservableObject {
         let end = Date().addingTimeInterval(TimeInterval(minutes * 60))
         endDate = end
 
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        let t = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in self?.tick() }
         }
+        RunLoop.current.add(t, forMode: .common)
+        timer = t
     }
 
     func cancel() {

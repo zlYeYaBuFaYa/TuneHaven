@@ -6,11 +6,12 @@ struct CoverImageView: View {
     var cornerRadius: CGFloat = 8
 
     @Environment(\.themePalette) private var palette
+    @State private var cachedImage: UIImage?
 
     var body: some View {
         Group {
-            if let path, let image = ImageCacheManager.shared.image(forKey: path) {
-                Image(uiImage: image)
+            if let cachedImage {
+                Image(uiImage: cachedImage)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
             } else {
@@ -19,6 +20,17 @@ struct CoverImageView: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+        .task(id: path) {
+            guard let path else { cachedImage = nil; return }
+            if let image = ImageCacheManager.shared.image(forKey: path) {
+                cachedImage = image
+            } else {
+                let loaded = await Task.detached {
+                    ImageCacheManager.shared.image(forKey: path)
+                }.value
+                cachedImage = loaded
+            }
+        }
     }
 }
 

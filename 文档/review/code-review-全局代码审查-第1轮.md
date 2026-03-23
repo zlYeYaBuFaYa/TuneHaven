@@ -1,171 +1,201 @@
-# 代码 Review：全局代码审查 - 第 1 轮
+# 代码 Review：全局代码审查（全量迭代后） - 第 1 轮
 
-> 日期：2026-03-22 | 类型：AI 自审 | 范围：全部 120 个 Swift 源文件
+> 日期：2026-03-22 | 类型：AI 自审 | 范围：全部 120 源文件 + 18 测试文件
 
 ## 结论：不通过
 
 | 维度 | 结论 | 说明 |
 |------|------|------|
-| 逻辑正确性 | ✅ | 业务逻辑完整，播放/导入/歌单/队列等核心流程自洽 |
-| 错误处理 | 🟡 | AppError 体系完善，但部分 `lyricsSource` 哨兵值处理存在隐患 |
-| 安全 | ✅ | SandboxPathManager 统一路径、SecurityScoped URL 正确、无硬编码敏感信息 |
-| 线程安全 | 🟡 | @MainActor 使用整体正确，但 PlaybackService 内部 init 存在冗余实例创建问题 |
-| 架构合规 | 🟡 | Clean Architecture 分层整体良好，但存在 Domain 层直接引用 Data 层具体实现的违规 |
-| 代码风格 | 🟡 | 整体规范，存在少量冗余代码和命名不一致 |
-| API 设计 | ✅ | 接口语义清晰，async throws 一致 |
-| 性能 | 🟡 | 整体合理，但 CoreData 读操作在 viewContext 上使用 withCheckedContinuation + perform 模式有多余封装 |
-| 内存管理 | ✅ | [weak self] 使用正确，cancellables 正确存储 |
-| 可维护性 | 🟡 | 整体良好，部分文件文档与代码不一致需同步 |
+| 逻辑正确性 | ❌ | PlaylistGroupView 导航 Tab 错误；PlaybackState.error 比较语义不当；歌词搜索线程安全问题 |
+| 错误处理 | ❌ | 大量 try? 吞错无用户提示；LRCLibAPIClient 错误与 nil 混淆；CoreDataStack 未统一 AppError |
+| 安全 | ❌ | ImageCacheManager key 路径注入风险；FileStorageService relativePath 未防 `..` 穿越 |
+| 线程安全 | ❌ | LyricsSearchView 异步回主线程缺 MainActor；ImageCacheManager cacheLimitMB 数据竞争 |
+| 架构合规 | ❌ | Domain 层 6 个 Service 默认依赖 CoreData* 具体实现，违反 Clean Architecture |
+| 代码风格 | ❌ | PlayerView/LyricsView 硬编码 .white；多处 SemanticColor 与 palette 规范不统一 |
+| API 设计 | ✅ | Repository 协议粒度合理；Service API 语义清晰 |
+| 性能 | ❌ | ImageCacheManager 主线程同步读盘；LyricsView 全量 VStack；搜索全量 filter |
+| 内存管理 | ✅ | [weak self]、cancellables 使用规范；无明显循环引用 |
+| 可维护性 | ❌ | 测试 mirror 实现与生产脱节；AudioEngineTests 文件名与内容不符；CosmicParticlesBackground 缺失 |
 
 ---
 
-## 问题清单
+## 🔴 阻塞问题（共 10 项，必须修复）
 
-### 🔴 阻塞问题
+### 🔴-01 Domain 层 Service 默认依赖 Data 层具体实现
+- **文件**：`PlaybackService.swift`、`MusicLibraryService.swift`、`ImportService.swift`、`LyricsService.swift`、`PlaylistService.swift`、`PlaylistGroupService.swift`、`SearchService.swift`
+- **描述**：init 参数默认值直接引用 `CoreDataSongRepository()`、`CoreDataPlaylistRepository()` 等 Data 层具体类型，Domain 层依赖了 Data 层实现，违反 Clean Architecture「向内依赖抽象」原则
+- **建议**：移除默认参数，全部通过 `AppDIContainer` 注入协议类型
 
-#### 1. [🔴] PlaybackService.init 创建冗余的 MusicLibraryService 实例
-**文件**: `Domain/Services/PlaybackService.swift:36-38`
+### 🔴-02 WebDAVService 直接绑定具体客户端与密钥存储
+- **文件**：`WebDAVService.swift`
+- **描述**：Domain Service 直接使用 `WebDAVAccountStore.shared`、`WebDAVClient` 具体类型
+- **建议**：定义 `WebDAVClientProtocol` / `AccountSecretsProviding` 协议，在 App 层组装
 
-PlaybackService 作为单例，在 `private init` 中 `self.libraryService = MusicLibraryService()` 创建了一个新的 MusicLibraryService 实例，而 TuneHavenApp 中通过 `@StateObject` 创建了另一个实例作为 `@EnvironmentObject` 注入。这导致 PlaybackService 持有的 libraryService 与 UI 层使用的不是同一个实例，可能造成：
-- `recordPlay()` 在 PlaybackService 的 libraryService 上调用，但 UI 不会刷新
-- `loadSongs()` 数据不同步
+### 🔴-03 PlaylistGroupView 导航 Tab 错误
+- **文件**：`PlaylistGroupView.swift`
+- **描述**：`router.navigate(to: .playlistDetail(id:), in: .library)` 在歌单 Tab 场景下会切到资料库 Tab 并写入 libraryPath，用户关闭 sheet 后落在错误 Tab
+- **建议**：改为 `in: .playlist`
 
-虽然有 `configure(libraryService:)` 方法，但 **未在 TuneHavenApp 中调用**，所以冗余实例问题一直存在。
+### 🔴-04 PlayerView/LyricsView 硬编码颜色 .white
+- **文件**：`PlayerView.swift`（约 595 行）、`LyricsView.swift`（约 447 行）
+- **描述**：播放/暂停按钮使用 `.foregroundColor(.white)` 硬编码，违反「禁止硬编码颜色」规则
+- **建议**：使用 palette 语义色（如 `onPrimary` / `inverseText`），需在 ThemeColorPalette 补充对应字段
 
-**建议**：在 TuneHavenApp.initialize() 中调用 `playbackService.configure(libraryService: libraryService)` 确保注入正确的实例。
+### 🔴-05 PlayerView 未通过 Environment 获取 themePalette
+- **文件**：`PlayerView.swift`
+- **描述**：使用 `themeManager.palette` 而非 `@Environment(\.themePalette)` 取色，与统一规范不一致
+- **建议**：改为 `@Environment(\.themePalette) private var palette`
 
-#### 2. [🔴] Domain 层 Service 直接引用 Data 层具体实现（违反 Clean Architecture）
-**文件**: 多个 Service 的 init 默认参数
+### 🔴-06 WiFiTransferServer receive 回调 weak self 导致连接挂死
+- **文件**：`WiFiTransferServer.swift`（约 130-167 行）
+- **描述**：`receive` 回调中 `guard let self else { return }` 后若 self 已释放，不再继续 `headerReadLoop()`，连接可能挂起不收数据
+- **建议**：用本地强引用完成该次请求的生命周期，或在无 self 时 `connection.cancel()`
 
-以下 Service 在默认参数中直接引用了 Data 层的具体实现类，违反了 Clean Architecture 的依赖方向原则：
+### 🔴-07 CosmicParticlesBackground.swift 文件缺失
+- **文件**：`TuneHaven/App/Theme/Backgrounds/CosmicParticlesBackground.swift`
+- **描述**：项目文档和技术设计文档引用该文件，但仓库中不存在；cosmic_tech 主题的粒子背景动画无法生效
+- **建议**：补全实现或更新文档移除引用
 
-- `PlaybackService.init(playlistRepo: PlaylistRepository = CoreDataPlaylistRepository(), songRepo: SongRepository = CoreDataSongRepository())`
-- `MusicLibraryService.init(songRepo: SongRepository = CoreDataSongRepository())`
-- `PlaylistService.init(repo: PlaylistRepository = CoreDataPlaylistRepository(), ...)`
-- `ImportService.init(songRepo: SongRepository = CoreDataSongRepository(), ...)`
-- `SearchService.init(historyRepo: SearchHistoryRepository = CoreDataSearchHistoryRepository())`
-- `LyricsService.init(repo: SongRepository = CoreDataSongRepository(), ...)`
-- `PlaylistGroupService.init(repo: PlaylistGroupRepository = CoreDataPlaylistGroupRepository())`
+### 🔴-08 MusicLibraryServiceTests mirror 实现与生产脱节
+- **文件**：`MusicLibraryServiceTests.swift`
+- **描述**：测试文件中私有复制了 `groupSongsByArtist`/`groupSongsByAlbum` 的逻辑，测的是测试副本而非真实 Service，生产代码改坏测试仍绿
+- **建议**：改为调用真实 Service 方法或提取纯函数到 Domain 层并单测
 
-Domain 层应只知道 Protocol，不应 import 或引用 Data 层的 `CoreData*Repository`。
+### 🔴-09 P2FixTests AlbumKey 使用测试内局部类型
+- **文件**：`P2FixTests.swift`
+- **描述**：`AlbumKeySeparatorTests` 使用测试内局部 `struct AlbumKey`，不是业务中的真实类型，无法防止回归
+- **建议**：改为使用真实业务类型
 
-**建议**：将默认实例的构造移到 App 层（TuneHavenApp 依赖注入处），Domain 层 Service 的 init 不提供默认值，或通过工厂/DI 容器解耦。
-
----
-
-### 🟡 建议问题
-
-#### 3. [🟡] updateLyrics 使用 Int16.min 作为 nil 哨兵值存在混淆风险
-**文件**: `Data/Repositories/CoreDataSongRepository.swift:253`
-
-```swift
-entity.lyricsSource = lyricsSource?.rawValue ?? Int16.min
-```
-
-以及 `SongMapper.swift:17`:
-```swift
-entity.lyricsSource = song.lyricsSource?.rawValue ?? Int16.min
-```
-
-使用 `Int16.min` 作为"无值"哨兵是因为 CoreData Int16 不可空，但这个约定分散在多个文件中，且 `SongMapper.isValidLyricsSource` 同时检查 `-1` 和 `Int16.min` 两个旧/新哨兵值，增加了维护负担。
-
-**建议**：统一定义一个常量（如 `SongMapper.nilSentinel = Int16.min`），并在所有读写位置引用同一常量。
-
-#### 4. [🟡] ErrorLogger 和 AppLogger 存在大量重复代码
-**文件**: `App/AppError.swift:116-253`
-
-`ErrorLogger` 和 `AppLogger` 两个类的文件写入逻辑（`appendToLog/appendToFile`、`rotateIfNeeded`、`ISO8601DateFormatter`）几乎完全相同。
-
-**建议**：提取一个私有的 `FileLogWriter` 工具类，ErrorLogger 和 AppLogger 复用其写入和轮转逻辑。
-
-#### 5. [🟡] CoreDataStack.performBackground 缺少显式 merge 到 viewContext
-**文件**: `Core/Persistence/CoreDataStack.swift:35-50`
-
-技术文档（六、并发模型 6.2）描述的流程包含"显式合并到主线程"步骤，但实际代码仅依赖 `automaticallyMergesChangesFromParent = true` 作为合并机制，未显式调用 `viewContext.mergeChanges(fromContextDidSave:)`。
-
-虽然 `automaticallyMergesChangesFromParent` 在大多数场景下够用，但与技术文档描述不一致。此外，自动合并的时机不可控（可能有微小延迟），在写入后立即读取的场景下可能读到旧数据。
-
-**建议**：
-- 方案 A：补充显式 merge（如文档所述），确保写入后立即可读
-- 方案 B：更新技术文档使其与实际实现一致
-
-#### 6. [🟡] ThemeRegistry 使用 NSLock 但 ThemeManager 标注 @MainActor
-**文件**: `App/Theme/ThemeRegistry.swift`
-
-ThemeRegistry 使用 `NSLock` + `@unchecked Sendable` 保证线程安全，但实际上 `bootstrap()` 和 `theme(for:)` 只在 ThemeManager（@MainActor）中调用，永远在主线程。这个锁是多余的。
-
-**建议**：如果确定只在主线程使用，可以简化为 `@MainActor`；如果需要跨线程访问，保留 NSLock 但添加注释说明原因。
-
-#### 7. [🟡] PlaybackService.shared 单例模式与 EnvironmentObject 注入混合使用
-**文件**: `TuneHavenApp.swift:19` & `PlaybackService.swift:8`
-
-PlaybackService 同时使用了 `static let shared` 单例模式和 `@EnvironmentObject` 注入：
-```swift
-private let playbackService = PlaybackService.shared  // TuneHavenApp
-```
-
-文档要求"Presentation 层统一通过 @EnvironmentObject 获取，不直接引用 .shared"，但 PlaybackService 内部通过 `.shared` 初始化，且 `AudioEngine.shared` 也被直接引用。
-
-**建议**：保持一致性，PlaybackService 内部对 AudioEngine 的引用可以保留（因为都是单例），但应在文档中明确说明"Core 层基础设施单例允许直接引用"这一例外规则。
-
-#### 8. [🟡] SongRow 中 `song.duration.formattedTime` 扩展与 `DurationFormatter.format()` 功能重复
-**文件**: `Presentation/Common/SongRow.swift:114-126` & `Core/Utils/DurationFormatter.swift`
-
-TimeInterval 上有 `formattedTime` 扩展属性，同时 `DurationFormatter.format()` 也提供同样功能。Song 实体上还有 `formatDuration()` 方法。三处提供相同功能但实现分散。
-
-**建议**：统一使用 `DurationFormatter.format()`，移除重复的 `TimeInterval.formattedTime` 扩展，避免维护多份格式化逻辑。
+### 🔴-10 AudioEngineTests.swift 文件名与内容严重不符
+- **文件**：`AudioEngineTests.swift`
+- **描述**：文件名为 AudioEngine 测试，内容却是 AppError 播放相关 + PlaybackState 枚举测试，无真实音频引擎测试
+- **建议**：重命名为 `PlaybackStateTests.swift` 或补全真实 AudioEngine 测试
 
 ---
 
-### 🟢 优化问题
+## 🟡 建议问题（共 52 项，强烈建议修复）
 
-#### 9. [🟢] AppStorageKey 缺少排序相关键名
-**文件**: `App/AppStorageKey.swift`
+### Core 层（11 项）
 
-`AppStorageKey` 中缺少 `song_sort_option` 和 `song_sort_ascending` 的常量定义，但技术文档（十二、持久化策略）提到了这两个 UserDefaults 键。应统一通过 AppStorageKey 管理所有键名。
+| # | 文件 | 问题 | 建议 |
+|---|------|------|------|
+| 01 | AudioEngine.swift | PlaybackState `.error` 比较恒为 true，UI 可能误判 | 对 .error 使用关联值比较 |
+| 02 | AudioEngine.swift | `load` 前未显式 stop/removeTimeObserver，快速连续 load 可能重叠 | 统一入口先 stop 再加载 |
+| 03 | AudioEngine.swift | `play()` ensureActive 失败未置 state 为 .error | 与 load 对齐失败行为 |
+| 04 | NowPlayingManager.swift | 未保存 addTarget 返回值，重复调用依赖全清 | 文档约定仅调一次或精确移除 |
+| 05 | ImageCacheManager.swift | 主线程同步读磁盘 | 异步加载 + 占位显示 |
+| 06 | ImageCacheManager.swift | cacheLimitMB 主线程改、fileQueue 读，数据竞争 | 统一串行上下文或 actor |
+| 07 | ImageCacheManager.swift | key 未规范化，含 `../` 可能路径越界 | 禁止路径分隔符或仅用安全字符 |
+| 08 | WiFiTransferServer.swift | 大文件整体读入内存解析 multipart | 流式解析或限制单文件最大字节 |
+| 09 | WiFiTransferServer.swift | `body.data(using: .utf8)!` 强制解包 | guard let + 500 响应回退 |
+| 10 | LRCLibAPIClient.swift | `components.url` 失败 return nil 与 throw AppError 不一致 | 改为 throw |
+| 11 | LRCLibAPIClient.swift | HTTP 错误无状态码信息 | 带上 statusCode |
 
-**建议**：补充 `static let songSortOption = "song_sort_option"` 和 `static let songSortAscending = "song_sort_ascending"`。
+### Data 层（9 项）
 
-#### 10. [🟢] 项目文档与实际代码不同步
-**文件**: `项目文档.md` 多处
+| # | 文件 | 问题 | 建议 |
+|---|------|------|------|
+| 12 | CoreDataSongRepository.swift | 多处 `try?` fetch 失败被吞 | ErrorLogger + AppError.databaseError |
+| 13 | CoreDataSongRepository.swift | fetchRecentlyPlayed 分页在高度重复播放时不可靠 | 数据库侧去重分页 |
+| 14 | CoreDataSongRepository.swift | fetchArtistGroups/fetchAlbumGroups 全表拉取 | 聚合 fetch 或缓存 |
+| 15 | CoreDataPlaylistRepository.swift | reorder/reorderSongs 部分 ID 更新一致性 | 校验或文档说明 |
+| 16 | CoreDataPlaylistGroupRepository.swift | `entity.id!` 强制解包 | guard let + throw |
+| 17 | CoreDataSearchHistoryRepository.swift | 持久化失败完全忽略无日志 | ErrorLogger 记录 |
+| 18 | SongMapper.swift | `0` 视为无效，track/year=0 场景会丢数据 | 与元数据约定对齐 |
+| 19 | AudioMetadataParser.swift | catch 仅设 isIncomplete 无日志 | ErrorLogger 记录 |
+| 20 | WebDAVAccountStore.swift | loadAccounts 与 save/delete 不走同一队列 | 统一串行队列或 actor |
 
-项目文档中的主题列表仍是旧版（meadowBreeze/roseDream/frostElegance 等），但代码中已迁移为新主题（mintBreeze/deepOcean/cyberNeon/glacierBlue/auroraDream/midnightGold）。技术文档中的主题 ID 也是旧的。
+### Domain 层（10 项）
 
-此外，项目文档提到 `AppDelegate.swift` 文件，但实际代码中 AppDelegate 的配置功能已内联到 `TuneHavenApp.swift`。
+| # | 文件 | 问题 | 建议 |
+|---|------|------|------|
+| 21 | PlaybackService.swift | loadAndPlay `try?` 吞掉 recordPlay 失败 | try await + ErrorLogger |
+| 22 | PlaybackService.swift | 文件不存在连续 playNext 无上限 | 连续失败计数 + 停止 |
+| 23 | PlayQueueService.swift | shuffle 全队列已播放时无下一轮策略 | 与 repeatAll 统一重置 |
+| 24 | MusicLibraryService.swift | Token 用 songIds.first 做 Timer key 可能覆盖 | 增加 UUID 做 key |
+| 25 | SearchService.swift | tab 参数未参与过滤，可能误导 | 按 tab 过滤或移除参数 |
+| 26 | SearchService.swift | allSongs 全量 filter 大库卡主线程 | 后台 Task.detached 或索引 |
+| 27 | SleepTimerService.swift | Timer 在 current RunLoop 滚动时可能暂停 | .common mode |
+| 28 | CloudDriveProvider.swift | Domain 依赖 UIKit UIApplication | 移到 Presentation/App 层 |
+| 29 | LyricsService.swift | startAccessingSecurityScopedResource false 直接失败 | 文档或 fallback |
+| 30 | LibraryTypes.swift | ArtistGroup/AlbumGroup id 由名称拼接可能冲突 | UUID 或文档约定 |
 
-项目文档中的错误类型描述为"21 种"，但 AppError 实际已有 30+ 个 case（增加了 WebDAV 和歌词相关错误）。
+### App 层（7 项）
 
-**建议**：在本次 Review 完成修复后，统一更新三份根目录文档。
+| # | 文件 | 问题 | 建议 |
+|---|------|------|------|
+| 31 | AppDelegate.swift | `"theme_style"` 字面量与 AppStorageKey 重复 | 统一常量 |
+| 32 | AppDelegate.swift | 默认主题 `"mint_breeze"` 与 ThemeManager `"cloud_white"` 不一致 | 共用默认 id |
+| 33 | AppDIContainer.swift | 所有 Service 同步创建，冷启动成本集中 | 非首屏依赖考虑 lazy |
+| 34 | ThemeManager.swift | `@AppStorage("theme_style")` 字面量重复 | AppStorageKey |
+| 35 | ThemeRegistry.swift | `@unchecked Sendable` 含 SwiftUI Color | 改为 @MainActor |
+| 36 | WallpaperManager.swift | saveToDisk 失败静默 | 返回 Bool 或 throws |
+| 37 | Color+Hex.swift | 非法 Hex 退化为黑色难发现 | DEBUG 洋红色 |
 
-#### 11. [🟢] LyricsLine 每次创建都生成新 UUID
-**文件**: `Domain/Entities/LibraryTypes.swift:192-198`
+### Presentation 层（15 项）
 
-LyricsLine 在 `init` 中每次创建都调用 `UUID()`，对于大量歌词行可能有不必要的开销。且这个 id 仅用于 SwiftUI List 的 Identifiable，实际上用 `timestamp + text` 的组合即可唯一标识。
-
-**建议**：可以保留，性能影响微小，但如有必要可用 hash 值替代 UUID。
-
-#### 12. [🟢] ImageCacheManager.clearAll() 方法使用 async 但内部未使用 await
-**文件**: `Core/Cache/ImageCacheManager.swift:62-78`
-
-`clearAll()` 标注为 `async` 但内部没有 `await` 调用，所有操作都是同步的（除了最后一个 `fileQueue.async`，但那不需要等待）。
-
-**建议**：移除 `async` 标注，或在 fileQueue 操作上使用 `await` 确保清理完成后才返回。
+| # | 文件 | 问题 | 建议 |
+|---|------|------|------|
+| 38 | MiniPlayerBar.swift | 未使用 libraryService 但触发重绘 | 删除未使用的 @EnvironmentObject |
+| 39 | CoverImageView.swift | 异步缓存写入后不通知 SwiftUI 刷新 | 订阅缓存变化或强制 id |
+| 40 | QRCodeView.swift | 主线程生成 QR 大尺寸掉帧 | 后台生成 |
+| 41 | LyricsSearchView.swift | 异步完成改 @State 未保证 MainActor | await MainActor.run |
+| 42 | LyricsView.swift | VStack 全量歌词行非懒加载 | LazyVStack |
+| 43 | LyricsView.swift | currentLineIndex 线性扫描每次 time 更新 | 二分或缓存上次索引 |
+| 44 | SearchResultView.swift | tab 参数未使用，播放上下文固定 allSongs | 按 tab 构建上下文 |
+| 45 | PlayQueueView.swift | 重复 song.id 时 firstIndex 高亮错误行 | 用队列项自身 id |
+| 46 | PlaylistMainView.swift | 删除/重排 try? 失败无提示 | 用户提示 |
+| 47 | PlaylistDetailView.swift | 删除歌单失败仍 popToRoot | 失败时不退出 |
+| 48 | BatchAddSongsView.swift | addSongs 失败仍 dismiss | 失败时提示 |
+| 49 | CloudDriveImportView.swift | fileImporter 未处理 .failure | 补全 failure 分支 |
+| 50 | WiFiTransferView.swift | passwordEnabled 本地 State 与 AppStorage 不同步 | 统一 AppStorage |
+| 51 | LibraryTabView.swift | 未使用 PlaylistGroupService @EnvironmentObject | 删除 |
+| 52 | SettingsAppearanceSection.swift | 主题卡选中勾 .foregroundColor(.white) | palette 语义色 |
 
 ---
 
-## 修改建议优先级
+## 🟢 优化问题（共 30+ 项，主要列举代表性的）
 
-| 优先级 | 问题编号 | 描述 |
-|--------|---------|------|
-| P0 | #1 | PlaybackService 冗余实例 — 注入 libraryService |
-| P0 | #2 | Domain 层解耦 Data 层具体实现 |
-| P1 | #3 | 统一 lyricsSource 哨兵值常量 |
-| P1 | #4 | 提取日志文件写入工具类 |
-| P1 | #5 | CoreDataStack merge 策略与文档对齐 |
-| P1 | #8 | 统一时长格式化方法 |
-| P2 | #6 | ThemeRegistry 锁策略优化 |
-| P2 | #7 | 单例 vs EnvironmentObject 文档化 |
-| P2 | #9 | 补充 AppStorageKey 缺失常量 |
-| P2 | #10 | 文档同步更新 |
-| P3 | #11 | LyricsLine UUID 生成优化 |
-| P3 | #12 | clearAll async 标注修正 |
+| # | 文件 | 问题 | 建议 |
+|---|------|------|------|
+| 01 | AudioEngine.swift | seek 未 clamp 到 [0, duration] | 边界约束 |
+| 02 | ThumbnailGenerator.swift | `images.count > i` 可读性差 | `i < images.count` |
+| 03 | WiFiTransferServer.swift | 多网卡 IP 不确定 | 优先 Wi-Fi 接口 |
+| 04 | CoreDataSongRepository.swift | insert 无幂等 | 按 fileHash upsert |
+| 05 | CoreDataPlaylistRepository.swift | maxSortOrder 拉全表 | MAX 聚合查询 |
+| 06 | Song.swift | 展示文案混在实体 | 迁到 Presentation |
+| 07 | Playlist.swift | PagedResult 定义在 Playlist.swift | 移到独立文件 |
+| 08 | QueueItem.swift | PlayQueueConstants 仅其他层使用 | 移到使用层 |
+| 09 | SongRow.swift | TimeInterval 扩展放在 View 文件 | 移到 Extensions |
+| 10 | RootTabView.swift | onAppear debug 日志发布版仍输出 | #if DEBUG |
+| 11 | AppErrorTests.swift | 固定列表不随枚举扩展自动失败 | allCases 或反射 |
+| 12 | LyricsTextTransformTests.swift | 仅 3 条用例 | 补充空串、长文本等 |
+| 13 | SearchServiceTests.swift | 全用 tab: .all | 覆盖不同 tab |
+| 14 | ThemeTests.swift | Color hex 不断言颜色分量 | 验证 RGB 值 |
+
+---
+
+## 测试覆盖评估
+
+### 已覆盖模块
+AppError、PlayQueueService、SearchService、LyricsService（LRC 解析）、FileStorageService、AudioFormat、ThemeRegistry、WebDAV XML 解析、工具类扩展
+
+### 缺失覆盖的重要模块
+- AudioEngine（真实音频链路）
+- CoreData Repository（CRUD/迁移/双上下文）
+- ImportService（全流程）
+- AudioMetadataParser
+- PlaybackService
+- Presentation/ViewModel 行为
+- 网络客户端（LRCLib/WebDAV）
+
+### 测试质量评分：6.5/10
+
+---
+
+## 修复优先级建议
+
+1. **P0（阻塞）**：🔴-03 导航 Tab 错误 → 🔴-06 WiFi 连接挂死 → 🔴-04/05 硬编码颜色
+2. **P1（架构）**：🔴-01/02 Domain 依赖治理 → 🔴-07 缺失文件
+3. **P2（质量）**：🟡 错误处理统一 → 🟡 线程安全 → 🟡 性能优化
+4. **P3（测试）**：🔴-08/09/10 测试修正 → 补充缺失覆盖

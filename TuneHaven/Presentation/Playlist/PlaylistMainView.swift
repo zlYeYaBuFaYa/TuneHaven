@@ -5,6 +5,7 @@ struct PlaylistMainView: View {
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var groupService: PlaylistGroupService
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
 
     @State private var showGroupManage = false
@@ -49,7 +50,13 @@ struct PlaylistMainView: View {
                         .listRowBackground(palette.surface)
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
-                                Task { try? await playlistService.deletePlaylist(id: playlist.id) }
+                                Task {
+                                    do {
+                                        try await playlistService.deletePlaylist(id: playlist.id)
+                                    } catch {
+                                        snackbar.show(message: "删除歌单失败，请重试")
+                                    }
+                                }
                             } label: { Label("删除", systemImage: "trash") }
                         }
                         .swipeActions(edge: .leading) {
@@ -62,7 +69,13 @@ struct PlaylistMainView: View {
                     .onMove { src, dst in
                         var sorted = userPlaylists
                         sorted.move(fromOffsets: src, toOffset: dst)
-                        Task { try? await playlistService.reorderPlaylists(orderedIds: sorted.map { $0.id }) }
+                        Task {
+                            do {
+                                try await playlistService.reorderPlaylists(orderedIds: sorted.map { $0.id })
+                            } catch {
+                                snackbar.show(message: "调整顺序失败，请重试")
+                            }
+                        }
                     }
                 }
             } header: {
@@ -130,7 +143,7 @@ struct SystemPlaylistRow: View {
                         .frame(width: 48, height: 48)
                     Image(systemName: iconName)
                         .font(.title3)
-                        .foregroundColor(.white)
+                        .foregroundColor(palette.onPrimary)
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(playlist.name)

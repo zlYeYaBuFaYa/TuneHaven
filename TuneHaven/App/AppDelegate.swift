@@ -18,7 +18,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     private func configureEarlyAppearance() {
         let registry = ThemeRegistry.shared
         if registry.allThemes.isEmpty { registry.bootstrap() }
-        let styleId = UserDefaults.standard.string(forKey: "theme_style") ?? "mint_breeze"
+        let styleId = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) ?? ThemeRegistry.shared.defaultTheme.id
         let style = registry.theme(for: styleId) ?? registry.defaultTheme
 
         let bgColor = UIColor(style.palette.background)

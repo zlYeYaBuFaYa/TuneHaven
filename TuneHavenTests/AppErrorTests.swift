@@ -132,10 +132,12 @@ struct AppErrorTests {
 
     // MARK: - LocalizedError 协议
 
-    @Test("AppError 实现了 LocalizedError 协议，errorDescription 不为空")
-    func testAllErrorsHaveDescriptions() {
+    /// 新增枚举 case 时，须同步更新此列表及 expectedCaseCount，否则测试将失败
+    private static let expectedCaseCount = 31
+
+    private static func allTestCases() -> [AppError] {
         let id = UUID()
-        let errors: [AppError] = [
+        return [
             .importUnsupportedFormat("test"),
             .importFileTooLarge(1024),
             .importFileCorrupted("test"),
@@ -144,6 +146,8 @@ struct AppErrorTests {
             .playbackFileNotFound(id),
             .playbackFileCorrupted(id),
             .playbackUnsupportedFormat("flac"),
+            .playbackSessionFailed,
+            .playbackLoadFailed("test"),
             .wifiServerStartFailed,
             .wifiNotConnected,
             .wifiPasswordWrong,
@@ -155,10 +159,28 @@ struct AppErrorTests {
             .databaseError(NSError(domain: "test", code: 0)),
             .playlistNameDuplicate,
             .playlistNameEmpty,
-            .playQueueFull
+            .playQueueFull,
+            .webdavConnectionFailed("test"),
+            .webdavAuthFailed,
+            .webdavServerNotSupported,
+            .webdavDownloadFailed("test"),
+            .webdavCertificateError,
+            .lyricsSearchFailed("test"),
+            .lyricsSaveFailed("test"),
+            .lyricsImportFailed("test"),
+            .lyricsDeleteFailed("test"),
         ]
+    }
 
-        for error in errors {
+    @Test("测试列表数量与 expectedCaseCount 一致（新增 case 时须同步更新）")
+    func testCaseCountGuard() {
+        #expect(Self.allTestCases().count == Self.expectedCaseCount,
+                "allTestCases 数量(\(Self.allTestCases().count))与 expectedCaseCount(\(Self.expectedCaseCount))不一致，新增 AppError case 后请同步更新")
+    }
+
+    @Test("AppError 实现了 LocalizedError 协议，errorDescription 不为空")
+    func testAllErrorsHaveDescriptions() {
+        for error in Self.allTestCases() {
             #expect(error.errorDescription != nil, "错误 \(error) 的 errorDescription 不应为 nil")
             #expect(!(error.errorDescription?.isEmpty ?? true), "错误 \(error) 的 errorDescription 不应为空字符串")
         }
@@ -166,30 +188,7 @@ struct AppErrorTests {
 
     @Test("所有错误码都唯一")
     func testAllErrorCodesAreUnique() {
-        let id = UUID()
-        let errorCodes: [String] = [
-            AppError.importUnsupportedFormat("test").errorCode,
-            AppError.importFileTooLarge(1024).errorCode,
-            AppError.importFileCorrupted("test").errorCode,
-            AppError.importReadFailed("test").errorCode,
-            AppError.importDuplicate("test").errorCode,
-            AppError.playbackFileNotFound(id).errorCode,
-            AppError.playbackFileCorrupted(id).errorCode,
-            AppError.playbackUnsupportedFormat("flac").errorCode,
-            AppError.wifiServerStartFailed.errorCode,
-            AppError.wifiNotConnected.errorCode,
-            AppError.wifiPasswordWrong.errorCode,
-            AppError.wifiBruteForceDetected.errorCode,
-            AppError.permissionFileAccess.errorCode,
-            AppError.permissionNotification.errorCode,
-            AppError.permissionMediaLibrary.errorCode,
-            AppError.storageFull.errorCode,
-            AppError.databaseError(NSError(domain: "test", code: 0)).errorCode,
-            AppError.playlistNameDuplicate.errorCode,
-            AppError.playlistNameEmpty.errorCode,
-            AppError.playQueueFull.errorCode
-        ]
-
+        let errorCodes = Self.allTestCases().map { $0.errorCode }
         let uniqueCodes = Set(errorCodes)
         #expect(errorCodes.count == uniqueCodes.count, "发现重复的错误码")
     }
