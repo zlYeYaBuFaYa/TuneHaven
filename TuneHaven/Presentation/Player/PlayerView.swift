@@ -487,7 +487,7 @@ struct PlayerView: View {
         let lines = data.lines
         guard !lines.isEmpty else { return nil }
         let time = engine.currentTime
-        if time < lines[0].timestamp { return lines.first?.text.map { LyricsTextTransform.displayText($0, preferSimplified: lyricsPreferSimplified) } }
+        if time < lines[0].timestamp { return LyricsTextTransform.displayText(lines[0].text, preferSimplified: lyricsPreferSimplified) }
         var lo = 0, hi = lines.count - 1
         while lo < hi {
             let mid = lo + (hi - lo + 1) / 2

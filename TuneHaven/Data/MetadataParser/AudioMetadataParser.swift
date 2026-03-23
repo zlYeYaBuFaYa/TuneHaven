@@ -19,7 +19,7 @@ struct ParsedMetadata {
     let isIncomplete: Bool
 }
 
-final class AudioMetadataParser {
+final class AudioMetadataParser: AudioMetadataParsing {
     static let shared = AudioMetadataParser()
     private init() {}
 
@@ -149,8 +149,8 @@ final class AudioMetadataParser {
             }
         } catch {
             isIncomplete = true
-            ErrorLogger.shared.log(.importFailed(url.lastPathComponent, error.localizedDescription),
-                                   context: "AudioMetadataParser: 元数据解析不完整")
+            ErrorLogger.shared.log(.importReadFailed(url.lastPathComponent),
+                                   context: "AudioMetadataParser: 元数据解析不完整 - \(error.localizedDescription)")
         }
 
         if title == fileName && artist == SongDefaults.unknownArtist { isIncomplete = true }

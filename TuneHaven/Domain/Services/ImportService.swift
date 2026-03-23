@@ -1,23 +1,25 @@
 import Foundation
-import UIKit // TODO: 将封面处理逻辑（UIImage）移至 App/Infra 层以移除 UIKit 依赖
-
-// TODO: AudioMetadataParser / ImageCacheManager / ThumbnailGenerator / SandboxPathManager 为 Core 层直接引用，
-//       后续应提取协议并通过 init 注入，使 Domain 层不依赖具体实现。
 
 @MainActor
-final class ImportService: ObservableObject {
+final class ImportService: ObservableObject, FileImporting {
     private let log = AppLogger.shared
 
     @Published private(set) var isImporting = false
     @Published private(set) var progress: ImportProgress?
 
     private let songRepo: SongRepository
-    private let fileService: FileStorageService
+    private let fileService: FileStorageProviding
+    private let coverProcessor: CoverImageProcessing
+    private let metadataParser: AudioMetadataParsing
 
     init(songRepo: SongRepository,
-         fileService: FileStorageService) {
+         fileService: FileStorageProviding,
+         coverProcessor: CoverImageProcessing,
+         metadataParser: AudioMetadataParsing) {
         self.songRepo = songRepo
         self.fileService = fileService
+        self.coverProcessor = coverProcessor
+        self.metadataParser = metadataParser
     }
     private var isCancelled = false
 
@@ -95,7 +97,7 @@ final class ImportService: ObservableObject {
         let ext = (fileName as NSString).pathExtension.lowercased()
         log.info("[Import] processFile start: \(fileName) ext=\(ext)")
 
-        guard FileStorageService.supportedExtensions.contains(ext) else {
+        guard fileService.supportedExtensions.contains(ext) else {
             log.info("[Import] 格式不支持: \(ext)")
             return SingleImportResult(fileName: fileName, status: .skippedUnsupportedFormat, song: nil, errorMessage: "格式不支持：\(ext)")
         }
@@ -106,7 +108,7 @@ final class ImportService: ObservableObject {
 
         let fileSize = fileService.fileSize(at: url)
         log.info("[Import] fileSize=\(fileSize) bytes")
-        guard fileSize <= FileStorageService.maxFileSizeBytes else {
+        guard fileSize <= fileService.maxFileSizeBytes else {
             return SingleImportResult(fileName: fileName, status: .skippedOversize, song: nil, errorMessage: "文件过大（超过500MB）")
         }
 
@@ -125,7 +127,7 @@ final class ImportService: ObservableObject {
         }
 
         log.info("[Import] 开始解析元数据: \(fileName)")
-        let parsed = await AudioMetadataParser.shared.parse(url: url)
+        let parsed = await metadataParser.parse(url: url)
         log.info("[Import] 元数据解析完成: title=\(parsed.title) artist=\(parsed.artist) duration=\(parsed.duration)")
 
         let finalTitle = titleOverride ?? parsed.title
@@ -145,18 +147,8 @@ final class ImportService: ObservableObject {
 
         let songId = UUID()
         var coverImagePath: String? = nil
-        if let coverData = finalCoverData, let coverImage = UIImage(data: coverData) {
-            let mediumThumb = ThumbnailGenerator.resize(coverImage, to: .medium)
-            let cacheURL = SandboxPathManager.coverImageURL(songId: songId, size: .medium)
-            if let thumbData = mediumThumb.jpegData(compressionQuality: 0.85) {
-                do {
-                    try thumbData.write(to: cacheURL)
-                    coverImagePath = "\(songId.uuidString)_medium.jpg"
-                    ImageCacheManager.shared.store(image: mediumThumb, forKey: coverImagePath!)
-                } catch {
-                    log.error(error, context: "封面图写入失败: \(songId)")
-                }
-            }
+        if let coverData = finalCoverData {
+            coverImagePath = try? coverProcessor.processSongCover(data: coverData, songId: songId)
         }
 
         let song = Song(

@@ -2,11 +2,12 @@ import MediaPlayer
 import UIKit
 
 @MainActor
-final class NowPlayingManager {
+final class NowPlayingManager: NowPlayingManaging {
     static let shared = NowPlayingManager()
+    private let imageCache = ImageCacheManager.shared
     private init() {}
 
-    func update(song: Song, currentTime: TimeInterval, duration: TimeInterval, speed: Float, cover: UIImage?) {
+    func update(song: Song, currentTime: TimeInterval, duration: TimeInterval, speed: Float, coverPath: String?) {
         var info = [String: Any]()
         info[MPMediaItemPropertyTitle] = song.title
         info[MPMediaItemPropertyArtist] = song.artist
@@ -15,7 +16,7 @@ final class NowPlayingManager {
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyPlaybackRate] = speed
         info[MPNowPlayingInfoPropertyDefaultPlaybackRate] = Float(1.0)
-        if let cover {
+        if let coverPath, let cover = imageCache.image(forKey: coverPath) {
             info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: cover.size) { _ in cover }
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info

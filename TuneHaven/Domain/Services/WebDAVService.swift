@@ -12,11 +12,20 @@ final class WebDAVService: ObservableObject {
     @Published private(set) var isDownloading = false
 
     private let accountStore: WebDAVAccountStoring
-    private var activeClient: WebDAVClient?
+    private let clientFactory: WebDAVClientFactory
+    private let importService: FileImporting
+    private let fileStorage: FileStorageProviding
+    private var activeClient: (any WebDAVClientProtocol)?
     private var isCancelRequested = false
 
-    init(accountStore: WebDAVAccountStoring) {
+    init(accountStore: WebDAVAccountStoring,
+         clientFactory: WebDAVClientFactory,
+         importService: FileImporting,
+         fileStorage: FileStorageProviding) {
         self.accountStore = accountStore
+        self.clientFactory = clientFactory
+        self.importService = importService
+        self.fileStorage = fileStorage
     }
 
     // MARK: - Account Management
@@ -48,12 +57,12 @@ final class WebDAVService: ObservableObject {
         guard let baseURL = URL(string: account.serverURL) else {
             throw AppError.webdavConnectionFailed("无效的服务器地址")
         }
-        let client = WebDAVClient(configuration: .init(
+        let client = clientFactory.makeClient(
             baseURL: baseURL,
             username: account.username,
             password: password,
             trustSelfSignedCert: account.trustSelfSignedCert
-        ))
+        )
         return try await client.testConnection()
     }
 
@@ -66,12 +75,12 @@ final class WebDAVService: ObservableObject {
         guard let password = accountStore.password(for: account.id) else {
             throw AppError.webdavAuthFailed
         }
-        activeClient = WebDAVClient(configuration: .init(
+        activeClient = clientFactory.makeClient(
             baseURL: baseURL,
             username: account.username,
             password: password,
             trustSelfSignedCert: account.trustSelfSignedCert
-        ))
+        )
         accountStore.updateLastConnected(accountId: account.id)
         loadAccounts()
         try await loadDirectory("/")
@@ -100,12 +109,9 @@ final class WebDAVService: ObservableObject {
     }
 
     // MARK: - Download & Import
-    // TODO: downloadAndImport 直接操作 FileManager 和 SandboxPathManager，
-    //       应抽取 FileStorageService 协议并通过 init 注入，使 Domain 层不依赖具体文件系统实现。
 
     func downloadAndImport(
         files: [WebDAVFile],
-        importService: ImportService,
         onTaskUpdate: @escaping @MainActor (WebDAVDownloadTask) -> Void
     ) async -> WebDAVImportResult {
         guard let client = activeClient else {
@@ -136,15 +142,15 @@ final class WebDAVService: ObservableObject {
 
             let file = files[i]
 
-            if file.contentLength > FileStorageService.maxFileSizeBytes {
+            if file.contentLength > fileStorage.maxFileSizeBytes {
                 downloadTasks[i].status = .skippedOversize
                 oversizeCount += 1
                 onTaskUpdate(downloadTasks[i])
                 continue
             }
 
-            let tempDir = SandboxPathManager.importTempURL
-            try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            let tempDir = fileStorage.importTempURL
+            try? fileStorage.createDirectoryIfNeeded(at: tempDir)
             let destURL = tempDir.appendingPathComponent(file.fileName)
 
             do {
@@ -178,7 +184,7 @@ final class WebDAVService: ObservableObject {
             importResult = await importService.importFromFiles(urls: downloadedURLs) { _ in }
 
             for url in downloadedURLs {
-                try? FileManager.default.removeItem(at: url)
+                try? fileStorage.removeItem(at: url)
             }
         }
 

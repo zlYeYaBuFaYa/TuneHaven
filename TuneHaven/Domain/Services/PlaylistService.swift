@@ -1,8 +1,4 @@
 import Foundation
-import UIKit // TODO: 将封面处理逻辑（UIImage）移至 App/Infra 层以移除 UIKit 依赖
-
-// TODO: ImageCacheManager / ThumbnailGenerator / SandboxPathManager 为 Core 层直接引用，
-//       后续应提取协议并通过 init 注入，使 Domain 层不依赖具体实现。
 
 @MainActor
 final class PlaylistService: ObservableObject {
@@ -12,12 +8,14 @@ final class PlaylistService: ObservableObject {
 
     private let repo: PlaylistRepository
     private let songRepo: SongRepository
-    private let imageCache = ImageCacheManager.shared
+    private let coverProcessor: CoverImageProcessing
 
     init(repo: PlaylistRepository,
-         songRepo: SongRepository) {
+         songRepo: SongRepository,
+         coverProcessor: CoverImageProcessing) {
         self.repo = repo
         self.songRepo = songRepo
+        self.coverProcessor = coverProcessor
     }
 
     func loadPlaylists() async {
@@ -63,16 +61,8 @@ final class PlaylistService: ObservableObject {
     }
 
     func setCustomCover(playlistId: UUID, imageData: Data) async throws {
-        guard let image = UIImage(data: imageData) else {
-            throw AppError.importFileCorrupted("无效的图片数据")
-        }
-        let thumb = ThumbnailGenerator.resize(image, to: .large)
-        let url = SandboxPathManager.playlistCoverURL(playlistId: playlistId)
-        guard let jpegData = thumb.jpegData(compressionQuality: 0.9) else {
-            throw AppError.importFileCorrupted("无法压缩图片")
-        }
-        try jpegData.write(to: url)
-        try await repo.setCustomCover(playlistId: playlistId, imagePath: url.lastPathComponent)
+        let imagePath = try coverProcessor.processPlaylistCover(imageData: imageData, playlistId: playlistId)
+        try await repo.setCustomCover(playlistId: playlistId, imagePath: imagePath)
         await loadPlaylists()
     }
 
@@ -81,21 +71,14 @@ final class PlaylistService: ObservableObject {
         let currentHash = topSongs.map { $0.fileHash }.joined(separator: ",")
         guard playlist.autoCoverHash != currentHash else { return }
 
-        let images: [UIImage?] = (0..<4).map { i -> UIImage? in
-            guard i < topSongs.count, let path = topSongs[i].coverImagePath else { return nil }
-            return imageCache.image(forKey: path)
-        }
-
-        let gridImage = ThumbnailGenerator.generateGridCover(images: images)
-        let url = SandboxPathManager.playlistCoverURL(playlistId: playlist.id)
-        if let data = gridImage.jpegData(compressionQuality: 0.85) {
-            do {
-                try data.write(to: url)
-                try await repo.updateAutoCover(playlistId: playlist.id, path: url.lastPathComponent, hash: currentHash)
-                imageCache.store(image: gridImage, forKey: url.lastPathComponent)
-            } catch {
-                AppLogger.shared.error(error, context: "regenerateAutoCover: 封面生成失败 \(playlist.id)")
-            }
+        do {
+            let path = try coverProcessor.generatePlaylistGridCover(
+                coverPaths: topSongs.map(\.coverImagePath),
+                playlistId: playlist.id
+            )
+            try await repo.updateAutoCover(playlistId: playlist.id, path: path, hash: currentHash)
+        } catch {
+            AppLogger.shared.error(error, context: "regenerateAutoCover: 封面生成失败 \(playlist.id)")
         }
     }
 
@@ -111,7 +94,6 @@ final class PlaylistService: ObservableObject {
         await loadPlaylists()
     }
 
-    /// 调整歌单内歌曲排序（TDD Section 3.3）
     func reorderSongs(in playlistId: UUID, orderedSongIds: [UUID]) async throws {
         try await repo.reorderSongs(in: playlistId, orderedSongIds: orderedSongIds)
     }

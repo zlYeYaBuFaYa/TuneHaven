@@ -6,14 +6,16 @@ final class LyricsService: ObservableObject {
     private let log = AppLogger.shared
     private let repo: SongRepository
     private let api: LRCLibAPIClientProtocol
+    private let preferences: UserPreferencesProviding
 
-    private static let cooldownKey = "lyrics_match_cooldown"
     private static let cooldownDuration: TimeInterval = 7 * 24 * 3600
 
     init(repo: SongRepository,
-         api: LRCLibAPIClientProtocol) {
+         api: LRCLibAPIClientProtocol,
+         preferences: UserPreferencesProviding) {
         self.repo = repo
         self.api = api
+        self.preferences = preferences
     }
 
     // MARK: - Load Lyrics (fallthrough chain)
@@ -43,8 +45,7 @@ final class LyricsService: ObservableObject {
         if let data = loadExternalLRC(songTitle: song.title) { return data }
 
         // Step 4: Online auto-match
-        let autoMatch = UserDefaults.standard.object(forKey: AppStorageKey.autoMatchLyrics) as? Bool ?? true
-        if autoMatch {
+        if preferences.autoMatchLyrics {
             if let data = await autoMatchOnline(for: song) { return data }
         }
 
@@ -327,22 +328,22 @@ final class LyricsService: ObservableObject {
     // MARK: - Private: Cooldown
 
     private func isCooldownActive(for songId: UUID) -> Bool {
-        let dict = UserDefaults.standard.dictionary(forKey: Self.cooldownKey) as? [String: Double] ?? [:]
+        let dict = preferences.lyricsCooldown
         guard let timestamp = dict[songId.uuidString] else { return false }
         return Date().timeIntervalSince1970 - timestamp < Self.cooldownDuration
     }
 
     private func markCooldown(for songId: UUID) {
-        var dict = UserDefaults.standard.dictionary(forKey: Self.cooldownKey) as? [String: Double] ?? [:]
+        var dict = preferences.lyricsCooldown
         let now = Date().timeIntervalSince1970
         dict[songId.uuidString] = now
         dict = dict.filter { now - $0.value < Self.cooldownDuration }
-        UserDefaults.standard.set(dict, forKey: Self.cooldownKey)
+        preferences.lyricsCooldown = dict
     }
 
     private func clearCooldown(for songId: UUID) {
-        var dict = UserDefaults.standard.dictionary(forKey: Self.cooldownKey) as? [String: Double] ?? [:]
+        var dict = preferences.lyricsCooldown
         dict.removeValue(forKey: songId.uuidString)
-        UserDefaults.standard.set(dict, forKey: Self.cooldownKey)
+        preferences.lyricsCooldown = dict
     }
 }

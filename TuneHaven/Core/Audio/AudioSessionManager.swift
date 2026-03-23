@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 
 @MainActor
-final class AudioSessionManager {
+final class AudioSessionManager: AudioSessionManaging {
     static let shared = AudioSessionManager()
     private(set) var isConfigured = false
     private let log = AppLogger.shared

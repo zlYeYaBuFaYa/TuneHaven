@@ -1,5 +1,111 @@
 import Foundation
+import UIKit
 @testable import TuneHaven
+
+// MARK: - Mock Infrastructure
+
+final class MockUserPreferences: UserPreferencesProviding {
+    var playMode: Int = 0
+    var playbackSpeed: Float = 1.0
+    var speedMemoryMode: Int = 0
+    var autoMatchLyrics: Bool = true
+    var lastPlayedSongId: String?
+    var songDislikes: [String: Int] = [:]
+    var perSongSpeeds: [String: Float] = [:]
+    var lyricsCooldown: [String: Double] = [:]
+}
+
+final class MockImageCacheManaging: ImageCacheManaging {
+    var cacheLimitMB: Int = 100
+    var cacheCleared = false
+    var mockCacheSize: Int64 = 0
+
+    func setCacheLimit(_ megabytes: Int) { cacheLimitMB = megabytes }
+    func clearAll() async { cacheCleared = true }
+    func cacheSizeAsync() async -> Int64 { mockCacheSize }
+}
+
+@MainActor
+final class MockCoverImageProcessing: CoverImageProcessing {
+    var lastSongCoverData: Data?
+    var songCoverResult: String? = "mock_cover.jpg"
+    var playlistCoverResult: String = "mock_playlist.jpg"
+    var gridCoverResult: String = "mock_grid.jpg"
+
+    func processSongCover(data: Data, songId: UUID) throws -> String? {
+        lastSongCoverData = data
+        return songCoverResult
+    }
+    func processPlaylistCover(imageData: Data, playlistId: UUID) throws -> String {
+        guard UIImage(data: imageData) != nil else {
+            throw AppError.importFileCorrupted("无效的图片数据")
+        }
+        return playlistCoverResult
+    }
+    func generatePlaylistGridCover(coverPaths: [String?], playlistId: UUID) throws -> String {
+        gridCoverResult
+    }
+}
+
+final class MockFileStorageProviding: FileStorageProviding {
+    var maxFileSizeBytes: Int64 = 500 * 1024 * 1024
+    var supportedExtensions: Set<String> = ["mp3", "m4a", "flac"]
+    var importTempURL: URL = URL(fileURLWithPath: NSTemporaryDirectory())
+    var fileExistsResult = true
+
+    func fileExists(relativePath: String) -> Bool { fileExistsResult }
+    func sha256(of url: URL) throws -> String { "mockhash12345678" }
+    func copyToMusic(from sourceURL: URL, fileHash: String, originalFileName: String) throws -> String {
+        "\(fileHash.prefix(8))_\(originalFileName)"
+    }
+    func fileSize(at url: URL) -> Int64 { 1024 }
+    func createDirectoryIfNeeded(at url: URL) throws {}
+    func removeItem(at url: URL) throws {}
+}
+
+final class MockAudioMetadataParsing: AudioMetadataParsing {
+    var mockResult = ParsedMetadata(
+        title: "Mock Title", artist: "Mock Artist", album: "Mock Album",
+        duration: 180, format: "mp3", sampleRate: 44100, bitRate: 320,
+        channels: 2, trackNumber: 1, year: 2024, genre: "Pop",
+        encoder: nil, coverImageData: nil, isIncomplete: false
+    )
+
+    func parse(url: URL) async -> ParsedMetadata { mockResult }
+}
+
+@MainActor
+final class MockAudioSessionManaging: AudioSessionManaging {
+    var ensureActiveCalled = false
+    @discardableResult func ensureActive() -> Bool {
+        ensureActiveCalled = true
+        return true
+    }
+}
+
+@MainActor
+final class MockNowPlayingManaging: NowPlayingManaging {
+    var lastUpdatedSong: Song?
+    var lastCoverPath: String?
+    var setupCalled = false
+
+    func update(song: Song, currentTime: TimeInterval, duration: TimeInterval, speed: Float, coverPath: String?) {
+        lastUpdatedSong = song
+        lastCoverPath = coverPath
+    }
+    func updateElapsedTime(currentTime: TimeInterval, duration: TimeInterval, speed: Float) {}
+    func clear() {}
+    func setupRemoteCommands(
+        onPlay: @escaping @Sendable () -> Void,
+        onPause: @escaping @Sendable () -> Void,
+        onTogglePlayPause: @escaping @Sendable () -> Void,
+        onNext: @escaping @Sendable () -> Void,
+        onPrevious: @escaping @Sendable () -> Void,
+        onSeek: @escaping @Sendable (TimeInterval) -> Void
+    ) {
+        setupCalled = true
+    }
+}
 
 // MARK: - Mock API Clients
 

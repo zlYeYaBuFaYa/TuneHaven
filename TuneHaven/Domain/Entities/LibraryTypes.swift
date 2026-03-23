@@ -200,7 +200,7 @@ class UndoToken {
     let expiresAt: Date
     var timerKey: UUID?
 
-    init(songIds: [UUID], movedFiles: [MovedFile], expiresAt: Date) {
+    nonisolated init(songIds: [UUID], movedFiles: [MovedFile], expiresAt: Date) {
         self.songIds = songIds
         self.movedFiles = movedFiles
         self.expiresAt = expiresAt

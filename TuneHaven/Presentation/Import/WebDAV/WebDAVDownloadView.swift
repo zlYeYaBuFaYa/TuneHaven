@@ -188,8 +188,7 @@ struct WebDAVDownloadView: View {
 
     private func startDownload() async {
         result = await webDAVService.downloadAndImport(
-            files: files,
-            importService: importService
+            files: files
         ) { _ in }
 
         await libraryService.loadSongs()

@@ -186,3 +186,5 @@ final class ImageCacheManager {
             : String(format: "%.1f MB", mb)
     }
 }
+
+extension ImageCacheManager: ImageCacheManaging {}

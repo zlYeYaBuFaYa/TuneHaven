@@ -81,3 +81,17 @@ final class FileStorageService {
         return name.components(separatedBy: invalid).joined(separator: "_")
     }
 }
+
+extension FileStorageService: FileStorageProviding {
+    var maxFileSizeBytes: Int64 { Self.maxFileSizeBytes }
+    var supportedExtensions: Set<String> { Self.supportedExtensions }
+    var importTempURL: URL { SandboxPathManager.importTempURL }
+
+    func createDirectoryIfNeeded(at url: URL) throws {
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    }
+
+    func removeItem(at url: URL) throws {
+        try FileManager.default.removeItem(at: url)
+    }
+}

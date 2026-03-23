@@ -9,7 +9,7 @@ import Foundation
 struct PlaylistNameValidationTests {
 
     private func makeService() -> PlaylistService {
-        PlaylistService(repo: MockPlaylistRepository(), songRepo: MockSongRepository())
+        PlaylistService(repo: MockPlaylistRepository(), songRepo: MockSongRepository(), coverProcessor: MockCoverImageProcessing())
     }
 
     // MARK: - 空名称验证

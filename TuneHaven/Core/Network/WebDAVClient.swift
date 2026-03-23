@@ -1,6 +1,6 @@
 import Foundation
 
-actor WebDAVClient {
+actor WebDAVClient: WebDAVClientProtocol {
     struct Configuration {
         let baseURL: URL
         let username: String

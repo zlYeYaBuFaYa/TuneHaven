@@ -9,11 +9,13 @@ final class MusicLibraryService: ObservableObject {
     @Published private(set) var isLoading = false
 
     private let songRepo: SongRepository
+    private let imageCache: ImageCacheManaging
     private var pendingUndoTokens: [UndoToken] = []
     private var undoTimers: [UUID: Timer] = [:]
 
-    init(songRepo: SongRepository) {
+    init(songRepo: SongRepository, imageCache: ImageCacheManaging) {
         self.songRepo = songRepo
+        self.imageCache = imageCache
     }
 
     func loadSongs(sortBy: SongSortOption = .title, ascending: Bool = true) async {
@@ -130,15 +132,15 @@ final class MusicLibraryService: ObservableObject {
     // MARK: - Cache Management
 
     func setCacheLimit(_ megabytes: Int) {
-        ImageCacheManager.shared.setCacheLimit(megabytes)
+        imageCache.setCacheLimit(megabytes)
     }
 
     func clearImageCache() async {
-        await ImageCacheManager.shared.clearAll()
+        await imageCache.clearAll()
     }
 
     func formattedCacheSize() async -> String {
-        let bytes = await ImageCacheManager.shared.cacheSizeAsync()
+        let bytes = await imageCache.cacheSizeAsync()
         let mb = Double(bytes) / 1024 / 1024
         return mb < 1
             ? String(format: "%.0f KB", Double(bytes) / 1024)
