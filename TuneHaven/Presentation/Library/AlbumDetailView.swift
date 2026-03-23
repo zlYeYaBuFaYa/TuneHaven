@@ -86,28 +86,26 @@ struct AlbumDetailView: View {
 
             // 曲目列表
             Section {
+                let currentSongId = playback.currentSong?.id
                 ForEach(Array(detail.songs.enumerated()), id: \.element.id) { index, song in
+                    let isCurrentSong = currentSongId == song.id
                     HStack(spacing: 14) {
                         Text(String(format: "%02d", index + 1))
                             .font(.caption.monospacedDigit())
-                            .foregroundColor(
-                                playback.currentSong?.id == song.id
-                                    ? palette.primary
-                                    : palette.textTertiary
-                            )
+                            .foregroundColor(isCurrentSong ? palette.primary : palette.textTertiary)
                             .frame(width: 24)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(song.title)
-                                .font(.subheadline.weight(playback.currentSong?.id == song.id ? .semibold : .regular))
-                                .foregroundColor(playback.currentSong?.id == song.id ? palette.primary : palette.textPrimary)
+                                .font(.subheadline.weight(isCurrentSong ? .semibold : .regular))
+                                .foregroundColor(isCurrentSong ? palette.primary : palette.textPrimary)
                                 .lineLimit(1)
                             Text(song.formatDuration())
                                 .font(.caption)
                                 .foregroundColor(palette.textTertiary)
                         }
                         Spacer()
-                        if playback.currentSong?.id == song.id && playback.isPlaying {
+                        if isCurrentSong && playback.isPlaying {
                             Image(systemName: "waveform")
                                 .font(.caption)
                                 .foregroundColor(palette.primary)
@@ -124,9 +122,19 @@ struct AlbumDetailView: View {
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             Task {
-                                guard let token = try? await libraryService.softDelete(songIds: [song.id]) else { return }
-                                snackbar.show(message: "已删除《\(song.title)》", actionTitle: "撤销") {
-                                    Task { try? await libraryService.undoDelete(token: token) }
+                                do {
+                                    let token = try await libraryService.softDelete(songIds: [song.id])
+                                    snackbar.show(message: "已删除《\(song.title)》", actionTitle: "撤销") {
+                                        Task {
+                                            do {
+                                                try await libraryService.undoDelete(token: token)
+                                            } catch {
+                                                snackbar.show(message: "撤销删除失败，请重试")
+                                            }
+                                        }
+                                    }
+                                } catch {
+                                    snackbar.show(message: "删除失败，请重试")
                                 }
                             }
                         } label: { Label("删除", systemImage: "trash") }

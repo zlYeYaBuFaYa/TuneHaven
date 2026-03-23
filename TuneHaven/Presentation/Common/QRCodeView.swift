@@ -30,9 +30,6 @@ struct QRCodeView: View {
                     .overlay(ProgressView())
             }
         }
-        .task { await generateQR(from: content) }
-        .onChange(of: content) { _, new in
-            Task { await generateQR(from: new) }
-        }
+        .task(id: content) { await generateQR(from: content) }
     }
 }

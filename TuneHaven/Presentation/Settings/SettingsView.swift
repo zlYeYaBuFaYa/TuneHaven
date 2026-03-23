@@ -133,7 +133,7 @@ struct SettingsView: View {
     // MARK: - Helpers
 
     private func calculateCacheSize() async {
-        currentCacheSize = ImageCacheManager.shared.formattedCacheSize()
+        currentCacheSize = await libraryService.formattedCacheSize()
     }
 
     private func checkNotificationPermission() async {

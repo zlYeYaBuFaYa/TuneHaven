@@ -21,10 +21,6 @@ struct WebDAVFile: Identifiable, Hashable {
         return Self.audioExtensions.contains(ext)
     }
 
-    var formattedSize: String {
-        ByteCountFormatter.string(fromByteCount: contentLength, countStyle: .file)
-    }
-
     var fileName: String {
         if !displayName.isEmpty { return displayName }
         let last = (href as NSString).lastPathComponent

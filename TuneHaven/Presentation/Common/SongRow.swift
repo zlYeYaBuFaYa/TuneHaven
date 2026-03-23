@@ -13,59 +13,62 @@ struct SongRow: View {
     @Environment(\.themePalette) private var palette
 
     var body: some View {
-        HStack(spacing: 12) {
-            if let idx = showIndex {
-                Text("\(idx)")
+        Button {
+            onTap?()
+        } label: {
+            HStack(spacing: 12) {
+                if let idx = showIndex {
+                    Text("\(idx)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundColor(palette.textTertiary)
+                        .frame(width: 22, alignment: .center)
+                }
+
+                CoverImageView(path: song.coverImagePath, size: 48)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 4) {
+                        Text(song.title)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(isPlaying ? palette.primary : palette.textPrimary)
+                            .lineLimit(1)
+                        if isPlaying {
+                            Image(systemName: "waveform")
+                                .font(.caption2)
+                                .foregroundColor(palette.primary)
+                                .symbolEffect(.variableColor.iterative)
+                        }
+                    }
+                    HStack(spacing: 4) {
+                        Text(song.artist)
+                            .font(.caption)
+                            .foregroundColor(palette.textSecondary)
+                            .lineLimit(1)
+                        if !song.album.isEmpty && song.album != SongDefaults.unknownAlbum {
+                            Text("·")
+                                .font(.caption)
+                                .foregroundColor(palette.textTertiary)
+                            Text(song.album)
+                                .font(.caption)
+                                .foregroundColor(palette.textTertiary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Text(song.duration.formattedTime)
                     .font(.caption.monospacedDigit())
                     .foregroundColor(palette.textTertiary)
-                    .frame(width: 22, alignment: .center)
             }
-
-            CoverImageView(path: song.coverImagePath, size: 48)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 4) {
-                    Text(song.title)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundColor(isPlaying ? palette.primary : palette.textPrimary)
-                        .lineLimit(1)
-                    if isPlaying {
-                        Image(systemName: "waveform")
-                            .font(.caption2)
-                            .foregroundColor(palette.primary)
-                            .symbolEffect(.variableColor.iterative)
-                    }
-                }
-                HStack(spacing: 4) {
-                    Text(song.artist)
-                        .font(.caption)
-                        .foregroundColor(palette.textSecondary)
-                        .lineLimit(1)
-                    if !song.album.isEmpty && song.album != SongDefaults.unknownAlbum {
-                        Text("·")
-                            .font(.caption)
-                            .foregroundColor(palette.textTertiary)
-                        Text(song.album)
-                            .font(.caption)
-                            .foregroundColor(palette.textTertiary)
-                            .lineLimit(1)
-                    }
-                }
-            }
-
-            Spacer()
-
-            Text(song.duration.formattedTime)
-                .font(.caption.monospacedDigit())
-                .foregroundColor(palette.textTertiary)
+            .padding(.vertical, 6)
+            .background(isPlaying ? palette.hoverHighlight : Color.clear)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, 6)
-        .background(isPlaying ? palette.hoverHighlight : Color.clear)
-        .contentShape(Rectangle())
-        .onTapGesture { onTap?() }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(song.title), \(song.artist)")
-        .accessibilityAddTraits(.isButton)
         .swipeActions(edge: .trailing) {
             if let del = onDelete {
                 Button(role: .destructive, action: del) {
@@ -103,7 +106,9 @@ struct SongRow: View {
                 Label("添加到歌单", systemImage: "plus.circle")
             }
         }
-        Divider()
+        if onDelete != nil && (onFavorite != nil || onInsertNext != nil || onAddToPlaylist != nil) {
+            Divider()
+        }
         if let del = onDelete {
             Button(role: .destructive, action: del) {
                 Label("删除歌曲", systemImage: "trash")

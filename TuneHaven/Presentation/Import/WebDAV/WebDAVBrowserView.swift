@@ -83,6 +83,15 @@ struct WebDAVBrowserView: View {
 
     private var pathBar: some View {
         HStack {
+            if currentPath != "/" {
+                Button {
+                    navigateToParent()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .foregroundColor(palette.primary)
+                        .font(.caption)
+                }
+            }
             Image(systemName: "folder.fill")
                 .foregroundColor(palette.primary)
                 .font(.caption)
@@ -122,6 +131,7 @@ struct WebDAVBrowserView: View {
         Button {
             let newPath = file.href.hasSuffix("/") ? file.href : file.href + "/"
             currentPath = newPath
+            selectedFiles.removeAll()
             Task { await loadCurrentDirectory() }
         } label: {
             HStack(spacing: 12) {
@@ -233,6 +243,15 @@ struct WebDAVBrowserView: View {
             errorMessage = error.localizedDescription
             isConnecting = false
         }
+    }
+
+    private func navigateToParent() {
+        var path = currentPath
+        if path.hasSuffix("/") { path = String(path.dropLast()) }
+        let parent = (path as NSString).deletingLastPathComponent
+        currentPath = parent.hasSuffix("/") ? parent : parent + "/"
+        selectedFiles.removeAll()
+        Task { await loadCurrentDirectory() }
     }
 
     private func loadCurrentDirectory() async {

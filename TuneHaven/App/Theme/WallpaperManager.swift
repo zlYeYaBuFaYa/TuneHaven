@@ -25,7 +25,7 @@ final class WallpaperManager: ObservableObject {
             UserDefaults.standard.set(true, forKey: AppStorageKey.useCustomWallpaper)
             return true
         } catch {
-            ErrorLogger.log(error)
+            ErrorLogger.shared.logGeneric(error, context: "壁纸保存失败")
             return false
         }
     }

@@ -132,6 +132,7 @@ private struct PlaylistContentView: View {
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
 
     private var isFiltering: Bool {
@@ -196,7 +197,13 @@ private struct PlaylistContentView: View {
                             Task { try? await libraryService.toggleFavorite(songId: song.id) }
                         },
                         onDelete: detail.playlist.isSystem ? nil : {
-                            Task { try? await playlistService.removeSongs([song.id], from: playlistId) }
+                            Task {
+                                do {
+                                    try await playlistService.removeSongs([song.id], from: playlistId)
+                                } catch {
+                                    snackbar.show(message: "移除歌曲失败，请重试")
+                                }
+                            }
                         }
                     )
                     .listRowBackground(palette.surface)

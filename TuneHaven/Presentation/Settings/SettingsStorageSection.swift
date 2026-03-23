@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsStorageSection: View {
     @EnvironmentObject private var searchService: SearchService
+    @EnvironmentObject private var libraryService: MusicLibraryService
     @Environment(\.themePalette) private var palette
     @Environment(\.settingsListRowBg) private var listRowBg
 
@@ -59,7 +60,7 @@ struct SettingsStorageSection: View {
                 get: { Double(cacheLimitMB) },
                 set: {
                     cacheLimitMB = Int($0)
-                    ImageCacheManager.shared.setCacheLimit(cacheLimitMB)
+                    libraryService.setCacheLimit(cacheLimitMB)
                 }
             ), in: 50...300, step: 50)
             .tint(palette.primary)
@@ -79,7 +80,7 @@ struct SettingsStorageSection: View {
         .confirmationDialog("清理缓存", isPresented: $showClearCacheConfirm) {
             Button("清理", role: .destructive) {
                 Task {
-                    await ImageCacheManager.shared.clearAll()
+                    await libraryService.clearImageCache()
                     await calculateCacheSize()
                 }
             }
@@ -107,6 +108,6 @@ struct SettingsStorageSection: View {
     }
 
     private func calculateCacheSize() async {
-        currentCacheSize = ImageCacheManager.shared.formattedCacheSize()
+        currentCacheSize = await libraryService.formattedCacheSize()
     }
 }

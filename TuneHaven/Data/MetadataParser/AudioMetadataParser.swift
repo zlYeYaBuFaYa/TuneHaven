@@ -51,14 +51,38 @@ final class AudioMetadataParser {
                 guard let key = item.commonKey else { continue }
                 switch key {
                 case .commonKeyTitle:
-                    if let v = try? await item.load(.stringValue), !v.isEmpty { title = v }
+                    do {
+                        if let v = try await item.load(.stringValue), !v.isEmpty { title = v }
+                    } catch {
+                        #if DEBUG
+                        AppLogger.shared.debug("metadata title 解析失败: \(error)")
+                        #endif
+                    }
                 case .commonKeyArtist:
-                    if let v = try? await item.load(.stringValue), !v.isEmpty { artist = v }
+                    do {
+                        if let v = try await item.load(.stringValue), !v.isEmpty { artist = v }
+                    } catch {
+                        #if DEBUG
+                        AppLogger.shared.debug("metadata artist 解析失败: \(error)")
+                        #endif
+                    }
                 case .commonKeyAlbumName:
-                    if let v = try? await item.load(.stringValue), !v.isEmpty { album = v }
+                    do {
+                        if let v = try await item.load(.stringValue), !v.isEmpty { album = v }
+                    } catch {
+                        #if DEBUG
+                        AppLogger.shared.debug("metadata album 解析失败: \(error)")
+                        #endif
+                    }
                 case .commonKeyArtwork:
-                    if let data = try? await item.load(.dataValue) {
-                        coverImageData = data
+                    do {
+                        if let data = try await item.load(.dataValue) {
+                            coverImageData = data
+                        }
+                    } catch {
+                        #if DEBUG
+                        AppLogger.shared.debug("metadata artwork 解析失败: \(error)")
+                        #endif
                     }
                 default: break
                 }
@@ -67,26 +91,32 @@ final class AudioMetadataParser {
             let allMetadata = try await asset.load(.metadata)
             for item in allMetadata {
                 guard let identifier = item.identifier else { continue }
-                switch identifier {
-                case .id3MetadataTrackNumber:
-                    if let v = try? await item.load(.stringValue) {
-                        trackNumber = Int(v.components(separatedBy: "/").first ?? v)
+                do {
+                    switch identifier {
+                    case .id3MetadataTrackNumber:
+                        if let v = try await item.load(.stringValue) {
+                            trackNumber = Int(v.components(separatedBy: "/").first ?? v)
+                        }
+                    case .id3MetadataYear, .id3MetadataRecordingTime:
+                        if let v = try await item.load(.stringValue) {
+                            year = Int(v.prefix(4))
+                        }
+                    case .id3MetadataContentType:
+                        if let v = try await item.load(.stringValue), !v.isEmpty { genre = v }
+                    case .id3MetadataEncodedBy:
+                        if let v = try await item.load(.stringValue), !v.isEmpty { encoder = v }
+                    case .iTunesMetadataTrackNumber:
+                        if let v = try await item.load(.numberValue) {
+                            trackNumber = v.intValue
+                        }
+                    case .iTunesMetadataUserGenre, .iTunesMetadataPredefinedGenre:
+                        if let v = try await item.load(.stringValue), !v.isEmpty { genre = v }
+                    default: break
                     }
-                case .id3MetadataYear, .id3MetadataRecordingTime:
-                    if let v = try? await item.load(.stringValue) {
-                        year = Int(v.prefix(4))
-                    }
-                case .id3MetadataContentType:
-                    if let v = try? await item.load(.stringValue), !v.isEmpty { genre = v }
-                case .id3MetadataEncodedBy:
-                    if let v = try? await item.load(.stringValue), !v.isEmpty { encoder = v }
-                case .iTunesMetadataTrackNumber:
-                    if let v = try? await item.load(.numberValue) {
-                        trackNumber = v.intValue
-                    }
-                case .iTunesMetadataUserGenre, .iTunesMetadataPredefinedGenre:
-                    if let v = try? await item.load(.stringValue), !v.isEmpty { genre = v }
-                default: break
+                } catch {
+                    #if DEBUG
+                    AppLogger.shared.debug("metadata \(identifier.rawValue) 解析失败: \(error)")
+                    #endif
                 }
             }
 
@@ -94,15 +124,27 @@ final class AudioMetadataParser {
             for track in tracks {
                 let mediaType = track.mediaType
                 if mediaType == .audio {
-                    if let desc = try? await track.load(.formatDescriptions).first,
-                       let afd = desc as? CMAudioFormatDescription {
-                        let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(afd)
-                        if let asbd {
-                            sampleRate = Int(asbd.pointee.mSampleRate)
-                            channels = Int(asbd.pointee.mChannelsPerFrame)
+                    do {
+                        if let desc = try await track.load(.formatDescriptions).first,
+                           let afd = desc as? CMAudioFormatDescription {
+                            let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(afd)
+                            if let asbd {
+                                sampleRate = Int(asbd.pointee.mSampleRate)
+                                channels = Int(asbd.pointee.mChannelsPerFrame)
+                            }
                         }
+                    } catch {
+                        #if DEBUG
+                        AppLogger.shared.debug("audio formatDescriptions 解析失败: \(error)")
+                        #endif
                     }
-                    bitRate = Int((try? await track.load(.estimatedDataRate)) ?? 0) / 1000
+                    do {
+                        bitRate = Int(try await track.load(.estimatedDataRate)) / 1000
+                    } catch {
+                        #if DEBUG
+                        AppLogger.shared.debug("audio estimatedDataRate 解析失败: \(error)")
+                        #endif
+                    }
                 }
             }
         } catch {

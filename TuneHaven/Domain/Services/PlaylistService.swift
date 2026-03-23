@@ -1,5 +1,8 @@
 import Foundation
-import UIKit
+import UIKit // TODO: 将封面处理逻辑（UIImage）移至 App/Infra 层以移除 UIKit 依赖
+
+// TODO: ImageCacheManager / ThumbnailGenerator / SandboxPathManager 为 Core 层直接引用，
+//       后续应提取协议并通过 init 注入，使 Domain 层不依赖具体实现。
 
 @MainActor
 final class PlaylistService: ObservableObject {

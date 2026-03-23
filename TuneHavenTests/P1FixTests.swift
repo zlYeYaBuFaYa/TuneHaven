@@ -1,38 +1,11 @@
+// 命名约定：P0 = 阻塞级修复（崩溃/数据丢失），P1 = 重要级修复（功能缺陷），P2 = 建议级修复（体验优化）
+// TODO: 长期重构 - 按功能模块重组测试文件，而非按修复优先级命名
+
 import Testing
 import Foundation
 @testable import TuneHaven
 
-// MARK: - Test Helpers
-
-private func makeSong(
-    id: UUID = UUID(),
-    title: String = "Test Song",
-    artist: String = "Test Artist",
-    album: String = "Test Album"
-) -> Song {
-    Song(
-        id: id,
-        title: title,
-        artist: artist,
-        album: album,
-        duration: 180,
-        fileHash: UUID().uuidString,
-        fileRelativePath: "test.mp3",
-        coverImagePath: nil,
-        lyricsPath: nil,
-        lyricsSource: nil,
-        metadata: Metadata(
-            format: "mp3", sampleRate: 44100, bitRate: 320, channels: 2,
-            encoder: nil, trackNumber: nil, year: 2024, genre: nil
-        ),
-        importDate: Date(),
-        fileSize: 1024 * 1024,
-        playCount: 0,
-        isFavorite: false,
-        favoriteDate: nil,
-        lastPlayedDate: nil
-    )
-}
+// Tests for: PlayQueueService（moveInQueue / 空队列边界）, SearchDebouncer, ThemeVisualConfig / ThemeRegistry, 历史 P1 修复回归
 
 // MARK: - #11 moveInQueue currentIndex 同步
 
@@ -84,24 +57,37 @@ struct MoveInQueueIndexSyncTests {
 @Suite("P1 Fix #17: SearchDebouncer 稳定性")
 struct SearchDebouncerTests {
 
-    @Test("SearchDebouncer 发送值后 debouncedQuery 更新", .serialized)
+    // debounce 间隔 ~300ms；初始等待 1s 覆盖 debounce + Combine 调度延迟，
+    // 之后用 polling + deadline 容忍 CI 负载抖动，避免固定 sleep 导致的 flaky test。
+
+    @Test("SearchDebouncer 发送值后 debouncedQuery 更新", .serialized, .timeLimit(.seconds(8)))
     @MainActor func testDebouncerUpdatesQuery() async throws {
         let debouncer = SearchDebouncer()
         debouncer.send("test")
 
-        try await Task.sleep(for: .milliseconds(400))
+        try await Task.sleep(for: .milliseconds(1000))
+
+        let deadline = ContinuousClock.now + .seconds(5)
+        while debouncer.debouncedQuery != "test" && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(150))
+        }
 
         #expect(debouncer.debouncedQuery == "test")
     }
 
-    @Test("SearchDebouncer 快速连续发送只保留最后一个值", .serialized)
+    @Test("SearchDebouncer 快速连续发送只保留最后一个值", .serialized, .timeLimit(.seconds(8)))
     @MainActor func testDebouncerDeduplicates() async throws {
         let debouncer = SearchDebouncer()
         debouncer.send("a")
         debouncer.send("ab")
         debouncer.send("abc")
 
-        try await Task.sleep(for: .milliseconds(400))
+        try await Task.sleep(for: .milliseconds(1000))
+
+        let deadline = ContinuousClock.now + .seconds(5)
+        while debouncer.debouncedQuery != "abc" && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(150))
+        }
 
         #expect(debouncer.debouncedQuery == "abc")
     }

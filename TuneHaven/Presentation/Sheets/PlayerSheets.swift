@@ -27,10 +27,9 @@ struct SleepTimerSheet: View {
                             Text(label)
                                 .foregroundColor(palette.textPrimary)
                             Spacer()
-                            if minutes == nil && playback.sleepTimerRemaining == nil {
+                            if minutes == nil && playback.sleepTimerOriginalMinutes == nil {
                                 Image(systemName: "checkmark").foregroundColor(palette.primary)
-                            } else if let m = minutes, let remaining = playback.sleepTimerRemaining,
-                                      Int((remaining / 60).rounded(.up)) == m {
+                            } else if let m = minutes, playback.sleepTimerOriginalMinutes == m {
                                 Image(systemName: "checkmark").foregroundColor(palette.primary)
                             }
                         }

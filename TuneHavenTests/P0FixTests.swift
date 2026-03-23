@@ -1,46 +1,11 @@
+// 命名约定：P0 = 阻塞级修复（崩溃/数据丢失），P1 = 重要级修复（功能缺陷），P2 = 建议级修复（体验优化）
+// TODO: 长期重构 - 按功能模块重组测试文件，而非按修复优先级命名
+
 import Testing
 import Foundation
 @testable import TuneHaven
 
-// MARK: - Test Helpers
-
-private func makeSong(
-    id: UUID = UUID(),
-    title: String = "Test Song",
-    artist: String = "Test Artist",
-    album: String = "Test Album",
-    duration: TimeInterval = 180,
-    fileHash: String = UUID().uuidString
-) -> Song {
-    Song(
-        id: id,
-        title: title,
-        artist: artist,
-        album: album,
-        duration: duration,
-        fileHash: fileHash,
-        fileRelativePath: "\(fileHash).mp3",
-        coverImagePath: nil,
-        lyricsPath: nil,
-        lyricsSource: nil,
-        metadata: Metadata(
-            format: "mp3",
-            sampleRate: 44100,
-            bitRate: 320,
-            channels: 2,
-            encoder: nil,
-            trackNumber: nil,
-            year: 2024,
-            genre: nil
-        ),
-        importDate: Date(),
-        fileSize: 1024 * 1024,
-        playCount: 0,
-        isFavorite: false,
-        favoriteDate: nil,
-        lastPlayedDate: nil
-    )
-}
+// Tests for: UndoToken / 删除恢复, CoreDataStack.performBackground, PlayQueueService 与歌单队列, 历史 P0 修复回归
 
 // MARK: - #1 UndoToken.MovedFile 路径分离测试
 

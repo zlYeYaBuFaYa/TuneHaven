@@ -40,9 +40,12 @@ struct WebDAVAccountEditView: View {
 
     private var title: String { isEditing ? "编辑 WebDAV" : "添加 WebDAV" }
 
+    private var trimmedServerURL: String { serverURL.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var trimmedUsername: String { username.trimmingCharacters(in: .whitespacesAndNewlines) }
+
     private var canSave: Bool {
-        !serverURL.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !username.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !trimmedServerURL.isEmpty &&
+        !trimmedUsername.isEmpty &&
         !password.isEmpty
     }
 
@@ -241,8 +244,10 @@ struct WebDAVAccountEditView: View {
     }
 
     private func isLocalNetwork(host: String) -> Bool {
-        if host == "localhost" || host == "127.0.0.1" || host == "::1" { return true }
-        if host.hasSuffix(".local") { return true }
+        let lower = host.lowercased()
+        if lower == "localhost" || lower == "127.0.0.1" || lower == "::1" { return true }
+        if lower.hasSuffix(".local") { return true }
+        if lower.hasPrefix("fe80:") || lower.hasPrefix("fd") || lower.hasPrefix("fc") { return true }
         let parts = host.split(separator: ".").compactMap { Int($0) }
         guard parts.count == 4 else { return false }
         if parts[0] == 10 { return true }
@@ -267,8 +272,8 @@ struct WebDAVAccountEditView: View {
         testResult = nil
 
         let account = WebDAVAccount(
-            displayName: displayName, serverURL: serverURL.trimmingCharacters(in: .whitespaces),
-            username: username.trimmingCharacters(in: .whitespaces),
+            displayName: displayName, serverURL: trimmedServerURL,
+            username: trimmedUsername,
             trustSelfSignedCert: trustSelfSignedCert
         )
         Task {
@@ -293,16 +298,16 @@ struct WebDAVAccountEditView: View {
         if case .edit(let existing) = mode {
             account = WebDAVAccount(
                 id: existing.id, displayName: displayName,
-                serverURL: serverURL.trimmingCharacters(in: .whitespaces),
-                username: username.trimmingCharacters(in: .whitespaces),
+                serverURL: trimmedServerURL,
+                username: trimmedUsername,
                 trustSelfSignedCert: trustSelfSignedCert,
                 createdAt: existing.createdAt, lastConnectedAt: existing.lastConnectedAt
             )
         } else {
             account = WebDAVAccount(
                 displayName: displayName,
-                serverURL: serverURL.trimmingCharacters(in: .whitespaces),
-                username: username.trimmingCharacters(in: .whitespaces),
+                serverURL: trimmedServerURL,
+                username: trimmedUsername,
                 trustSelfSignedCert: trustSelfSignedCert
             )
         }

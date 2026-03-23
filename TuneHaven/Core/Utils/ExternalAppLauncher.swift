@@ -1,5 +1,6 @@
 import UIKit
 
+@MainActor
 enum ExternalAppLauncher {
     @discardableResult
     static func openBaiduNetdisk() -> Bool {

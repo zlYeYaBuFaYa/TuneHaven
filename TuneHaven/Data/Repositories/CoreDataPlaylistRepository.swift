@@ -8,25 +8,39 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
 
     func fetchAll() async -> [Playlist] {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform {
+            stack.viewContext.perform { [log] in
                 self.stack.viewContext.processPendingChanges()
                 let request = PlaylistEntity.fetchRequest()
                 request.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
                 request.returnsObjectsAsFaults = false
-                let results = (try? self.stack.viewContext.fetch(request)) ?? []
-                continuation.resume(returning: results.compactMap { PlaylistMapper.toDomain($0) })
+                do {
+                    let results = try self.stack.viewContext.fetch(request)
+                    continuation.resume(returning: results.compactMap { PlaylistMapper.toDomain($0) })
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "Playlist.fetchAll")
+                    log.error(error, context: "Playlist.fetchAll 查询失败")
+                    continuation.resume(returning: [])
+                }
             }
         }
     }
 
     func fetchPlaylistDetail(id: UUID) async -> PlaylistDetail? {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform {
+            stack.viewContext.perform { [log] in
                 let request = PlaylistEntity.fetchRequest()
                 request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
                 request.fetchLimit = 1
-                guard let entity = try? self.stack.viewContext.fetch(request).first,
-                      let playlist = PlaylistMapper.toDomain(entity) else {
+                let entity: PlaylistEntity?
+                do {
+                    entity = try self.stack.viewContext.fetch(request).first
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchPlaylistDetail: playlist id=\(id)")
+                    log.error(error, context: "fetchPlaylistDetail playlist 查询失败")
+                    continuation.resume(returning: nil)
+                    return
+                }
+                guard let entity, let playlist = PlaylistMapper.toDomain(entity) else {
                     continuation.resume(returning: nil)
                     return
                 }
@@ -35,12 +49,28 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
                 psRequest.predicate = NSPredicate(format: "playlistId == %@", id as CVarArg)
                 psRequest.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
                 psRequest.fetchBatchSize = 50
-                let links = (try? self.stack.viewContext.fetch(psRequest)) ?? []
+                let links: [PlaylistSongEntity]
+                do {
+                    links = try self.stack.viewContext.fetch(psRequest)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchPlaylistDetail: links id=\(id)")
+                    log.error(error, context: "fetchPlaylistDetail links 查询失败")
+                    continuation.resume(returning: PlaylistDetail(playlist: playlist, songs: []))
+                    return
+                }
                 let songIds = links.compactMap { $0.songId }
 
                 let songRequest = SongEntity.fetchRequest()
                 songRequest.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", songIds as NSArray)
-                let songEntities = (try? self.stack.viewContext.fetch(songRequest)) ?? []
+                let songEntities: [SongEntity]
+                do {
+                    songEntities = try self.stack.viewContext.fetch(songRequest)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchPlaylistDetail: songs id=\(id)")
+                    log.error(error, context: "fetchPlaylistDetail songs 查询失败")
+                    continuation.resume(returning: PlaylistDetail(playlist: playlist, songs: []))
+                    return
+                }
                 let idToSong = Dictionary(uniqueKeysWithValues: songEntities.compactMap { e -> (UUID, Song)? in
                     guard let id = e.id, let s = SongMapper.toDomain(e) else { return nil }
                     return (id, s)
@@ -247,12 +277,20 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
 
     func fetchFavoritesSongIds() async -> [UUID] {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform {
-                let request = SongEntity.fetchRequest()
+            stack.viewContext.perform { [log] in
+                let request: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "SongEntity")
+                request.resultType = .dictionaryResultType
                 request.predicate = NSPredicate(format: "isFavorite == YES AND softDeleted == NO")
                 request.sortDescriptors = [NSSortDescriptor(key: "favoriteDate", ascending: false)]
-                let results = (try? self.stack.viewContext.fetch(request)) ?? []
-                continuation.resume(returning: results.compactMap { $0.id })
+                request.propertiesToFetch = ["id"]
+                do {
+                    let results = try self.stack.viewContext.fetch(request)
+                    continuation.resume(returning: results.compactMap { $0["id"] as? UUID })
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchFavoritesSongIds")
+                    log.error(error, context: "fetchFavoritesSongIds 查询失败")
+                    continuation.resume(returning: [])
+                }
             }
         }
     }

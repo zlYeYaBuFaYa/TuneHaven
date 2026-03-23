@@ -82,10 +82,11 @@ struct ArtistDetailView: View {
 
             // 全部歌曲
             Section("全部歌曲") {
+                let currentSongId = playback.currentSong?.id
                 ForEach(detail.allSongs) { song in
                     SongRow(
                         song: song,
-                        isPlaying: playback.currentSong?.id == song.id,
+                        isPlaying: currentSongId == song.id,
                         onTap: {
                             Task {
                                 await playback.prepare(song: song, in: .artist(name: artistName))
@@ -95,9 +96,19 @@ struct ArtistDetailView: View {
                         onFavorite: { Task { try? await libraryService.toggleFavorite(songId: song.id) } },
                         onDelete: {
                             Task {
-                                guard let token = try? await libraryService.softDelete(songIds: [song.id]) else { return }
-                                snackbar.show(message: "已删除《\(song.title)》", actionTitle: "撤销") {
-                                    Task { try? await libraryService.undoDelete(token: token) }
+                                do {
+                                    let token = try await libraryService.softDelete(songIds: [song.id])
+                                    snackbar.show(message: "已删除《\(song.title)》", actionTitle: "撤销") {
+                                        Task {
+                                            do {
+                                                try await libraryService.undoDelete(token: token)
+                                            } catch {
+                                                snackbar.show(message: "撤销删除失败，请重试")
+                                            }
+                                        }
+                                    }
+                                } catch {
+                                    snackbar.show(message: "删除失败，请重试")
                                 }
                             }
                         },

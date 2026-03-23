@@ -7,6 +7,14 @@ struct CoverImageView: View {
 
     @Environment(\.themePalette) private var palette
     @State private var cachedImage: UIImage?
+    @State private var refreshToken = UUID()
+
+    init(path: String?, size: CGFloat, cornerRadius: CGFloat = 8) {
+        self.path = path
+        self.size = size
+        self.cornerRadius = cornerRadius
+        _cachedImage = State(initialValue: path.flatMap { ImageCacheManager.shared.memoryImage(forKey: $0) })
+    }
 
     var body: some View {
         Group {
@@ -20,18 +28,28 @@ struct CoverImageView: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        .task(id: path) {
+        .task(id: CoverLoadToken(path: path, refresh: refreshToken)) {
             guard let path else { cachedImage = nil; return }
-            if let image = ImageCacheManager.shared.image(forKey: path) {
-                cachedImage = image
-            } else {
-                let loaded = await Task.detached {
-                    ImageCacheManager.shared.image(forKey: path)
-                }.value
-                cachedImage = loaded
+            if let memImg = ImageCacheManager.shared.memoryImage(forKey: path) {
+                cachedImage = memImg
+                return
             }
+            let loaded = await Task.detached {
+                await ImageCacheManager.shared.imageAsync(forKey: path)
+            }.value
+            cachedImage = loaded
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .imageCacheDidUpdate)) { note in
+            guard let updatedKey = note.userInfo?["key"] as? String,
+                  updatedKey == path else { return }
+            refreshToken = UUID()
         }
     }
+}
+
+private struct CoverLoadToken: Equatable {
+    let path: String?
+    let refresh: UUID
 }
 
 struct PlaceholderCoverView: View {

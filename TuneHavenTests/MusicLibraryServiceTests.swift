@@ -8,48 +8,6 @@ import Foundation
 @Suite("MusicLibraryService - 分组逻辑测试")
 struct MusicLibraryServiceGroupingTests {
 
-    // MARK: - Helpers
-
-    private func makeSong(
-        id: UUID = UUID(),
-        title: String,
-        artist: String,
-        album: String,
-        trackNumber: Int? = nil,
-        year: Int? = nil,
-        fileHash: String? = nil,
-        coverImagePath: String? = nil
-    ) -> Song {
-        Song(
-            id: id,
-            title: title,
-            artist: artist,
-            album: album,
-            duration: 180,
-            fileHash: fileHash ?? UUID().uuidString,
-            fileRelativePath: "\(title).mp3",
-            coverImagePath: coverImagePath,
-            lyricsPath: nil,
-            lyricsSource: nil,
-            metadata: Metadata(
-                format: "mp3",
-                sampleRate: 44100,
-                bitRate: 320,
-                channels: 2,
-                encoder: nil,
-                trackNumber: trackNumber,
-                year: year,
-                genre: nil
-            ),
-            importDate: Date(),
-            fileSize: 1024 * 1024,
-            playCount: 0,
-            isFavorite: false,
-            favoriteDate: nil,
-            lastPlayedDate: nil
-        )
-    }
-
     // MARK: - 艺术家分组逻辑
 
     @Test("艺术家分组：相同艺术家的歌曲被合并")

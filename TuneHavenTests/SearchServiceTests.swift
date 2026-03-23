@@ -7,43 +7,6 @@ import Foundation
 @Suite("SearchService Tests")
 struct SearchServiceTests {
 
-    // MARK: - Helpers
-
-    private func makeSong(
-        title: String,
-        artist: String = "Unknown Artist",
-        album: String = "Unknown Album"
-    ) -> Song {
-        Song(
-            id: UUID(),
-            title: title,
-            artist: artist,
-            album: album,
-            duration: 180,
-            fileHash: UUID().uuidString,
-            fileRelativePath: "\(title).mp3",
-            coverImagePath: nil,
-            lyricsPath: nil,
-            lyricsSource: nil,
-            metadata: Metadata(
-                format: "mp3",
-                sampleRate: 44100,
-                bitRate: 320,
-                channels: 2,
-                encoder: nil,
-                trackNumber: nil,
-                year: 2024,
-                genre: nil
-            ),
-            importDate: Date(),
-            fileSize: 1024 * 1024,
-            playCount: 0,
-            isFavorite: false,
-            favoriteDate: nil,
-            lastPlayedDate: nil
-        )
-    }
-
     private var testSongs: [Song] {
         [
             makeSong(title: "夜曲", artist: "周杰伦", album: "十一月的萧邦"),
@@ -69,7 +32,7 @@ struct SearchServiceTests {
         #expect(result.songs.isEmpty)
         #expect(result.artists.isEmpty)
         #expect(result.albums.isEmpty)
-        #expect(result.totalSongCount == 0)
+        #expect(result.totalMatchCount == 0)
     }
 
     @Test("纯空白字符查询返回空结果", .serialized)
@@ -78,7 +41,7 @@ struct SearchServiceTests {
         let result = await service.search(query: "   ", tab: .all, allSongs: testSongs)
 
         #expect(result.songs.isEmpty)
-        #expect(result.totalSongCount == 0)
+        #expect(result.totalMatchCount == 0)
     }
 
     // MARK: - 歌曲名称搜索
@@ -88,7 +51,7 @@ struct SearchServiceTests {
         let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "夜", tab: .all, allSongs: testSongs)
 
-        #expect(result.totalSongCount == 1)
+        #expect(result.totalMatchCount == 1)
         #expect(result.songs.first?.title == "夜曲")
     }
 
@@ -98,7 +61,7 @@ struct SearchServiceTests {
         // "P" 匹配 "Perfect"
         let result = await service.search(query: "P", tab: .all, allSongs: testSongs)
 
-        #expect(result.totalSongCount >= 1)
+        #expect(result.totalMatchCount >= 1)
         #expect(result.songs.contains { $0.title == "Perfect" })
     }
 
@@ -119,7 +82,7 @@ struct SearchServiceTests {
         let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "周杰伦", tab: .all, allSongs: testSongs)
 
-        #expect(result.totalSongCount == 6)
+        #expect(result.totalMatchCount == 6)
         #expect(result.songs.allSatisfy { $0.artist == "周杰伦" })
     }
 
@@ -173,8 +136,8 @@ struct SearchServiceTests {
         let resultUpper = await service.search(query: "PERFECT", tab: .all, allSongs: testSongs)
         let resultMixed = await service.search(query: "Perfect", tab: .all, allSongs: testSongs)
 
-        #expect(resultLower.totalSongCount == resultUpper.totalSongCount)
-        #expect(resultLower.totalSongCount == resultMixed.totalSongCount)
+        #expect(resultLower.totalMatchCount == resultUpper.totalMatchCount)
+        #expect(resultLower.totalMatchCount == resultMixed.totalMatchCount)
         #expect(resultLower.songs.contains { $0.title == "Perfect" })
     }
 
@@ -182,7 +145,7 @@ struct SearchServiceTests {
     @MainActor func testSearchChineseCaseInsensitive() async {
         let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "晴天", tab: .all, allSongs: testSongs)
-        #expect(result.totalSongCount == 1)
+        #expect(result.totalMatchCount == 1)
         #expect(result.songs.first?.title == "晴天")
     }
 
@@ -196,7 +159,7 @@ struct SearchServiceTests {
         #expect(result.songs.isEmpty)
         #expect(result.artists.isEmpty)
         #expect(result.albums.isEmpty)
-        #expect(result.totalSongCount == 0)
+        #expect(result.totalMatchCount == 0)
         #expect(result.totalArtistCount == 0)
         #expect(result.totalAlbumCount == 0)
     }
@@ -209,10 +172,10 @@ struct SearchServiceTests {
         let result = await service.search(query: "Ed", tab: .all, allSongs: testSongs)
 
         // Ed Sheeran: 2首歌曲，1个艺术家，1个专辑
-        #expect(result.totalSongCount == 2)
+        #expect(result.totalMatchCount == 2)
         #expect(result.totalArtistCount == 1)
         #expect(result.totalAlbumCount == 1)
-        #expect(result.songs.count == result.totalSongCount)
+        #expect(result.songs.count == result.totalMatchCount)
         #expect(result.artists.count == result.totalArtistCount)
         #expect(result.albums.count == result.totalAlbumCount)
     }
@@ -254,7 +217,7 @@ struct SearchServiceTests {
         let resultWithSpaces = await service.search(query: "  晴天  ", tab: .all, allSongs: testSongs)
         let resultClean = await service.search(query: "晴天", tab: .all, allSongs: testSongs)
 
-        #expect(resultWithSpaces.totalSongCount == resultClean.totalSongCount)
+        #expect(resultWithSpaces.totalMatchCount == resultClean.totalMatchCount)
     }
 
     // MARK: - 空歌库搜索
@@ -265,7 +228,7 @@ struct SearchServiceTests {
         let result = await service.search(query: "周杰伦", tab: .all, allSongs: [])
 
         #expect(result.songs.isEmpty)
-        #expect(result.totalSongCount == 0)
+        #expect(result.totalMatchCount == 0)
     }
 
     // MARK: - 不同 Tab 搜索
@@ -275,7 +238,7 @@ struct SearchServiceTests {
         let service = SearchService(historyRepo: MockSearchHistoryRepository())
         let result = await service.search(query: "周杰伦", tab: .artist, allSongs: testSongs)
 
-        #expect(result.totalSongCount == 6)
+        #expect(result.totalMatchCount == 6)
         #expect(result.totalArtistCount >= 1)
     }
 
@@ -294,7 +257,7 @@ struct SearchServiceTests {
         let resultArtist = await service.search(query: "Ed", tab: .artist, allSongs: testSongs)
         let resultAlbum = await service.search(query: "Ed", tab: .album, allSongs: testSongs)
 
-        #expect(resultAll.totalSongCount == resultArtist.totalSongCount)
-        #expect(resultAll.totalSongCount == resultAlbum.totalSongCount)
+        #expect(resultAll.totalMatchCount == resultArtist.totalMatchCount)
+        #expect(resultAll.totalMatchCount == resultAlbum.totalMatchCount)
     }
 }

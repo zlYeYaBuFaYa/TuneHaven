@@ -32,7 +32,7 @@ final class CoreDataStack {
         }
     }
 
-    func performBackground<T: Sendable>(_ block: @escaping (NSManagedObjectContext) throws -> T) async throws -> T {
+    func performBackground<T: Sendable>(_ block: @Sendable @escaping (NSManagedObjectContext) throws -> T) async throws -> T {
         try await withCheckedThrowingContinuation { continuation in
             backgroundContext.perform {
                 do {

@@ -30,7 +30,4 @@ extension LRCLibTrack {
         return nil
     }
 
-    var durationText: String {
-        DurationFormatter.format(duration)
-    }
 }

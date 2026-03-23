@@ -1,6 +1,11 @@
+// 命名约定：P0 = 阻塞级修复（崩溃/数据丢失），P1 = 重要级修复（功能缺陷），P2 = 建议级修复（体验优化）
+// TODO: 长期重构 - 按功能模块重组测试文件，而非按修复优先级命名
+
 import Testing
 import Foundation
 @testable import TuneHaven
+
+// Tests for: AudioSessionManager, ImportService, PlayQueueService（空队列/repeatAll）, AlbumKey, PlaylistService 封面, AppLogger, 历史 P2 修复回归
 
 // MARK: - #20 AudioSessionManager 重试逻辑 & #21 ensureActive 返回值 & #25 @MainActor
 
@@ -160,19 +165,3 @@ struct AppLoggerTests {
     }
 }
 
-// MARK: - Helpers
-
-private func makeSong(title: String = "Test", artist: String = "Artist", album: String = "Album") -> Song {
-    Song(
-        id: UUID(), title: title, artist: artist, album: album,
-        duration: 180, fileHash: UUID().uuidString, fileRelativePath: "test.mp3",
-        coverImagePath: nil, lyricsPath: nil, lyricsSource: nil,
-        metadata: Metadata(format: "mp3", sampleRate: nil, bitRate: nil, channels: nil, encoder: nil, trackNumber: nil, year: nil, genre: nil),
-        importDate: Date(), fileSize: 1024, playCount: 0,
-        isFavorite: false, favoriteDate: nil, lastPlayedDate: nil
-    )
-}
-
-private func makeSongs(count: Int) -> [Song] {
-    (0..<count).map { makeSong(title: "Song \($0)") }
-}

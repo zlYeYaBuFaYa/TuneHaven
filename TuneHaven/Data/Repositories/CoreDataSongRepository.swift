@@ -5,6 +5,10 @@ final class CoreDataSongRepository: SongRepository {
     private let stack: CoreDataStack
     private let log = AppLogger.shared
 
+    /// PlayRecord 去重冗余倍数：同一首歌可能有多条播放记录，
+    /// 预取该倍数的记录以确保去重后仍有足够唯一歌曲填满当前分页
+    private let recentPlayedFetchMultiplier = 10
+
     init(stack: CoreDataStack = .shared) {
         self.stack = stack
     }
@@ -314,11 +318,23 @@ final class CoreDataSongRepository: SongRepository {
                     if let hash = entity.fileHash, let path = entity.fileRelativePath {
                         let refReq = SongEntity.fetchRequest()
                         refReq.predicate = NSPredicate(format: "fileHash == %@ AND softDeleted == NO", hash)
-                        let count = (try? ctx.count(for: refReq)) ?? 0
+                        let count: Int
+                        do {
+                            count = try ctx.count(for: refReq)
+                        } catch {
+                            ErrorLogger.shared.log(.databaseError(error), context: "cleanupPendingDeletes: 引用计数查询失败 hash=\(hash)")
+                            AppLogger.shared.debug("cleanupPendingDeletes: 引用计数查询失败 hash=\(hash) error=\(error)")
+                            continue
+                        }
                         if count == 0 {
                             let fm = FileManager.default
                             let url = SandboxPathManager.musicFileURL(relativePath: path)
-                            try? fm.removeItem(at: url)
+                            do {
+                                try fm.removeItem(at: url)
+                            } catch {
+                                ErrorLogger.shared.log(.databaseError(error), context: "cleanupPendingDeletes: 文件删除失败 \(path)")
+                                AppLogger.shared.debug("cleanupPendingDeletes: 文件删除失败 path=\(path) error=\(error)")
+                            }
                         }
                     }
                     if let songId = entity.id {
@@ -338,7 +354,7 @@ final class CoreDataSongRepository: SongRepository {
 
     func fetchRecentlyPlayed(days: Int, page: Int, pageSize: Int) async -> PagedResult<Song> {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform {
+            stack.viewContext.perform { [log] in
                 var datePredicate: NSPredicate? = nil
                 if days > 0 {
                     let cutoff = Date().addingTimeInterval(-Double(days) * 86400)
@@ -350,7 +366,15 @@ final class CoreDataSongRepository: SongRepository {
                 countReq.propertiesToFetch = ["songId"]
                 countReq.returnsDistinctResults = true
                 countReq.predicate = datePredicate
-                let totalCount = ((try? self.stack.viewContext.fetch(countReq)) ?? []).count
+                let totalCount: Int
+                do {
+                    totalCount = try self.stack.viewContext.fetch(countReq).count
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchRecentlyPlayed: count")
+                    log.error(error, context: "fetchRecentlyPlayed count 查询失败")
+                    continuation.resume(returning: PagedResult(items: [], totalCount: 0, currentPage: page, hasMore: false))
+                    return
+                }
 
                 let startIndex = page * pageSize
                 guard startIndex < totalCount else {
@@ -361,9 +385,17 @@ final class CoreDataSongRepository: SongRepository {
                 let request = PlayRecordEntity.fetchRequest()
                 request.predicate = datePredicate
                 request.sortDescriptors = [NSSortDescriptor(key: "playedAt", ascending: false)]
-                request.fetchLimit = (startIndex + pageSize) * 10
+                request.fetchLimit = (startIndex + pageSize) * self.recentPlayedFetchMultiplier
 
-                let records = (try? self.stack.viewContext.fetch(request)) ?? []
+                let records: [PlayRecordEntity]
+                do {
+                    records = try self.stack.viewContext.fetch(request)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchRecentlyPlayed: records")
+                    log.error(error, context: "fetchRecentlyPlayed records 查询失败")
+                    continuation.resume(returning: PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false))
+                    return
+                }
                 var seen = Set<UUID>()
                 var uniqueIds: [UUID] = []
                 for record in records {
@@ -382,7 +414,15 @@ final class CoreDataSongRepository: SongRepository {
 
                 let songReq = SongEntity.fetchRequest()
                 songReq.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", pageIds as NSArray)
-                let songEntities = (try? self.stack.viewContext.fetch(songReq)) ?? []
+                let songEntities: [SongEntity]
+                do {
+                    songEntities = try self.stack.viewContext.fetch(songReq)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchRecentlyPlayed: songs")
+                    log.error(error, context: "fetchRecentlyPlayed songs 查询失败")
+                    continuation.resume(returning: PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false))
+                    return
+                }
 
                 let idToSong = Dictionary(uniqueKeysWithValues: songEntities.compactMap { e -> (UUID, Song)? in
                     guard let id = e.id, let song = SongMapper.toDomain(e) else { return nil }

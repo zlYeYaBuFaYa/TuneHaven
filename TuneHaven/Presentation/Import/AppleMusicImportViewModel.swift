@@ -2,6 +2,7 @@ import Foundation
 import MediaPlayer
 import AVFoundation
 import UIKit
+import Combine
 
 @MainActor
 final class AppleMusicImportViewModel: ObservableObject {
@@ -13,15 +14,26 @@ final class AppleMusicImportViewModel: ObservableObject {
     @Published private(set) var importProgress: (current: Int, total: Int) = (0, 0)
     @Published var importResult: ImportResult?
     @Published var searchText = ""
+    @Published private(set) var filteredItems: [MPMediaItem] = []
 
-    var filteredItems: [MPMediaItem] {
-        if searchText.isEmpty { return mediaItems }
-        let q = searchText.lowercased()
-        return mediaItems.filter {
-            ($0.title ?? "").lowercased().contains(q) ||
-            ($0.artist ?? "").lowercased().contains(q) ||
-            ($0.albumTitle ?? "").lowercased().contains(q)
+    init() {
+        Publishers.CombineLatest(
+            $searchText
+                .removeDuplicates()
+                .debounce(for: .milliseconds(200), scheduler: RunLoop.main)
+                .prepend(""),
+            $mediaItems
+        )
+        .map { query, items -> [MPMediaItem] in
+            if query.isEmpty { return items }
+            let q = query.lowercased()
+            return items.filter {
+                ($0.title ?? "").lowercased().contains(q) ||
+                ($0.artist ?? "").lowercased().contains(q) ||
+                ($0.albumTitle ?? "").lowercased().contains(q)
+            }
         }
+        .assign(to: &$filteredItems)
     }
 
     func checkAuthorization() async {
@@ -71,6 +83,7 @@ final class AppleMusicImportViewModel: ObservableObject {
         var details: [SingleImportResult] = []
 
         for (i, item) in selected.enumerated() {
+            guard !Task.isCancelled else { break }
             importProgress = (i + 1, selected.count)
 
             guard let assetURL = item.assetURL else {
@@ -80,14 +93,14 @@ final class AppleMusicImportViewModel: ObservableObject {
             }
 
             if let exportedURL = await exportMediaItem(item, assetURL: assetURL) {
-                let artwork = item.artwork?.image(at: CGSize(width: 600, height: 600))
+                let artworkData = item.artwork?.image(at: CGSize(width: 600, height: 600))?.jpegData(compressionQuality: 1.0)
                 let result = await importService.processAppleMusicFile(
                     tempURL: exportedURL,
                     originalFilename: exportedURL.lastPathComponent,
                     title: item.title,
                     artist: item.artist,
                     album: item.albumTitle,
-                    coverImage: artwork
+                    coverData: artworkData
                 )
                 details.append(result)
                 switch result.status {
@@ -96,7 +109,11 @@ final class AppleMusicImportViewModel: ObservableObject {
                 case .skippedDuplicate: duplicateCount += 1
                 default: failedCount += 1
                 }
-                try? FileManager.default.removeItem(at: exportedURL)
+                do {
+                    try FileManager.default.removeItem(at: exportedURL)
+                } catch {
+                    AppLogger.shared.debug("临时文件清理失败: \(exportedURL.lastPathComponent) - \(error.localizedDescription)")
+                }
             } else {
                 failedCount += 1
                 details.append(SingleImportResult(fileName: item.title ?? "unknown", status: .failed, song: nil, errorMessage: "导出音频失败"))
@@ -177,7 +194,7 @@ final class AppleMusicImportViewModel: ObservableObject {
     }
 
     static func sanitizeFileName(_ title: String, artist: String?) -> String {
-        let base = artist != nil ? "\(artist!) - \(title)" : title
+        let base = artist.map { "\($0) - \(title)" } ?? title
         let cleaned = base.replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: ":", with: "_")
             .replacingOccurrences(of: "\\", with: "_")

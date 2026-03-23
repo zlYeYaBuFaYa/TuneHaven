@@ -99,7 +99,6 @@ final class MusicLibraryService: ObservableObject {
     func cleanupOnLaunch() async {
         log.info("启动清理：清除待删除歌曲")
         await songRepo.cleanupPendingDeletes()
-        OpenInImportHandler.cleanupInbox()
     }
 
     private func scheduleCommit(token: UndoToken) {
@@ -118,6 +117,7 @@ final class MusicLibraryService: ObservableObject {
                 self.undoTimers.removeValue(forKey: tokenKey)
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
         undoTimers[tokenKey] = timer
     }
 
@@ -125,5 +125,23 @@ final class MusicLibraryService: ObservableObject {
         guard let tokenKey = token.timerKey else { return }
         undoTimers[tokenKey]?.invalidate()
         undoTimers.removeValue(forKey: tokenKey)
+    }
+
+    // MARK: - Cache Management
+
+    func setCacheLimit(_ megabytes: Int) {
+        ImageCacheManager.shared.setCacheLimit(megabytes)
+    }
+
+    func clearImageCache() async {
+        await ImageCacheManager.shared.clearAll()
+    }
+
+    func formattedCacheSize() async -> String {
+        let bytes = await ImageCacheManager.shared.cacheSizeAsync()
+        let mb = Double(bytes) / 1024 / 1024
+        return mb < 1
+            ? String(format: "%.0f KB", Double(bytes) / 1024)
+            : String(format: "%.1f MB", mb)
     }
 }

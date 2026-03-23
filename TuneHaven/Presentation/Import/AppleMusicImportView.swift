@@ -137,20 +137,7 @@ struct AppleMusicImportView: View {
                 .foregroundColor(isSelected ? palette.primary : palette.textTertiary)
                 .font(.title3)
 
-            if let artwork = item.artwork, let img = artwork.image(at: CGSize(width: 44, height: 44)) {
-                Image(uiImage: img)
-                    .resizable()
-                    .frame(width: 44, height: 44)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-            } else {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(palette.surfaceSecondary)
-                    .frame(width: 44, height: 44)
-                    .overlay {
-                        Image(systemName: "music.note")
-                            .foregroundColor(palette.textTertiary)
-                    }
-            }
+            ArtworkThumbnail(artwork: item.artwork)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title ?? "未知歌曲")
@@ -208,6 +195,35 @@ struct AppleMusicImportView: View {
         }
         .padding()
         .background(palette.surface)
+    }
+
+    private struct ArtworkThumbnail: View {
+        let artwork: MPMediaItemArtwork?
+        @Environment(\.themePalette) private var palette
+        @State private var image: UIImage?
+
+        var body: some View {
+            Group {
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .frame(width: 44, height: 44)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } else {
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(palette.surfaceSecondary)
+                        .frame(width: 44, height: 44)
+                        .overlay {
+                            Image(systemName: "music.note")
+                                .foregroundColor(palette.textTertiary)
+                        }
+                }
+            }
+            .task {
+                guard let artwork, image == nil else { return }
+                image = artwork.image(at: CGSize(width: 44, height: 44))
+            }
+        }
     }
 
     private var permissionDeniedView: some View {

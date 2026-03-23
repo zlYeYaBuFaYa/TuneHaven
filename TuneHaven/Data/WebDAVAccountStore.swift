@@ -41,15 +41,20 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
         queue.sync {
             var accounts = _loadAccounts()
             accounts.removeAll { $0.id == id }
-            if let data = try? JSONEncoder().encode(accounts) {
+            do {
+                let data = try JSONEncoder().encode(accounts)
                 UserDefaults.standard.set(data, forKey: accountsKey)
+            } catch {
+                ErrorLogger.shared.log(.databaseError(error), context: "deleteAccount: 编码失败 id=\(id)")
             }
             KeychainHelper.delete(forKey: passwordKey(for: id))
         }
     }
 
     func password(for accountId: UUID) -> String? {
-        KeychainHelper.loadString(forKey: passwordKey(for: accountId))
+        queue.sync {
+            KeychainHelper.loadString(forKey: passwordKey(for: accountId))
+        }
     }
 
     func updateLastConnected(accountId: UUID) {
@@ -57,8 +62,11 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
             var accounts = _loadAccounts()
             if let index = accounts.firstIndex(where: { $0.id == accountId }) {
                 accounts[index].lastConnectedAt = Date()
-                if let data = try? JSONEncoder().encode(accounts) {
+                do {
+                    let data = try JSONEncoder().encode(accounts)
                     UserDefaults.standard.set(data, forKey: accountsKey)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "updateLastConnected: 编码失败 id=\(accountId)")
                 }
             }
         }

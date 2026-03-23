@@ -2,46 +2,6 @@ import Testing
 import Foundation
 @testable import TuneHaven
 
-// MARK: - Test Helpers
-
-private func makeSong(
-    id: UUID = UUID(),
-    title: String = "Test Song",
-    artist: String = "Test Artist",
-    album: String = "Test Album",
-    duration: TimeInterval = 180,
-    fileHash: String = UUID().uuidString
-) -> Song {
-    Song(
-        id: id,
-        title: title,
-        artist: artist,
-        album: album,
-        duration: duration,
-        fileHash: fileHash,
-        fileRelativePath: "\(fileHash).mp3",
-        coverImagePath: nil,
-        lyricsPath: nil,
-        lyricsSource: nil,
-        metadata: Metadata(
-            format: "mp3",
-            sampleRate: 44100,
-            bitRate: 320,
-            channels: 2,
-            encoder: nil,
-            trackNumber: nil,
-            year: 2024,
-            genre: nil
-        ),
-        importDate: Date(),
-        fileSize: 1024 * 1024,
-        playCount: 0,
-        isFavorite: false,
-        favoriteDate: nil,
-        lastPlayedDate: nil
-    )
-}
-
 // MARK: - PlayQueueService Tests
 
 @Suite("PlayQueueService Tests")

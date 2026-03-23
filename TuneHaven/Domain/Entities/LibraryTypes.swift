@@ -4,6 +4,7 @@ struct ArtistGroup: Identifiable, Hashable {
     let name: String
     let songCount: Int
     let albumCount: Int
+    /// id 使用艺术家名称，假定名称在数据库中唯一；如果不同来源存在同名艺术家，需要额外区分键。
     var id: String { name }
 
     static func group(from songs: [Song]) -> [ArtistGroup] {
@@ -71,17 +72,6 @@ enum SongSortOption: Int, CaseIterable {
     case artist
     case album
     case duration
-
-    var displayName: String {
-        switch self {
-        case .title: return "文件名"
-        case .fileSize: return "文件大小"
-        case .importDate: return "添加时间"
-        case .artist: return "艺术家"
-        case .album: return "专辑"
-        case .duration: return "时长"
-        }
-    }
 }
 
 enum AudioFormat: String, CaseIterable {
@@ -95,20 +85,6 @@ enum AudioFormat: String, CaseIterable {
     case aiff = "aiff"
     case caf = "caf"
 
-    var displayName: String {
-        switch self {
-        case .all: return "全部格式"
-        case .mp3: return "MP3"
-        case .m4a: return "M4A"
-        case .aac: return "AAC"
-        case .alac: return "ALAC（无损）"
-        case .wav: return "WAV"
-        case .flac: return "FLAC（无损）"
-        case .aiff: return "AIFF（无损）"
-        case .caf: return "CAF"
-        }
-    }
-
     var isLossless: Bool {
         switch self {
         case .alac, .wav, .flac, .aiff, .caf: return true
@@ -121,14 +97,6 @@ enum LibraryTab: String, CaseIterable {
     case all = "all"
     case artist = "artist"
     case album = "album"
-
-    var displayName: String {
-        switch self {
-        case .all: return "全部"
-        case .artist: return "艺术家"
-        case .album: return "专辑"
-        }
-    }
 }
 
 enum PlayMode: Int, CaseIterable {
@@ -136,24 +104,6 @@ enum PlayMode: Int, CaseIterable {
     case repeatOne
     case repeatAll
     case shuffle
-
-    var displayName: String {
-        switch self {
-        case .sequential: return "顺序播放"
-        case .repeatOne: return "单曲循环"
-        case .repeatAll: return "列表循环"
-        case .shuffle: return "随机播放"
-        }
-    }
-
-    var iconName: String {
-        switch self {
-        case .sequential: return "arrow.right"
-        case .repeatOne: return "repeat.1"
-        case .repeatAll: return "repeat"
-        case .shuffle: return "shuffle"
-        }
-    }
 }
 
 enum PlayContext {
@@ -199,12 +149,18 @@ struct SingleImportResult {
 }
 
 struct SearchResult {
+    /// 按当前 tab 过滤后的歌曲列表
     let songs: [Song]
     let artists: [ArtistGroup]
     let albums: [AlbumGroup]
-    let totalSongCount: Int
+    /// 所有匹配关键词的歌曲总数（未经 tab 过滤），用于搜索结果标题展示。
+    /// 注意：在 .all tab 下 == songs.count；在 .artist/.album tab 下 >= songs.count。
+    let totalMatchCount: Int
     let totalArtistCount: Int
     let totalAlbumCount: Int
+
+    static let empty = SearchResult(songs: [], artists: [], albums: [],
+                                    totalMatchCount: 0, totalArtistCount: 0, totalAlbumCount: 0)
 }
 
 struct SearchHistoryItem: Identifiable {
@@ -220,6 +176,8 @@ struct LyricsData {
 }
 
 struct LyricsLine: Identifiable {
+    /// 使用 UUID 作为 SwiftUI List/ForEach 的稳定标识符。
+    /// 每次解析 LRC 都会生成新实例，UUID 确保 diff 正确触发视图更新。
     let id: UUID
     let timestamp: TimeInterval
     let text: String
@@ -231,6 +189,7 @@ struct LyricsLine: Identifiable {
     }
 }
 
+@MainActor
 class UndoToken {
     struct MovedFile {
         let tempPath: String

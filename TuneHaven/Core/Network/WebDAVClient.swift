@@ -192,9 +192,7 @@ actor WebDAVClient {
         buffer.reserveCapacity(bufferSize)
 
         for try await byte in asyncBytes {
-            if Task.isCancelled { throw AppError.webdavDownloadFailed("下载已取消") }
             if isCancelled { throw AppError.webdavDownloadFailed("下载已取消") }
-            try Task.checkCancellation()
             buffer.append(byte)
             if buffer.count >= bufferSize {
                 handle.write(buffer)

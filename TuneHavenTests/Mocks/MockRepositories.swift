@@ -78,9 +78,10 @@ final class MockPlaylistRepository: PlaylistRepository {
     func fetchAll() async -> [Playlist] { [] }
     func fetchPlaylistDetail(id: UUID) async -> PlaylistDetail? { nil }
     func create(name: String, description: String?) async throws -> Playlist {
-        Playlist(id: UUID(), name: name, description: description, isSystem: false,
-                 systemType: .normal, songCount: 0, sortOrder: 0,
-                 autoCoverPath: nil, autoCoverHash: nil, customCoverPath: nil,
+        Playlist(id: UUID(), name: name, description: description,
+                 coverImagePath: nil, autoCoverHash: nil,
+                 isSystem: false, systemType: .normal, songCount: 0,
+                 groupId: nil, sortOrder: 0,
                  createdAt: Date(), updatedAt: Date())
     }
     func update(id: UUID, name: String?, description: String?) async throws {}

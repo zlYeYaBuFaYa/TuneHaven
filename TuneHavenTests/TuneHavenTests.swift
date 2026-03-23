@@ -108,16 +108,6 @@ struct TuneHavenTests {
         #expect(PlayQueueConstants.maxCount == 999)
     }
 
-    @Test("PlayQueueConstants 不持久化")
-    func testQueueNotPersisted() {
-        #expect(PlayQueueConstants.persist == false)
-    }
-
-    @Test("PlayQueueConstants 已播放歌曲保留在队列中")
-    func testQueueRetainsPlayed() {
-        #expect(PlayQueueConstants.removePlayed == false)
-    }
-
     @Test("LyricsLine 初始化时自动生成唯一 id")
     func testLyricsLineAutoId() {
         let line1 = LyricsLine(timestamp: 10.0, text: "行一")

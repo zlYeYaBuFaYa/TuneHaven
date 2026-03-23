@@ -77,7 +77,8 @@ struct WebDAVAccountListView: View {
                 accountRow(account)
             }
             .onDelete { indices in
-                for index in indices {
+                let validIndices = indices.filter { $0 < webDAVService.accounts.count }
+                for index in validIndices {
                     webDAVService.deleteAccount(id: webDAVService.accounts[index].id)
                 }
             }

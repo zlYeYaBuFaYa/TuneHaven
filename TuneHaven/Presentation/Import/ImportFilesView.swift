@@ -134,10 +134,6 @@ struct ImportFilesView: View {
                     }
                 }
 
-                if let result = importResult {
-                    importResultSection(result)
-                }
-
                 if let error = filePickerError {
                     Section {
                         HStack(spacing: 10) {
@@ -217,11 +213,6 @@ struct ImportFilesView: View {
             showResultAlert = true
             await libraryService.loadSongs()
         }
-    }
-
-    @ViewBuilder
-    private func importResultSection(_ result: ImportResult) -> some View {
-        ImportResultSection(result: result)
     }
 
     private var resultAlertTitle: String {

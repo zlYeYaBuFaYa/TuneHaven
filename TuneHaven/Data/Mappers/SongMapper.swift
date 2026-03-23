@@ -17,10 +17,12 @@ enum SongMapper {
         entity.lyricsPath = song.lyricsPath
         entity.lyricsSource = song.lyricsSource?.rawValue ?? Self.int16Nil
         entity.format = song.metadata.format
+        // nil → 0: CoreData 不支持 Optional<Int>，0 作为"未知"哨兵值，toDomain 时还原为 nil
         entity.sampleRate = Int32(song.metadata.sampleRate ?? 0)
         entity.bitRate = Int32(song.metadata.bitRate ?? 0)
         entity.channels = Int16(song.metadata.channels ?? 0)
         entity.encoder = song.metadata.encoder
+        // nil → Int16.min: 使用 int16Nil 哨兵区分"无值"与合法值 0
         entity.trackNumber = song.metadata.trackNumber.map { Int16($0) } ?? Self.int16Nil
         entity.year = song.metadata.year.map { Int16($0) } ?? Self.int16Nil
         entity.genre = song.metadata.genre
@@ -43,10 +45,12 @@ enum SongMapper {
         entity.lyricsPath = song.lyricsPath
         entity.lyricsSource = song.lyricsSource?.rawValue ?? Self.int16Nil
         entity.format = song.metadata.format
+        // nil → 0: CoreData 不支持 Optional<Int>，0 作为"未知"哨兵值，toDomain 时还原为 nil
         entity.sampleRate = Int32(song.metadata.sampleRate ?? 0)
         entity.bitRate = Int32(song.metadata.bitRate ?? 0)
         entity.channels = Int16(song.metadata.channels ?? 0)
         entity.encoder = song.metadata.encoder
+        // nil → Int16.min: 使用 int16Nil 哨兵区分"无值"与合法值 0
         entity.trackNumber = song.metadata.trackNumber.map { Int16($0) } ?? Self.int16Nil
         entity.year = song.metadata.year.map { Int16($0) } ?? Self.int16Nil
         entity.genre = song.metadata.genre
@@ -64,6 +68,7 @@ enum SongMapper {
               let format = entity.format,
               let importDate = entity.importDate else { return nil }
 
+        // 0 表示未知/未解析，映射为 nil
         let metadata = Metadata(
             format: format,
             sampleRate: entity.sampleRate != 0 ? Int(entity.sampleRate) : nil,
@@ -101,11 +106,7 @@ enum SongMapper {
     }
 
     static func isValidYear(_ value: Int16) -> Bool {
-        value != 0 && value != int16Nil && value > 0
-    }
-
-    private static func isValidOptionalInt16(_ value: Int16) -> Bool {
-        value != 0 && value != int16Nil
+        value > 0
     }
 
     private static func isValidLyricsSource(_ value: Int16) -> Bool {

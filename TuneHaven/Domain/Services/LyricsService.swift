@@ -211,12 +211,13 @@ final class LyricsService: ObservableObject {
 
     // MARK: - LRC Parsing
 
-    private static let lrcRegex: NSRegularExpression? = {
-        try? NSRegularExpression(pattern: #"\[(\d{1,3}):(\d{2})\.(\d{2,3})\](.*)"#)
+    // swiftlint:disable:next force_try
+    private static let lrcRegex: NSRegularExpression = {
+        try! NSRegularExpression(pattern: #"\[(\d{1,3}):(\d{2})\.(\d{2,3})\](.*)"#)
     }()
 
     nonisolated func parseLRC(_ content: String) -> [LyricsLine] {
-        guard let regex = Self.lrcRegex else { return [] }
+        let regex = Self.lrcRegex
         var lines: [LyricsLine] = []
         let rawLines = content.components(separatedBy: "\n")
         for line in rawLines {

@@ -100,6 +100,8 @@ final class WebDAVService: ObservableObject {
     }
 
     // MARK: - Download & Import
+    // TODO: downloadAndImport 直接操作 FileManager 和 SandboxPathManager，
+    //       应抽取 FileStorageService 协议并通过 init 注入，使 Domain 层不依赖具体文件系统实现。
 
     func downloadAndImport(
         files: [WebDAVFile],

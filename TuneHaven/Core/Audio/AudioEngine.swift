@@ -11,7 +11,7 @@ enum PlaybackState: Equatable {
         case (.idle, .idle), (.loading, .loading), (.playing, .playing), (.paused, .paused):
             return true
         case (.error(let l), .error(let r)):
-            return l.localizedDescription == r.localizedDescription
+            return String(describing: l) == String(describing: r)
         default:
             return false
         }
@@ -67,7 +67,7 @@ final class AudioEngine: ObservableObject {
         log.info("加载音频: \(url.lastPathComponent)")
 
         guard FileManager.default.fileExists(atPath: url.path) else {
-            state = .error(AppError.playbackFileNotFound(UUID()))
+            state = .error(AppError.playbackLoadFailed("文件不存在: \(url.lastPathComponent)"))
             log.error("音频文件不存在: \(url.path)")
             return
         }
@@ -143,10 +143,7 @@ final class AudioEngine: ObservableObject {
             log.error("音频会话激活失败，无法播放")
             return
         }
-        player.play()
-        if playbackSpeed != 1.0 {
-            player.rate = playbackSpeed
-        }
+        player.rate = playbackSpeed
         state = .playing
         log.debug("开始播放")
     }

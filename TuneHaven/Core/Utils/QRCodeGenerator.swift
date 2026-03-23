@@ -3,8 +3,9 @@ import CoreImage.CIFilterBuiltins
 import UIKit
 
 enum QRCodeGenerator {
+    private static let context = CIContext()
+
     static func generate(from string: String, size: CGFloat = 200) -> UIImage? {
-        let context = CIContext()
         let filter = CIFilter.qrCodeGenerator()
         guard let data = string.data(using: .utf8) else { return nil }
         filter.setValue(data, forKey: "inputMessage")

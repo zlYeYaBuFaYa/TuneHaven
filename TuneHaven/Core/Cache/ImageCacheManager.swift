@@ -1,6 +1,10 @@
 import UIKit
 import Foundation
 
+extension Notification.Name {
+    static let imageCacheDidUpdate = Notification.Name("imageCacheDidUpdate")
+}
+
 final class ImageCacheManager {
     static let shared = ImageCacheManager()
 
@@ -23,8 +27,12 @@ final class ImageCacheManager {
     }
 
     func setCacheLimit(_ megabytes: Int) {
-        let clamped = min(megabytes, 300)
+        let clamped = max(10, min(megabytes, 300))
         fileQueue.async { [weak self] in self?.cacheLimitMB = clamped }
+    }
+
+    func memoryImage(forKey key: String) -> UIImage? {
+        memoryCache.object(forKey: key as NSString)
     }
 
     func image(forKey key: String) -> UIImage? {
@@ -71,6 +79,9 @@ final class ImageCacheManager {
                 self.trackedCacheSize += Int64(data.count)
             }
             self?.evictIfNeeded()
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .imageCacheDidUpdate, object: nil, userInfo: ["key": key])
+            }
         }
     }
 
@@ -85,18 +96,21 @@ final class ImageCacheManager {
     func clearAll() async {
         log.info("清理图片缓存")
         memoryCache.removeAllObjects()
-        let url = SandboxPathManager.coverImagesURL
-        guard let files = try? fileManager.contentsOfDirectory(atPath: url.path) else { return }
-        for file in files {
-            try? fileManager.removeItem(at: url.appendingPathComponent(file))
-        }
-        let plUrl = SandboxPathManager.playlistCoversURL
-        guard let plFiles = try? fileManager.contentsOfDirectory(atPath: plUrl.path) else { return }
-        for file in plFiles {
-            try? fileManager.removeItem(at: plUrl.appendingPathComponent(file))
-        }
-        fileQueue.async { [weak self] in
-            self?.trackedCacheSize = 0
+        let fm = fileManager
+        let coverURL = SandboxPathManager.coverImagesURL
+        let plURL = SandboxPathManager.playlistCoversURL
+        await withCheckedContinuation { continuation in
+            fileQueue.async { [weak self] in
+                for dir in [coverURL, plURL] {
+                    if let files = try? fm.contentsOfDirectory(atPath: dir.path) {
+                        for file in files {
+                            try? fm.removeItem(at: dir.appendingPathComponent(file))
+                        }
+                    }
+                }
+                self?.trackedCacheSize = 0
+                continuation.resume()
+            }
         }
     }
 
@@ -111,6 +125,19 @@ final class ImageCacheManager {
             }
         }
         return size
+    }
+
+    func cacheSizeAsync() async -> Int64 {
+        await withCheckedContinuation { continuation in
+            fileQueue.async { [weak self] in
+                guard let self else {
+                    continuation.resume(returning: 0)
+                    return
+                }
+                let size = self.cacheSize()
+                continuation.resume(returning: size)
+            }
+        }
     }
 
     private func cacheFileURL(key: String) -> URL {

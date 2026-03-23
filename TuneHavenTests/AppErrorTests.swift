@@ -132,55 +132,9 @@ struct AppErrorTests {
 
     // MARK: - LocalizedError 协议
 
-    /// 新增枚举 case 时，须同步更新此列表及 expectedCaseCount，否则测试将失败
-    private static let expectedCaseCount = 31
-
-    private static func allTestCases() -> [AppError] {
-        let id = UUID()
-        return [
-            .importUnsupportedFormat("test"),
-            .importFileTooLarge(1024),
-            .importFileCorrupted("test"),
-            .importReadFailed("test"),
-            .importDuplicate("test"),
-            .playbackFileNotFound(id),
-            .playbackFileCorrupted(id),
-            .playbackUnsupportedFormat("flac"),
-            .playbackSessionFailed,
-            .playbackLoadFailed("test"),
-            .wifiServerStartFailed,
-            .wifiNotConnected,
-            .wifiPasswordWrong,
-            .wifiBruteForceDetected,
-            .permissionFileAccess,
-            .permissionNotification,
-            .permissionMediaLibrary,
-            .storageFull,
-            .databaseError(NSError(domain: "test", code: 0)),
-            .playlistNameDuplicate,
-            .playlistNameEmpty,
-            .playQueueFull,
-            .webdavConnectionFailed("test"),
-            .webdavAuthFailed,
-            .webdavServerNotSupported,
-            .webdavDownloadFailed("test"),
-            .webdavCertificateError,
-            .lyricsSearchFailed("test"),
-            .lyricsSaveFailed("test"),
-            .lyricsImportFailed("test"),
-            .lyricsDeleteFailed("test"),
-        ]
-    }
-
-    @Test("测试列表数量与 expectedCaseCount 一致（新增 case 时须同步更新）")
-    func testCaseCountGuard() {
-        #expect(Self.allTestCases().count == Self.expectedCaseCount,
-                "allTestCases 数量(\(Self.allTestCases().count))与 expectedCaseCount(\(Self.expectedCaseCount))不一致，新增 AppError case 后请同步更新")
-    }
-
     @Test("AppError 实现了 LocalizedError 协议，errorDescription 不为空")
     func testAllErrorsHaveDescriptions() {
-        for error in Self.allTestCases() {
+        for error in AppError.allCases {
             #expect(error.errorDescription != nil, "错误 \(error) 的 errorDescription 不应为 nil")
             #expect(!(error.errorDescription?.isEmpty ?? true), "错误 \(error) 的 errorDescription 不应为空字符串")
         }
@@ -188,8 +142,44 @@ struct AppErrorTests {
 
     @Test("所有错误码都唯一")
     func testAllErrorCodesAreUnique() {
-        let errorCodes = Self.allTestCases().map { $0.errorCode }
+        let errorCodes = AppError.allCases.map { $0.errorCode }
         let uniqueCodes = Set(errorCodes)
         #expect(errorCodes.count == uniqueCodes.count, "发现重复的错误码")
+    }
+
+    // AppError 含关联值，无法由编译器合成 CaseIterable；allCases 为手动维护的代表性实例列表。
+    // errorCode / errorDescription 的 switch 是 exhaustive 的（编译器保障），但 allCases 不受编译器约束。
+    // 以下两个测试配合守护：count 测试用硬编码数字检测遗漏，Mirror 测试交叉验证内部一致性。
+
+    @Test("allCases 数量校验（新增 enum case 时请同步更新此数字和 AppError.allCases）")
+    func testAllCasesCountMatchesExpected() {
+        // ⚠️ 新增 AppError case 后须同时：
+        //   1. 在 AppError.allCases 中添加代表性实例
+        //   2. 将下面的 expectedCount + 1
+        let expectedCount = 32
+        #expect(
+            AppError.allCases.count == expectedCount,
+            "AppError.allCases 数量(\(AppError.allCases.count))与预期(\(expectedCount))不一致，请检查是否忘了更新 allCases"
+        )
+    }
+
+    @Test("allCases Mirror 校验：无重复标签且与 errorCode 数量一致")
+    func testAllCasesCompletenessViaMirror() {
+        let caseLabels = AppError.allCases.map { error -> String in
+            let mirror = Mirror(reflecting: error)
+            return mirror.children.first?.label ?? String(describing: error)
+        }
+        let uniqueLabels = Set(caseLabels)
+        let uniqueCodes = Set(AppError.allCases.map(\.errorCode))
+
+        #expect(!caseLabels.isEmpty, "allCases 不应为空")
+        #expect(
+            caseLabels.count == uniqueLabels.count,
+            "allCases 中存在重复标签：共 \(caseLabels.count) 项但仅 \(uniqueLabels.count) 个唯一标签"
+        )
+        #expect(
+            uniqueLabels.count == uniqueCodes.count,
+            "Mirror 标签数(\(uniqueLabels.count))与唯一 errorCode 数(\(uniqueCodes.count))不一致，allCases 可能遗漏或多余"
+        )
     }
 }

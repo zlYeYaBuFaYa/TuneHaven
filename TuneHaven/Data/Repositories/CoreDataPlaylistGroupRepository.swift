@@ -8,10 +8,18 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
 
     func fetchAll() async -> [PlaylistGroup] {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform {
+            stack.viewContext.perform { [log] in
                 let request = PlaylistGroupEntity.fetchRequest()
                 request.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
-                let results = (try? self.stack.viewContext.fetch(request)) ?? []
+                let results: [PlaylistGroupEntity]
+                do {
+                    results = try self.stack.viewContext.fetch(request)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "PlaylistGroup.fetchAll")
+                    log.error(error, context: "PlaylistGroup.fetchAll 查询失败")
+                    continuation.resume(returning: [])
+                    return
+                }
                 continuation.resume(returning: results.compactMap { entity -> PlaylistGroup? in
                     guard let id = entity.id, let name = entity.name, let created = entity.createdAt else { return nil }
                     return PlaylistGroup(id: id, name: name, createdAt: created, sortOrder: Int(entity.sortOrder))
@@ -26,9 +34,17 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
             entity.id = UUID()
             entity.name = name
             entity.createdAt = Date()
-            let maxReq = PlaylistGroupEntity.fetchRequest()
-            let allGroups = (try? ctx.fetch(maxReq)) ?? []
-            entity.sortOrder = Int32((allGroups.map { $0.sortOrder }.max() ?? -1) + 1)
+            let maxReq: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "PlaylistGroupEntity")
+            maxReq.resultType = .dictionaryResultType
+            let expr = NSExpression(forKeyPath: "sortOrder")
+            let maxExpr = NSExpression(forFunction: "max:", arguments: [expr])
+            let desc = NSExpressionDescription()
+            desc.name = "maxSortOrder"
+            desc.expression = maxExpr
+            desc.expressionResultType = .integer32AttributeType
+            maxReq.propertiesToFetch = [desc]
+            let maxResult = (try? ctx.fetch(maxReq))?.first?["maxSortOrder"] as? Int32 ?? -1
+            entity.sortOrder = maxResult + 1
             guard let id = entity.id, let createdAt = entity.createdAt else {
                 throw AppError.databaseError(NSError(domain: "CoreDataPlaylistGroupRepository", code: -1,
                     userInfo: [NSLocalizedDescriptionKey: "创建分组后属性为空"]))
@@ -81,6 +97,7 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
     func reorder(orderedIds: [UUID]) async throws {
         try await stack.performBackground { ctx in
             let request = PlaylistGroupEntity.fetchRequest()
+            request.predicate = NSPredicate(format: "id IN %@", orderedIds as NSArray)
             let groups = try ctx.fetch(request)
             let idToGroup = Dictionary(uniqueKeysWithValues: groups.compactMap { g -> (UUID, PlaylistGroupEntity)? in
                 guard let id = g.id else { return nil }
@@ -94,15 +111,31 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
 
     func fetchGroupDetails() async -> [PlaylistGroupDetail] {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform {
+            stack.viewContext.perform { [log] in
                 let groupRequest = PlaylistGroupEntity.fetchRequest()
                 groupRequest.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
                 groupRequest.fetchBatchSize = 50
-                let groups = (try? self.stack.viewContext.fetch(groupRequest)) ?? []
+                let groups: [PlaylistGroupEntity]
+                do {
+                    groups = try self.stack.viewContext.fetch(groupRequest)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchGroupDetails: groups")
+                    log.error(error, context: "fetchGroupDetails groups 查询失败")
+                    continuation.resume(returning: [])
+                    return
+                }
 
                 let playlistRequest = PlaylistEntity.fetchRequest()
                 playlistRequest.fetchBatchSize = 50
-                let playlists = (try? self.stack.viewContext.fetch(playlistRequest)) ?? []
+                let playlists: [PlaylistEntity]
+                do {
+                    playlists = try self.stack.viewContext.fetch(playlistRequest)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchGroupDetails: playlists")
+                    log.error(error, context: "fetchGroupDetails playlists 查询失败")
+                    continuation.resume(returning: [])
+                    return
+                }
 
                 let details = groups.compactMap { group -> PlaylistGroupDetail? in
                     guard let id = group.id, let name = group.name else { return nil }

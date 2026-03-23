@@ -119,18 +119,28 @@ struct AllSongsView: View {
 
     private func softDelete(_ song: Song) {
         Task {
-            guard let token = try? await libraryService.softDelete(songIds: [song.id]) else { return }
-            pendingDeleteToken = token
-            snackbar.show(
-                message: "已删除《\(song.title)》",
-                actionTitle: "撤销",
-                action: { undoDelete(token) },
-                duration: 30
-            )
+            do {
+                let token = try await libraryService.softDelete(songIds: [song.id])
+                pendingDeleteToken = token
+                snackbar.show(
+                    message: "已删除《\(song.title)》",
+                    actionTitle: "撤销",
+                    action: { undoDelete(token) },
+                    duration: 30
+                )
+            } catch {
+                snackbar.show(message: "删除失败，请重试")
+            }
         }
     }
 
     private func undoDelete(_ token: UndoToken) {
-        Task { try? await libraryService.undoDelete(token: token) }
+        Task {
+            do {
+                try await libraryService.undoDelete(token: token)
+            } catch {
+                snackbar.show(message: "撤销删除失败，请重试")
+            }
+        }
     }
 }

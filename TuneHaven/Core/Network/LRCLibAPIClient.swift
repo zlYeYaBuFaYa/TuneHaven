@@ -59,7 +59,11 @@ final class LRCLibAPIClient: LRCLibAPIClientProtocol {
         guard (200...299).contains(http.statusCode) else {
             throw AppError.lyricsSearchFailed("HTTP \(http.statusCode)")
         }
-        return try decoder.decode(LRCLibTrack.self, from: data)
+        do {
+            return try decoder.decode(LRCLibTrack.self, from: data)
+        } catch {
+            throw AppError.lyricsSearchFailed("响应数据解析失败")
+        }
     }
 
     func search(

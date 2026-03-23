@@ -32,6 +32,7 @@ enum AppError: LocalizedError {
     case lyricsSaveFailed(String)
     case lyricsImportFailed(String)
     case lyricsDeleteFailed(String)
+    case fileSystemError(String)
 
     var errorDescription: String? {
         switch self {
@@ -66,6 +67,7 @@ enum AppError: LocalizedError {
         case .lyricsSaveFailed: return "歌词保存失败"
         case .lyricsImportFailed: return "歌词导入失败，请确认文件格式正确"
         case .lyricsDeleteFailed: return "歌词删除失败"
+        case .fileSystemError(let msg): return "文件系统错误：\(msg)"
         }
     }
 
@@ -102,14 +104,92 @@ enum AppError: LocalizedError {
         case .lyricsSaveFailed: return "LYR002"
         case .lyricsImportFailed: return "LYR003"
         case .lyricsDeleteFailed: return "LYR004"
+        case .fileSystemError: return "FS001"
         }
     }
 }
 
-// MARK: - Equatable（用于 Swift Testing #expect(throws:) 精确值比较）
+// MARK: - Equatable（完整值比较，包含所有关联值）
 extension AppError: Equatable {
     static func == (lhs: AppError, rhs: AppError) -> Bool {
-        lhs.errorCode == rhs.errorCode
+        switch (lhs, rhs) {
+        case (.importUnsupportedFormat(let a), .importUnsupportedFormat(let b)): return a == b
+        case (.importFileTooLarge(let a), .importFileTooLarge(let b)): return a == b
+        case (.importFileCorrupted(let a), .importFileCorrupted(let b)): return a == b
+        case (.importReadFailed(let a), .importReadFailed(let b)): return a == b
+        case (.importDuplicate(let a), .importDuplicate(let b)): return a == b
+        case (.playbackFileNotFound(let a), .playbackFileNotFound(let b)): return a == b
+        case (.playbackFileCorrupted(let a), .playbackFileCorrupted(let b)): return a == b
+        case (.playbackUnsupportedFormat(let a), .playbackUnsupportedFormat(let b)): return a == b
+        case (.playbackSessionFailed, .playbackSessionFailed): return true
+        case (.playbackLoadFailed(let a), .playbackLoadFailed(let b)): return a == b
+        case (.wifiServerStartFailed, .wifiServerStartFailed): return true
+        case (.wifiNotConnected, .wifiNotConnected): return true
+        case (.wifiPasswordWrong, .wifiPasswordWrong): return true
+        case (.wifiBruteForceDetected, .wifiBruteForceDetected): return true
+        case (.permissionFileAccess, .permissionFileAccess): return true
+        case (.permissionNotification, .permissionNotification): return true
+        case (.permissionMediaLibrary, .permissionMediaLibrary): return true
+        case (.storageFull, .storageFull): return true
+        case (.databaseError(let a), .databaseError(let b)):
+            return a.localizedDescription == b.localizedDescription
+        case (.playlistNameDuplicate, .playlistNameDuplicate): return true
+        case (.playlistNameEmpty, .playlistNameEmpty): return true
+        case (.playQueueFull, .playQueueFull): return true
+        case (.webdavConnectionFailed(let a), .webdavConnectionFailed(let b)): return a == b
+        case (.webdavAuthFailed, .webdavAuthFailed): return true
+        case (.webdavServerNotSupported, .webdavServerNotSupported): return true
+        case (.webdavDownloadFailed(let a), .webdavDownloadFailed(let b)): return a == b
+        case (.webdavCertificateError, .webdavCertificateError): return true
+        case (.lyricsSearchFailed(let a), .lyricsSearchFailed(let b)): return a == b
+        case (.lyricsSaveFailed(let a), .lyricsSaveFailed(let b)): return a == b
+        case (.lyricsImportFailed(let a), .lyricsImportFailed(let b)): return a == b
+        case (.lyricsDeleteFailed(let a), .lyricsDeleteFailed(let b)): return a == b
+        case (.fileSystemError(let a), .fileSystemError(let b)): return a == b
+        default: return false
+        }
+    }
+}
+
+// MARK: - CaseIterable
+// 含关联值的枚举无法由编译器合成 CaseIterable；此处为测试与完整性检查提供代表性实例，新增 case 时须同步更新。
+extension AppError: CaseIterable {
+    static var allCases: [AppError] {
+        let id = UUID()
+        return [
+            .importUnsupportedFormat("test"),
+            .importFileTooLarge(1024),
+            .importFileCorrupted("test"),
+            .importReadFailed("test"),
+            .importDuplicate("test"),
+            .playbackFileNotFound(id),
+            .playbackFileCorrupted(id),
+            .playbackUnsupportedFormat("flac"),
+            .playbackSessionFailed,
+            .playbackLoadFailed("test"),
+            .wifiServerStartFailed,
+            .wifiNotConnected,
+            .wifiPasswordWrong,
+            .wifiBruteForceDetected,
+            .permissionFileAccess,
+            .permissionNotification,
+            .permissionMediaLibrary,
+            .storageFull,
+            .databaseError(NSError(domain: "test", code: 0)),
+            .playlistNameDuplicate,
+            .playlistNameEmpty,
+            .playQueueFull,
+            .webdavConnectionFailed("test"),
+            .webdavAuthFailed,
+            .webdavServerNotSupported,
+            .webdavDownloadFailed("test"),
+            .webdavCertificateError,
+            .lyricsSearchFailed("test"),
+            .lyricsSaveFailed("test"),
+            .lyricsImportFailed("test"),
+            .lyricsDeleteFailed("test"),
+            .fileSystemError("test"),
+        ]
     }
 }
 

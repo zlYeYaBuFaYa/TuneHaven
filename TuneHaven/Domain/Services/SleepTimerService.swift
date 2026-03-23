@@ -3,6 +3,7 @@ import Foundation
 @MainActor
 final class SleepTimerService: ObservableObject {
     @Published private(set) var remaining: TimeInterval? = nil
+    @Published private(set) var originalMinutes: Int? = nil
 
     private let log = AppLogger.shared
     private var endDate: Date?
@@ -24,6 +25,7 @@ final class SleepTimerService: ObservableObject {
         log.info("设置睡眠定时: \(minutes ?? 0) 分钟")
         cancel()
         guard let minutes, minutes > 0 else { return }
+        originalMinutes = minutes
         let end = Date().addingTimeInterval(TimeInterval(minutes * 60))
         endDate = end
 
@@ -39,6 +41,7 @@ final class SleepTimerService: ObservableObject {
         timer = nil
         endDate = nil
         remaining = nil
+        originalMinutes = nil
     }
 
     func checkOnForeground() {

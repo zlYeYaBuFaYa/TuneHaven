@@ -567,7 +567,7 @@ struct SearchResultTests {
     @Test("SearchResult.empty 所有统计为 0")
     func testEmptyStatsCounts() {
         let empty = SearchResult.empty
-        #expect(empty.totalSongCount == 0)
+        #expect(empty.totalMatchCount == 0)
         #expect(empty.totalArtistCount == 0)
         #expect(empty.totalAlbumCount == 0)
     }
@@ -575,14 +575,14 @@ struct SearchResultTests {
     @Test("SearchResult 统计数与实际列表长度一致")
     func testCountsMatchListSizes() {
         let result = SearchResult(
-            songs: [makeMinimalSong(), makeMinimalSong()],
+            songs: [makeSong(), makeSong()],
             artists: [ArtistGroup(name: "A", songCount: 2, albumCount: 1)],
             albums: [],
-            totalSongCount: 2,
+            totalMatchCount: 2,
             totalArtistCount: 1,
             totalAlbumCount: 0
         )
-        #expect(result.songs.count == result.totalSongCount)
+        #expect(result.songs.count == result.totalMatchCount)
         #expect(result.artists.count == result.totalArtistCount)
         #expect(result.albums.count == result.totalAlbumCount)
     }
@@ -628,7 +628,7 @@ struct ArtistDetailTests {
 
     @Test("ArtistDetail 包含正确的 name 和 songs")
     func testProperties() {
-        let song = makeMinimalSong(title: "夜曲", artist: "周杰伦", album: "十一月的萧邦")
+        let song = makeSong(title: "夜曲", artist: "周杰伦", album: "十一月的萧邦")
         let album = AlbumGroup(name: "十一月的萧邦", artist: "周杰伦", year: 2003, songCount: 1, coverImagePath: nil)
         let detail = ArtistDetail(name: "周杰伦", albums: [album], allSongs: [song])
 
@@ -643,8 +643,8 @@ struct AlbumDetailTests {
 
     @Test("AlbumDetail 包含正确的 name、artist、songs")
     func testProperties() {
-        let s1 = makeMinimalSong(title: "夜曲", artist: "周杰伦", album: "十一月的萧邦")
-        let s2 = makeMinimalSong(title: "枫", artist: "周杰伦", album: "十一月的萧邦")
+        let s1 = makeSong(title: "夜曲", artist: "周杰伦", album: "十一月的萧邦")
+        let s2 = makeSong(title: "枫", artist: "周杰伦", album: "十一月的萧邦")
         let detail = AlbumDetail(
             name: "十一月的萧邦",
             artist: "周杰伦",
@@ -680,7 +680,7 @@ struct PagedResultExtendedTests {
 
     @Test("items 泛型支持 Song 类型")
     func testGenericSongType() {
-        let song = makeMinimalSong()
+        let song = makeSong()
         let result = PagedResult(items: [song], totalCount: 1, currentPage: 0, hasMore: false)
         #expect(result.items.count == 1)
     }
@@ -694,40 +694,3 @@ struct PagedResultExtendedTests {
     }
 }
 
-// MARK: - Shared Helpers
-
-private func makeMinimalSong(
-    id: UUID = UUID(),
-    title: String = "T",
-    artist: String = "A",
-    album: String = "B"
-) -> Song {
-    Song(
-        id: id,
-        title: title,
-        artist: artist,
-        album: album,
-        duration: 180,
-        fileHash: UUID().uuidString,
-        fileRelativePath: "test.mp3",
-        coverImagePath: nil,
-        lyricsPath: nil,
-        lyricsSource: nil,
-        metadata: Metadata(
-            format: "mp3",
-            sampleRate: 44100,
-            bitRate: 320,
-            channels: 2,
-            encoder: nil,
-            trackNumber: nil,
-            year: nil,
-            genre: nil
-        ),
-        importDate: Date(),
-        fileSize: 1024 * 1024,
-        playCount: 0,
-        isFavorite: false,
-        favoriteDate: nil,
-        lastPlayedDate: nil
-    )
-}

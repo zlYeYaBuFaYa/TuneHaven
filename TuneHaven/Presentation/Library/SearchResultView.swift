@@ -11,12 +11,15 @@ struct SearchResultView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playback: PlaybackService
     @Environment(\.themePalette) private var palette
+    @State private var showAllSongs = false
+    @State private var showAllArtists = false
+    @State private var showAllAlbums = false
 
     var body: some View {
         List {
             if !result.songs.isEmpty {
-                Section("歌曲 (\(result.totalSongCount))") {
-                    ForEach(result.songs.prefix(10)) { song in
+                Section("歌曲 (\(result.totalMatchCount))") {
+                    ForEach(result.songs.prefix(showAllSongs ? result.songs.count : 10)) { song in
                         SongRow(
                             song: song,
                             isPlaying: playback.currentSong?.id == song.id,
@@ -33,11 +36,22 @@ struct SearchResultView: View {
                         )
                         .listRowBackground(palette.surface)
                     }
+                    if !showAllSongs && result.songs.count > 10 {
+                        Button {
+                            withAnimation { showAllSongs = true }
+                        } label: {
+                            Text("查看全部 \(result.totalMatchCount) 首歌曲")
+                                .font(.subheadline)
+                                .foregroundColor(palette.primary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                        .listRowBackground(palette.surface)
+                    }
                 }
             }
             if !result.artists.isEmpty {
                 Section("艺术家 (\(result.totalArtistCount))") {
-                    ForEach(result.artists.prefix(5)) { artist in
+                    ForEach(result.artists.prefix(showAllArtists ? result.artists.count : 5)) { artist in
                         Button {
                             router.navigate(to: .artistDetail(name: artist.name))
                         } label: {
@@ -52,11 +66,22 @@ struct SearchResultView: View {
                         }
                         .listRowBackground(palette.surface)
                     }
+                    if !showAllArtists && result.artists.count > 5 {
+                        Button {
+                            withAnimation { showAllArtists = true }
+                        } label: {
+                            Text("查看全部 \(result.totalArtistCount) 位艺术家")
+                                .font(.subheadline)
+                                .foregroundColor(palette.primary)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                        }
+                        .listRowBackground(palette.surface)
+                    }
                 }
             }
             if !result.albums.isEmpty {
                 Section("专辑 (\(result.totalAlbumCount))") {
-                    ForEach(result.albums.prefix(5)) { album in
+                    ForEach(result.albums.prefix(showAllAlbums ? result.albums.count : 5)) { album in
                         Button {
                             router.navigate(to: .albumDetail(album: album.name, artist: album.artist))
                         } label: {
@@ -71,6 +96,17 @@ struct SearchResultView: View {
                                 }
                                 Spacer()
                             }
+                        }
+                        .listRowBackground(palette.surface)
+                    }
+                    if !showAllAlbums && result.albums.count > 5 {
+                        Button {
+                            withAnimation { showAllAlbums = true }
+                        } label: {
+                            Text("查看全部 \(result.totalAlbumCount) 张专辑")
+                                .font(.subheadline)
+                                .foregroundColor(palette.primary)
+                                .frame(maxWidth: .infinity, alignment: .center)
                         }
                         .listRowBackground(palette.surface)
                     }

@@ -95,7 +95,10 @@ final class WiFiTransferServer: ObservableObject {
     // MARK: - Connection Handling
 
     private func handleNewConnection(_ connection: NWConnection) {
-        guard case let .hostPort(host, _) = connection.endpoint else { return }
+        guard case let .hostPort(host, _) = connection.endpoint else {
+            connection.cancel()
+            return
+        }
         let ip = "\(host)"
 
         if let active = activeConnection {
@@ -261,6 +264,8 @@ final class WiFiTransferServer: ObservableObject {
             transferProgress = nil
         }
 
+        // TODO: 当前实现将流式写入的临时文件全量回读到内存进行 multipart 解析，
+        // 大文件场景下内存开销较高。未来可改为流式 multipart 解析以降低峰值内存占用。
         guard let bodyData = try? Data(contentsOf: context.tempFileURL, options: .mappedIfSafe) else {
             sendJSON(connection: connection, status: 500, body: #"{"error":"临时文件读取失败"}"#)
             connectionState = .idle
@@ -380,7 +385,10 @@ final class WiFiTransferServer: ObservableObject {
         for part in parts {
             guard let headerEnd = part.range(of: headerSeparator) else { continue }
             let headerData = part[part.startIndex..<headerEnd.lowerBound]
-            let fileData = part[headerEnd.upperBound...]
+            var fileData = part[headerEnd.upperBound...]
+            if fileData.count >= 2 && fileData.suffix(2) == Data([0x0D, 0x0A]) {
+                fileData = fileData.dropLast(2)
+            }
             guard let headerStr = String(data: headerData, encoding: .utf8),
                   headerStr.contains("filename=") else { continue }
 
@@ -480,7 +488,7 @@ final class WiFiTransferServer: ObservableObject {
     }
 
     private func generateRandomPassword() -> String {
-        String((0..<6).map { _ in String(Int.random(in: 0...9)) }.joined())
+        (0..<6).map { _ in String(Int.random(in: 0...9)) }.joined()
     }
 
     // MARK: - HTTP Parsing Utilities

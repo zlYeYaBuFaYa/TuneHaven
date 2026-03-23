@@ -68,6 +68,7 @@ struct EditPlaylistSheet: View {
     @State private var name = ""
     @State private var description = ""
     @State private var loaded = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -76,6 +77,13 @@ struct EditPlaylistSheet: View {
                     TextField("歌单名称", text: $name)
                     TextField("简介（选填）", text: $description, axis: .vertical)
                         .lineLimit(3...5)
+                }
+                if let error = errorMessage {
+                    Section {
+                        Text(error)
+                            .foregroundColor(SemanticColor.danger)
+                            .font(.caption)
+                    }
                 }
             }
             .navigationTitle("编辑歌单")
@@ -92,6 +100,7 @@ struct EditPlaylistSheet: View {
                                 dismiss()
                             } catch {
                                 AppLogger.shared.error(error, context: "编辑歌单失败")
+                                errorMessage = error.localizedDescription
                             }
                         }
                     }
@@ -166,6 +175,7 @@ struct AddToPlaylistSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }.foregroundColor(palette.primary)
                 }
+                // TODO: 考虑内嵌导航，创建歌单后自动将歌曲添加到新歌单，避免工作流中断
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         router.present(.createPlaylist)

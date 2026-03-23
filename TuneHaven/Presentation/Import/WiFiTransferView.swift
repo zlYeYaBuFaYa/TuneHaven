@@ -1,5 +1,10 @@
 import SwiftUI
 
+private struct ReceivedFile: Identifiable {
+    let id = UUID()
+    let name: String
+}
+
 struct WiFiTransferView: View {
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
@@ -10,7 +15,7 @@ struct WiFiTransferView: View {
     @AppStorage(AppStorageKey.wifiPasswordEnabled) private var passwordEnabled = true
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @State private var receivedFiles: [String] = []
+    @State private var receivedFiles: [ReceivedFile] = []
 
     var body: some View {
         NavigationStack {
@@ -32,14 +37,13 @@ struct WiFiTransferView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") {
-                        server.stop()
                         dismiss()
                     }
                     .foregroundColor(palette.primary)
                 }
             }
         }
-        .onDisappear { server.stop() }
+        .onDisappear { if server.isRunning { server.stop() } }
         .onChange(of: server.securityAlert) { _, alert in
             if let alert {
                 switch alert {
@@ -158,11 +162,11 @@ struct WiFiTransferView: View {
     @ViewBuilder
     private var receivedSection: some View {
         Section("已接收 \(receivedFiles.count) 个文件") {
-            ForEach(receivedFiles, id: \.self) { file in
+            ForEach(receivedFiles) { file in
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(palette.primary)
-                    Text(file)
+                    Text(file.name)
                         .font(.subheadline)
                         .foregroundColor(palette.textPrimary)
                         .lineLimit(1)
@@ -194,7 +198,7 @@ struct WiFiTransferView: View {
         do {
             try server.start(passwordEnabled: passwordEnabled)
             server.onFileReceived = { filename, url in
-                receivedFiles.append(filename)
+                receivedFiles.append(ReceivedFile(name: filename))
                 Task { [url] in
                     let result = await importService.processWiFiFile(tempURL: url, originalFilename: filename)
                     if result.status == .success || result.status == .successIncompleteMetadata {

@@ -78,7 +78,11 @@ final class SnackbarState: ObservableObject {
     }
 
     func hide() {
+        hideTask?.cancel()
+        hideTask = nil
         withAnimation(.easeOut(duration: 0.25)) { isShowing = false }
+        action = nil
+        actionTitle = nil
     }
 }
 

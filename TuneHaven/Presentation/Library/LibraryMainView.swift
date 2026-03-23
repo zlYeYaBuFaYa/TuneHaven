@@ -35,7 +35,7 @@ struct LibraryMainView: View {
     @Namespace private var tabNamespace
     @State private var searchText = ""
     @State private var isSearchActive = false
-    @State private var searchResult = SearchResult(songs: [], artists: [], albums: [], totalSongCount: 0, totalArtistCount: 0, totalAlbumCount: 0)
+    @State private var searchResult = SearchResult.empty
     @State private var searchTask: Task<Void, Never>?
     @AppStorage(AppStorageKey.songSortOption) private var sortOptionRaw: Int = SongSortOption.title.rawValue
     @AppStorage(AppStorageKey.songSortAscending) private var isAscending: Bool = true
@@ -288,19 +288,27 @@ struct LibraryMainView: View {
 
     private func searchDeleteSong(_ song: Song) {
         Task {
-            guard let token = try? await libraryService.softDelete(songIds: [song.id]) else { return }
-            refreshSearch()
-            snackbar.show(
-                message: "已删除《\(song.title)》",
-                actionTitle: "撤销",
-                action: {
-                    Task {
-                        try? await libraryService.undoDelete(token: token)
-                        refreshSearch()
-                    }
-                },
-                duration: 30
-            )
+            do {
+                let token = try await libraryService.softDelete(songIds: [song.id])
+                refreshSearch()
+                snackbar.show(
+                    message: "已删除《\(song.title)》",
+                    actionTitle: "撤销",
+                    action: {
+                        Task {
+                            do {
+                                try await libraryService.undoDelete(token: token)
+                            } catch {
+                                snackbar.show(message: "撤销删除失败，请重试")
+                            }
+                            refreshSearch()
+                        }
+                    },
+                    duration: 30
+                )
+            } catch {
+                snackbar.show(message: "删除失败，请重试")
+            }
         }
     }
 
@@ -312,7 +320,4 @@ struct LibraryMainView: View {
     }
 }
 
-extension SearchResult {
-    static let empty = SearchResult(songs: [], artists: [], albums: [], totalSongCount: 0, totalArtistCount: 0, totalAlbumCount: 0)
-}
 

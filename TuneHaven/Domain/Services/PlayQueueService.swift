@@ -3,9 +3,6 @@ import Combine
 
 enum PlayQueueConstants {
     static let maxCount = 999
-    static let persist = false
-    static let removePlayed = false
-    static let markAsPlayed = true
     static let dislikeSkipThreshold = 3
 }
 

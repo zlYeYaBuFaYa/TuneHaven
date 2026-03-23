@@ -5,7 +5,11 @@ enum KeychainHelper {
     private static let serviceName = "com.tunehaven.keychain"
 
     static func saveString(_ string: String, forKey key: String) throws {
-        guard let data = string.data(using: .utf8) else { return }
+        guard let data = string.data(using: .utf8) else {
+            let error = KeychainError.encodingFailed
+            ErrorLogger.shared.logGeneric(error, context: "Keychain saveString 编码失败, key=\(key)")
+            throw error
+        }
         try save(data, forKey: key)
     }
 
@@ -57,11 +61,14 @@ enum KeychainHelper {
 
     enum KeychainError: LocalizedError {
         case saveFailed(OSStatus)
+        case encodingFailed
 
         var errorDescription: String? {
             switch self {
             case .saveFailed(let status):
                 return "Keychain 保存失败 (OSStatus: \(status))"
+            case .encodingFailed:
+                return "Keychain 字符串编码失败"
             }
         }
     }

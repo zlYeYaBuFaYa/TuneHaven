@@ -184,7 +184,8 @@ struct PlayerView: View {
 
                 if shouldDismiss {
                     router.closePlayer()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    Task {
+                        try? await Task.sleep(for: .seconds(0.45))
                         dragOffset = 0
                         dragOffsetX = 0
                     }
@@ -411,33 +412,8 @@ struct PlayerView: View {
 
     @ViewBuilder
     private func albumCoverImage(size: CGFloat) -> some View {
-        if let path = playback.currentSong?.coverImagePath,
-           let image = ImageCacheManager.shared.image(forKey: path) {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: palette.cardShadow, radius: 20, y: 10)
-        } else {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [palette.gradientStart.opacity(0.5), palette.gradientEnd.opacity(0.3)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: size, height: size)
-                .overlay {
-                    Image(systemName: "music.note")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: size * 0.25)
-                        .foregroundColor(palette.iconSecondary.opacity(0.5))
-                }
-                .shadow(color: palette.cardShadow, radius: 16, y: 8)
-        }
+        CoverImageView(path: playback.currentSong?.coverImagePath, size: size, cornerRadius: 16)
+            .shadow(color: palette.cardShadow, radius: 20, y: 10)
     }
 
     private var songInfo: some View {
@@ -508,13 +484,20 @@ struct PlayerView: View {
     }
 
     private func currentLyricsText(from data: LyricsData) -> String? {
-        let raw: String? = {
-            for line in data.lines.reversed() {
-                if engine.currentTime >= line.timestamp { return line.text }
+        let lines = data.lines
+        guard !lines.isEmpty else { return nil }
+        let time = engine.currentTime
+        if time < lines[0].timestamp { return lines.first?.text.map { LyricsTextTransform.displayText($0, preferSimplified: lyricsPreferSimplified) } }
+        var lo = 0, hi = lines.count - 1
+        while lo < hi {
+            let mid = lo + (hi - lo + 1) / 2
+            if lines[mid].timestamp <= time {
+                lo = mid
+            } else {
+                hi = mid - 1
             }
-            return data.lines.first?.text
-        }()
-        return raw.map { LyricsTextTransform.displayText($0, preferSimplified: lyricsPreferSimplified) }
+        }
+        return LyricsTextTransform.displayText(lines[lo].text, preferSimplified: lyricsPreferSimplified)
     }
 
     private var progressBar: some View {

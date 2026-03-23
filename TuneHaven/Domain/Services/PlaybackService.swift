@@ -1,7 +1,7 @@
 import AVFoundation
 import Combine
 import Foundation
-import UIKit
+import UIKit // TODO: 将封面逻辑（UIImage）移至 App 层以移除 UIKit 依赖
 
 @MainActor
 final class PlaybackService: ObservableObject {
@@ -9,11 +9,13 @@ final class PlaybackService: ObservableObject {
 
     @Published private(set) var currentSong: Song?
     @Published private(set) var isPlaying = false
+    // TODO: 将 UserDefaults 访问封装为 UserPreferences 协议并注入，避免散落的 UserDefaults 直接访问
     @Published var playMode: PlayMode = PlayMode(rawValue: UserDefaults.standard.integer(forKey: AppStorageKey.playMode)) ?? .sequential
     @Published var playbackSpeed: Float = UserDefaults.standard.float(forKey: AppStorageKey.playbackSpeed) == 0 ? 1.0 : UserDefaults.standard.float(forKey: AppStorageKey.playbackSpeed)
-    let sleepTimer = SleepTimerService()
+    let sleepTimer: SleepTimerService
 
     var sleepTimerRemaining: TimeInterval? { sleepTimer.remaining }
+    var sleepTimerOriginalMinutes: Int? { sleepTimer.originalMinutes }
 
     private let engine: AudioEngine
     private let queueService: PlayQueueService
@@ -35,12 +37,14 @@ final class PlaybackService: ObservableObject {
          songRepo: SongRepository,
          queueService: PlayQueueService,
          libraryService: MusicLibraryService,
-         engine: AudioEngine) {
+         engine: AudioEngine,
+         sleepTimer: SleepTimerService = SleepTimerService()) {
         self.queueService = queueService
         self.libraryService = libraryService
         self.playlistRepo = playlistRepo
         self.songRepo = songRepo
         self.engine = engine
+        self.sleepTimer = sleepTimer
         setupBindings()
         sleepTimer.configure { [weak self] in
             self?.engine.pause()

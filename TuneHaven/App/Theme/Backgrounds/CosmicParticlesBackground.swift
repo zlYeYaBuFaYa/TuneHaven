@@ -46,8 +46,10 @@ struct CosmicParticlesBackground: View {
             )
         }
 
-        let newTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { _ in
-            Task { @MainActor in
+        // 15fps 足以呈现粒子缓慢漂浮效果；使用 MainActor.assumeIsolated 避免每帧创建 Task 的开销。
+        // 若后续需进一步优化，可改为 CADisplayLink + preferredFrameRateRange。
+        let newTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 15.0, repeats: true) { [self] _ in
+            MainActor.assumeIsolated {
                 for i in particles.indices {
                     particles[i].y -= particles[i].speed
                     particles[i].x += Double.random(in: -0.0003...0.0003)

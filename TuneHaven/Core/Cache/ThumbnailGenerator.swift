@@ -1,21 +1,13 @@
 import UIKit
 
-enum ThumbnailSize: String {
-    case small = "small"
-    case medium = "medium"
-    case large = "large"
-    case original = "original"
+enum ThumbnailSize: Int {
+    case small = 100
+    case medium = 200
+    case large = 400
+    case original = 1024
 
-    var suffix: String { rawValue }
-
-    var dimension: CGFloat {
-        switch self {
-        case .small: return 100
-        case .medium: return 200
-        case .large: return 400
-        case .original: return 1024
-        }
-    }
+    var suffix: String { String(describing: self) }
+    var dimension: CGFloat { CGFloat(rawValue) }
 }
 
 final class ThumbnailGenerator {
