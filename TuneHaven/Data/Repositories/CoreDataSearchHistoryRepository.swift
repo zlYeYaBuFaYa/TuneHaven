@@ -15,12 +15,18 @@ final class CoreDataSearchHistoryRepository: SearchHistoryRepository {
                 request.predicate = NSPredicate(format: "tabContext == %@", tab.rawValue)
                 request.sortDescriptors = [NSSortDescriptor(key: "searchedAt", ascending: false)]
                 request.fetchLimit = limit
-                let results = (try? self.stack.viewContext.fetch(request)) ?? []
-                let items = results.compactMap { entity -> SearchHistoryItem? in
-                    guard let id = entity.id, let keyword = entity.keyword, let date = entity.searchedAt else { return nil }
-                    return SearchHistoryItem(id: id, keyword: keyword, searchedAt: date)
+                do {
+                    let results = try self.stack.viewContext.fetch(request)
+                    let items = results.compactMap { entity -> SearchHistoryItem? in
+                        guard let id = entity.id, let keyword = entity.keyword, let date = entity.searchedAt else { return nil }
+                        return SearchHistoryItem(id: id, keyword: keyword, searchedAt: date)
+                    }
+                    continuation.resume(returning: items)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchHistory")
+                    AppLogger.shared.error(error, context: "fetchHistory 查询失败")
+                    continuation.resume(returning: [])
                 }
-                continuation.resume(returning: items)
             }
         }
     }
@@ -36,11 +42,9 @@ final class CoreDataSearchHistoryRepository: SearchHistoryRepository {
                 if let existing = try ctx.fetch(request).first {
                     existing.searchedAt = Date()
                 } else {
-                    let count = (try? ctx.count(for: {
-                        let r = SearchHistoryEntity.fetchRequest()
-                        r.predicate = NSPredicate(format: "tabContext == %@", tab.rawValue)
-                        return r
-                    }())) ?? 0
+                    let countReq = SearchHistoryEntity.fetchRequest()
+                    countReq.predicate = NSPredicate(format: "tabContext == %@", tab.rawValue)
+                    let count = (try? ctx.count(for: countReq)) ?? 0
                     if count >= 10 {
                         let oldReq = SearchHistoryEntity.fetchRequest()
                         oldReq.predicate = NSPredicate(format: "tabContext == %@", tab.rawValue)

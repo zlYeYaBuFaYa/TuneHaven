@@ -2,23 +2,6 @@ import AVFoundation
 import UIKit
 import Foundation
 
-struct ParsedMetadata {
-    let title: String
-    let artist: String
-    let album: String
-    let duration: TimeInterval
-    let format: String
-    let sampleRate: Int?
-    let bitRate: Int?
-    let channels: Int?
-    let trackNumber: Int?
-    let year: Int?
-    let genre: String?
-    let encoder: String?
-    let coverImageData: Data?
-    let isIncomplete: Bool
-}
-
 final class AudioMetadataParser: AudioMetadataParsing {
     static let shared = AudioMetadataParser()
     private init() {}
@@ -42,10 +25,79 @@ final class AudioMetadataParser: AudioMetadataParsing {
         var encoder: String?
         var isIncomplete = false
 
+        let durationResult = await parseDuration(asset: asset)
+        duration = durationResult.duration
+        if durationResult.isIncomplete { isIncomplete = true }
+
+        let commonResult = await parseCommonMetadata(asset: asset, title: title, artist: artist, album: album)
+        title = commonResult.title
+        artist = commonResult.artist
+        album = commonResult.album
+        coverImageData = commonResult.coverImageData
+        if commonResult.isIncomplete { isIncomplete = true }
+
+        let extResult = await parseExtendedMetadata(asset: asset)
+        trackNumber = extResult.trackNumber ?? trackNumber
+        year = extResult.year ?? year
+        genre = extResult.genre ?? genre
+        encoder = extResult.encoder ?? encoder
+        if extResult.isIncomplete { isIncomplete = true }
+
+        let trackResult = await parseAudioTrackInfo(asset: asset)
+        sampleRate = trackResult.sampleRate
+        bitRate = trackResult.bitRate
+        channels = trackResult.channels
+        if trackResult.isIncomplete { isIncomplete = true }
+
+        if title == fileName && artist == SongDefaults.unknownArtist { isIncomplete = true }
+
+        return ParsedMetadata(
+            title: title,
+            artist: artist,
+            album: album,
+            duration: duration,
+            format: ext,
+            sampleRate: sampleRate,
+            bitRate: bitRate,
+            channels: channels,
+            trackNumber: trackNumber,
+            year: year,
+            genre: genre,
+            encoder: encoder,
+            coverImageData: coverImageData,
+            isIncomplete: isIncomplete
+        )
+    }
+
+    // MARK: - Private Parsing Methods
+
+    private func parseDuration(asset: AVURLAsset) async -> (duration: TimeInterval, isIncomplete: Bool) {
+        var duration: TimeInterval = 0
+        var incomplete = false
         do {
             let cmDuration = try await asset.load(.duration)
             duration = cmDuration.seconds.isNaN ? 0 : cmDuration.seconds
+        } catch {
+            incomplete = true
+            ErrorLogger.shared.log(.importReadFailed(asset.url.lastPathComponent),
+                                   context: "AudioMetadataParser: duration 解析失败 - \(error.localizedDescription)")
+        }
+        return (duration, incomplete)
+    }
 
+    private func parseCommonMetadata(
+        asset: AVURLAsset,
+        title: String,
+        artist: String,
+        album: String
+    ) async -> (title: String, artist: String, album: String, coverImageData: Data?, isIncomplete: Bool) {
+        var title = title
+        var artist = artist
+        var album = album
+        var coverImageData: Data?
+        var isIncomplete = false
+
+        do {
             let metadataItems = try await asset.load(.commonMetadata)
             for item in metadataItems {
                 guard let key = item.commonKey else { continue }
@@ -87,7 +139,25 @@ final class AudioMetadataParser: AudioMetadataParsing {
                 default: break
                 }
             }
+        } catch {
+            isIncomplete = true
+            ErrorLogger.shared.log(.importReadFailed(asset.url.lastPathComponent),
+                                   context: "AudioMetadataParser: commonMetadata 解析失败 - \(error.localizedDescription)")
+        }
 
+        return (title, artist, album, coverImageData, isIncomplete)
+    }
+
+    private func parseExtendedMetadata(
+        asset: AVURLAsset
+    ) async -> (trackNumber: Int?, year: Int?, genre: String?, encoder: String?, isIncomplete: Bool) {
+        var trackNumber: Int?
+        var year: Int?
+        var genre: String?
+        var encoder: String?
+        var isIncomplete = false
+
+        do {
             let allMetadata = try await asset.load(.metadata)
             for item in allMetadata {
                 guard let identifier = item.identifier else { continue }
@@ -119,7 +189,24 @@ final class AudioMetadataParser: AudioMetadataParsing {
                     #endif
                 }
             }
+        } catch {
+            isIncomplete = true
+            ErrorLogger.shared.log(.importReadFailed(asset.url.lastPathComponent),
+                                   context: "AudioMetadataParser: extendedMetadata 解析失败 - \(error.localizedDescription)")
+        }
 
+        return (trackNumber, year, genre, encoder, isIncomplete)
+    }
+
+    private func parseAudioTrackInfo(
+        asset: AVURLAsset
+    ) async -> (sampleRate: Int?, bitRate: Int?, channels: Int?, isIncomplete: Bool) {
+        var sampleRate: Int?
+        var bitRate: Int?
+        var channels: Int?
+        var isIncomplete = false
+
+        do {
             let tracks = try await asset.load(.tracks)
             for track in tracks {
                 let mediaType = track.mediaType
@@ -149,27 +236,10 @@ final class AudioMetadataParser: AudioMetadataParsing {
             }
         } catch {
             isIncomplete = true
-            ErrorLogger.shared.log(.importReadFailed(url.lastPathComponent),
-                                   context: "AudioMetadataParser: 元数据解析不完整 - \(error.localizedDescription)")
+            ErrorLogger.shared.log(.importReadFailed(asset.url.lastPathComponent),
+                                   context: "AudioMetadataParser: tracks 解析失败 - \(error.localizedDescription)")
         }
 
-        if title == fileName && artist == SongDefaults.unknownArtist { isIncomplete = true }
-
-        return ParsedMetadata(
-            title: title,
-            artist: artist,
-            album: album,
-            duration: duration,
-            format: ext,
-            sampleRate: sampleRate,
-            bitRate: bitRate,
-            channels: channels,
-            trackNumber: trackNumber,
-            year: year,
-            genre: genre,
-            encoder: encoder,
-            coverImageData: coverImageData,
-            isIncomplete: isIncomplete
-        )
+        return (sampleRate, bitRate, channels, isIncomplete)
     }
 }

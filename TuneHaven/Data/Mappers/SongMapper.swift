@@ -7,55 +7,15 @@ enum SongMapper {
     static func toEntity(_ song: Song, context: NSManagedObjectContext) -> SongEntity {
         let entity = SongEntity(context: context)
         entity.id = song.id
-        entity.title = song.title
-        entity.artist = song.artist
-        entity.album = song.album
-        entity.duration = song.duration
-        entity.fileHash = song.fileHash
         entity.fileRelativePath = song.fileRelativePath
-        entity.coverImagePath = song.coverImagePath
-        entity.lyricsPath = song.lyricsPath
-        entity.lyricsSource = song.lyricsSource?.rawValue ?? Self.int16Nil
-        entity.format = song.metadata.format
-        // nil → 0: CoreData 不支持 Optional<Int>，0 作为"未知"哨兵值，toDomain 时还原为 nil
-        entity.sampleRate = Int32(song.metadata.sampleRate ?? 0)
-        entity.bitRate = Int32(song.metadata.bitRate ?? 0)
-        entity.channels = Int16(song.metadata.channels ?? 0)
-        entity.encoder = song.metadata.encoder
-        // nil → Int16.min: 使用 int16Nil 哨兵区分"无值"与合法值 0
-        entity.trackNumber = song.metadata.trackNumber.map { Int16($0) } ?? Self.int16Nil
-        entity.year = song.metadata.year.map { Int16($0) } ?? Self.int16Nil
-        entity.genre = song.metadata.genre
+        entity.fileHash = song.fileHash
         entity.importDate = song.importDate
-        entity.fileSize = song.fileSize
-        entity.playCount = Int32(song.playCount)
-        entity.isFavorite = song.isFavorite
-        entity.favoriteDate = song.favoriteDate
-        entity.lastPlayedDate = song.lastPlayedDate
-        entity.softDeleted = false
+        applyCommonFields(entity: entity, from: song)
         return entity
     }
 
     static func updateEntity(_ entity: SongEntity, from song: Song) {
-        entity.title = song.title
-        entity.artist = song.artist
-        entity.album = song.album
-        entity.duration = song.duration
-        entity.coverImagePath = song.coverImagePath
-        entity.lyricsPath = song.lyricsPath
-        entity.lyricsSource = song.lyricsSource?.rawValue ?? Self.int16Nil
-        entity.format = song.metadata.format
-        // nil → 0: CoreData 不支持 Optional<Int>，0 作为"未知"哨兵值，toDomain 时还原为 nil
-        entity.sampleRate = Int32(song.metadata.sampleRate ?? 0)
-        entity.bitRate = Int32(song.metadata.bitRate ?? 0)
-        entity.channels = Int16(song.metadata.channels ?? 0)
-        entity.encoder = song.metadata.encoder
-        // nil → Int16.min: 使用 int16Nil 哨兵区分"无值"与合法值 0
-        entity.trackNumber = song.metadata.trackNumber.map { Int16($0) } ?? Self.int16Nil
-        entity.year = song.metadata.year.map { Int16($0) } ?? Self.int16Nil
-        entity.genre = song.metadata.genre
-        entity.fileSize = song.fileSize
-        entity.softDeleted = false
+        applyCommonFields(entity: entity, from: song)
     }
 
     static func toDomain(_ entity: SongEntity) -> Song? {
@@ -68,7 +28,6 @@ enum SongMapper {
               let format = entity.format,
               let importDate = entity.importDate else { return nil }
 
-        // 0 表示未知/未解析，映射为 nil
         let metadata = Metadata(
             format: format,
             sampleRate: entity.sampleRate != 0 ? Int(entity.sampleRate) : nil,
@@ -107,6 +66,32 @@ enum SongMapper {
 
     static func isValidYear(_ value: Int16) -> Bool {
         value > 0
+    }
+
+    // MARK: - Private
+
+    private static func applyCommonFields(entity: SongEntity, from song: Song) {
+        entity.title = song.title
+        entity.artist = song.artist
+        entity.album = song.album
+        entity.duration = song.duration
+        entity.coverImagePath = song.coverImagePath
+        entity.lyricsPath = song.lyricsPath
+        entity.lyricsSource = song.lyricsSource?.rawValue ?? int16Nil
+        entity.format = song.metadata.format
+        entity.sampleRate = Int32(song.metadata.sampleRate ?? 0)
+        entity.bitRate = Int32(song.metadata.bitRate ?? 0)
+        entity.channels = Int16(song.metadata.channels ?? 0)
+        entity.encoder = song.metadata.encoder
+        entity.trackNumber = song.metadata.trackNumber.map { Int16($0) } ?? int16Nil
+        entity.year = song.metadata.year.map { Int16($0) } ?? int16Nil
+        entity.genre = song.metadata.genre
+        entity.fileSize = song.fileSize
+        entity.playCount = Int32(song.playCount)
+        entity.isFavorite = song.isFavorite
+        entity.favoriteDate = song.favoriteDate
+        entity.lastPlayedDate = song.lastPlayedDate
+        entity.softDeleted = false
     }
 
     private static func isValidLyricsSource(_ value: Int16) -> Bool {

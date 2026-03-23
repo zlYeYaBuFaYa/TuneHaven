@@ -13,121 +13,69 @@ final class CoreDataSongRepository: SongRepository {
         self.stack = stack
     }
 
+    // MARK: - Query Methods
+
     func fetchAll(sortBy: SongSortOption, ascending: Bool) async -> [Song] {
-        await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
-                let request = SongEntity.fetchRequest()
-                request.predicate = NSPredicate(format: "softDeleted == NO")
-                request.sortDescriptors = [NSSortDescriptor(key: sortBy.coreDataKey, ascending: ascending)]
-                request.fetchBatchSize = 50
-                do {
-                    let results = try self.stack.viewContext.fetch(request)
-                    continuation.resume(returning: results.compactMap { SongMapper.toDomain($0) })
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchAll")
-                    log.error(error, context: "fetchAll 查询失败")
-                    continuation.resume(returning: [])
-                }
-            }
+        await performFetch(context: "fetchAll", defaultValue: []) { request in
+            request.predicate = NSPredicate(format: "softDeleted == NO")
+            request.sortDescriptors = [NSSortDescriptor(key: sortBy.coreDataKey, ascending: ascending)]
+            request.fetchBatchSize = 50
+        } transform: {
+            $0.compactMap { SongMapper.toDomain($0) }
         }
     }
 
     func fetchSong(id: UUID) async -> Song? {
-        await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
-                let request = SongEntity.fetchRequest()
-                request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", id as CVarArg)
-                request.fetchLimit = 1
-                do {
-                    let result = try self.stack.viewContext.fetch(request)
-                    continuation.resume(returning: result.first.flatMap { SongMapper.toDomain($0) })
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchSong id=\(id)")
-                    log.error(error, context: "fetchSong 查询失败")
-                    continuation.resume(returning: nil)
-                }
-            }
+        await performFetch(context: "fetchSong id=\(id)", defaultValue: nil) { request in
+            request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", id as CVarArg)
+            request.fetchLimit = 1
+        } transform: {
+            $0.first.flatMap { SongMapper.toDomain($0) }
         }
     }
 
     func fetchSongs(byIds ids: [UUID]) async -> [Song] {
         guard !ids.isEmpty else { return [] }
-        return await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
-                let request = SongEntity.fetchRequest()
-                request.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", ids as NSArray)
-                request.fetchBatchSize = 50
-                do {
-                    let results = try self.stack.viewContext.fetch(request)
-                    continuation.resume(returning: results.compactMap { SongMapper.toDomain($0) })
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchSongs(byIds:)")
-                    log.error(error, context: "fetchSongs(byIds:) 查询失败")
-                    continuation.resume(returning: [])
-                }
-            }
+        return await performFetch(context: "fetchSongs(byIds:)", defaultValue: []) { request in
+            request.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", ids as NSArray)
+            request.fetchBatchSize = 50
+        } transform: {
+            $0.compactMap { SongMapper.toDomain($0) }
         }
     }
 
     func fetchSongs(byArtist artist: String, sortBy: SongSortOption = .album, ascending: Bool = true) async -> [Song] {
-        await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
-                let request = SongEntity.fetchRequest()
-                request.predicate = NSPredicate(format: "artist == %@ AND softDeleted == NO", artist)
-                request.sortDescriptors = [NSSortDescriptor(key: sortBy.coreDataKey, ascending: ascending)]
-                request.fetchBatchSize = 50
-                do {
-                    let results = try self.stack.viewContext.fetch(request)
-                    continuation.resume(returning: results.compactMap { SongMapper.toDomain($0) })
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchSongs(byArtist:)")
-                    log.error(error, context: "fetchSongs(byArtist:) 查询失败")
-                    continuation.resume(returning: [])
-                }
-            }
+        await performFetch(context: "fetchSongs(byArtist:)", defaultValue: []) { request in
+            request.predicate = NSPredicate(format: "artist == %@ AND softDeleted == NO", artist)
+            request.sortDescriptors = [NSSortDescriptor(key: sortBy.coreDataKey, ascending: ascending)]
+            request.fetchBatchSize = 50
+        } transform: {
+            $0.compactMap { SongMapper.toDomain($0) }
         }
     }
 
     func fetchSongs(byAlbum album: String, artist: String, sortBy: SongSortOption = .title, ascending: Bool = true) async -> [Song] {
-        await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
-                let request = SongEntity.fetchRequest()
-                request.predicate = NSPredicate(format: "album == %@ AND artist == %@ AND softDeleted == NO", album, artist)
-                request.sortDescriptors = [NSSortDescriptor(key: sortBy.coreDataKey, ascending: ascending)]
-                request.fetchBatchSize = 50
-                do {
-                    let results = try self.stack.viewContext.fetch(request)
-                    continuation.resume(returning: results.compactMap { SongMapper.toDomain($0) })
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchSongs(byAlbum:)")
-                    log.error(error, context: "fetchSongs(byAlbum:) 查询失败")
-                    continuation.resume(returning: [])
-                }
-            }
+        await performFetch(context: "fetchSongs(byAlbum:)", defaultValue: []) { request in
+            request.predicate = NSPredicate(format: "album == %@ AND artist == %@ AND softDeleted == NO", album, artist)
+            request.sortDescriptors = [NSSortDescriptor(key: sortBy.coreDataKey, ascending: ascending)]
+            request.fetchBatchSize = 50
+        } transform: {
+            $0.compactMap { SongMapper.toDomain($0) }
         }
     }
 
     func fetchByHash(_ hash: String) async -> Song? {
-        await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
-                let request = SongEntity.fetchRequest()
-                request.predicate = NSPredicate(format: "fileHash == %@ AND softDeleted == NO", hash)
-                request.fetchLimit = 1
-                do {
-                    let result = try self.stack.viewContext.fetch(request)
-                    continuation.resume(returning: result.first.flatMap { SongMapper.toDomain($0) })
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchByHash")
-                    log.error(error, context: "fetchByHash 查询失败")
-                    continuation.resume(returning: nil)
-                }
-            }
+        await performFetch(context: "fetchByHash", defaultValue: nil) { request in
+            request.predicate = NSPredicate(format: "fileHash == %@ AND softDeleted == NO", hash)
+            request.fetchLimit = 1
+        } transform: {
+            $0.first.flatMap { SongMapper.toDomain($0) }
         }
     }
 
     func countReferences(toFileHash hash: String) async -> Int {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
+            stack.viewContext.perform {
                 let request = SongEntity.fetchRequest()
                 request.predicate = NSPredicate(format: "fileHash == %@ AND softDeleted == NO", hash)
                 do {
@@ -135,12 +83,14 @@ final class CoreDataSongRepository: SongRepository {
                     continuation.resume(returning: count)
                 } catch {
                     ErrorLogger.shared.log(.databaseError(error), context: "countReferences")
-                    log.error(error, context: "countReferences 查询失败")
+                    self.log.error(error, context: "countReferences 查询失败")
                     continuation.resume(returning: 0)
                 }
             }
         }
     }
+
+    // MARK: - Write Methods
 
     func insert(song: Song) async throws {
         try await stack.performBackground { ctx in
@@ -246,12 +196,12 @@ final class CoreDataSongRepository: SongRepository {
     }
 
     func toggleFavorite(id: UUID) async throws {
-        try await stack.performBackground { [log] ctx in
+        try await stack.performBackground { ctx in
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", id as CVarArg)
             request.fetchLimit = 1
             guard let entity = try ctx.fetch(request).first else {
-                log.debug("toggleFavorite: entity not found id=\(id)")
+                self.log.debug("toggleFavorite: entity not found id=\(id)")
                 return
             }
             entity.isFavorite.toggle()
@@ -260,12 +210,12 @@ final class CoreDataSongRepository: SongRepository {
     }
 
     func recordPlay(id: UUID) async throws {
-        try await stack.performBackground { [log] ctx in
+        try await stack.performBackground { ctx in
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", id as CVarArg)
             request.fetchLimit = 1
             guard let entity = try ctx.fetch(request).first else {
-                log.debug("recordPlay: entity not found id=\(id)")
+                self.log.debug("recordPlay: entity not found id=\(id)")
                 return
             }
             entity.playCount += 1
@@ -279,12 +229,12 @@ final class CoreDataSongRepository: SongRepository {
     }
 
     func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws {
-        try await stack.performBackground { [log] ctx in
+        try await stack.performBackground { ctx in
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", id as CVarArg)
             request.fetchLimit = 1
             guard let entity = try ctx.fetch(request).first else {
-                log.debug("updateSongInfo: entity not found id=\(id)")
+                self.log.debug("updateSongInfo: entity not found id=\(id)")
                 return
             }
             entity.title = title
@@ -294,12 +244,12 @@ final class CoreDataSongRepository: SongRepository {
     }
 
     func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws {
-        try await stack.performBackground { [log] ctx in
+        try await stack.performBackground { ctx in
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", songId as CVarArg)
             request.fetchLimit = 1
             guard let entity = try ctx.fetch(request).first else {
-                log.debug("updateLyrics: entity not found id=\(songId)")
+                self.log.debug("updateLyrics: entity not found id=\(songId)")
                 return
             }
             entity.lyricsPath = lyricsPath
@@ -354,7 +304,7 @@ final class CoreDataSongRepository: SongRepository {
 
     func fetchRecentlyPlayed(days: Int, page: Int, pageSize: Int) async -> PagedResult<Song> {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
+            stack.viewContext.perform {
                 var datePredicate: NSPredicate? = nil
                 if days > 0 {
                     let cutoff = Date().addingTimeInterval(-Double(days) * 86400)
@@ -368,10 +318,14 @@ final class CoreDataSongRepository: SongRepository {
                 countReq.predicate = datePredicate
                 let totalCount: Int
                 do {
-                    totalCount = try self.stack.viewContext.fetch(countReq).count
+                    let distinctRecords = try self.stack.viewContext.fetch(countReq)
+                    let allSongIds = distinctRecords.compactMap { $0["songId"] as? UUID }
+                    let validReq = SongEntity.fetchRequest()
+                    validReq.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", allSongIds as NSArray)
+                    totalCount = try self.stack.viewContext.count(for: validReq)
                 } catch {
                     ErrorLogger.shared.log(.databaseError(error), context: "fetchRecentlyPlayed: count")
-                    log.error(error, context: "fetchRecentlyPlayed count 查询失败")
+                    self.log.error(error, context: "fetchRecentlyPlayed count 查询失败")
                     continuation.resume(returning: PagedResult(items: [], totalCount: 0, currentPage: page, hasMore: false))
                     return
                 }
@@ -392,7 +346,7 @@ final class CoreDataSongRepository: SongRepository {
                     records = try self.stack.viewContext.fetch(request)
                 } catch {
                     ErrorLogger.shared.log(.databaseError(error), context: "fetchRecentlyPlayed: records")
-                    log.error(error, context: "fetchRecentlyPlayed records 查询失败")
+                    self.log.error(error, context: "fetchRecentlyPlayed records 查询失败")
                     continuation.resume(returning: PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false))
                     return
                 }
@@ -419,7 +373,7 @@ final class CoreDataSongRepository: SongRepository {
                     songEntities = try self.stack.viewContext.fetch(songReq)
                 } catch {
                     ErrorLogger.shared.log(.databaseError(error), context: "fetchRecentlyPlayed: songs")
-                    log.error(error, context: "fetchRecentlyPlayed songs 查询失败")
+                    self.log.error(error, context: "fetchRecentlyPlayed songs 查询失败")
                     continuation.resume(returning: PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false))
                     return
                 }
@@ -440,21 +394,18 @@ final class CoreDataSongRepository: SongRepository {
         }
     }
 
-    /// Full-table scan to build artist groups. Acceptable for typical library sizes (< 10k songs).
-    /// For very large libraries, consider server-side aggregation or local caching.
     func fetchArtistGroups() async -> [ArtistGroup] {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
+            stack.viewContext.perform {
                 let request = SongEntity.fetchRequest()
                 request.predicate = NSPredicate(format: "softDeleted == NO")
-                request.propertiesToFetch = ["artist", "album"]
                 request.fetchBatchSize = 100
                 let results: [SongEntity]
                 do {
                     results = try self.stack.viewContext.fetch(request)
                 } catch {
                     ErrorLogger.shared.log(.databaseError(error), context: "fetchArtistGroups")
-                    log.error(error, context: "fetchArtistGroups 查询失败")
+                    self.log.error(error, context: "fetchArtistGroups 查询失败")
                     continuation.resume(returning: [])
                     return
                 }
@@ -477,17 +428,16 @@ final class CoreDataSongRepository: SongRepository {
 
     func fetchAlbumGroups() async -> [AlbumGroup] {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
+            stack.viewContext.perform {
                 let request = SongEntity.fetchRequest()
                 request.predicate = NSPredicate(format: "softDeleted == NO")
-                request.propertiesToFetch = ["artist", "album", "year", "coverImagePath"]
                 request.fetchBatchSize = 100
                 let results: [SongEntity]
                 do {
                     results = try self.stack.viewContext.fetch(request)
                 } catch {
                     ErrorLogger.shared.log(.databaseError(error), context: "fetchAlbumGroups")
-                    log.error(error, context: "fetchAlbumGroups 查询失败")
+                    self.log.error(error, context: "fetchAlbumGroups 查询失败")
                     continuation.resume(returning: [])
                     return
                 }
@@ -510,6 +460,29 @@ final class CoreDataSongRepository: SongRepository {
         }
     }
 
+    // MARK: - Private Helpers
+
+    private func performFetch<T>(
+        context: String,
+        defaultValue: T,
+        configure: @escaping (NSFetchRequest<SongEntity>) -> Void,
+        transform: @escaping ([SongEntity]) -> T
+    ) async -> T {
+        await withCheckedContinuation { continuation in
+            stack.viewContext.perform {
+                let request = SongEntity.fetchRequest()
+                configure(request)
+                do {
+                    let results = try self.stack.viewContext.fetch(request)
+                    continuation.resume(returning: transform(results))
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: context)
+                    self.log.error(error, context: "\(context) 查询失败")
+                    continuation.resume(returning: defaultValue)
+                }
+            }
+        }
+    }
 }
 
 private extension SongSortOption {

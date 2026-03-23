@@ -8,7 +8,7 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
 
     func fetchAll() async -> [PlaylistGroup] {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
+            stack.viewContext.perform {
                 let request = PlaylistGroupEntity.fetchRequest()
                 request.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
                 let results: [PlaylistGroupEntity]
@@ -16,14 +16,11 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
                     results = try self.stack.viewContext.fetch(request)
                 } catch {
                     ErrorLogger.shared.log(.databaseError(error), context: "PlaylistGroup.fetchAll")
-                    log.error(error, context: "PlaylistGroup.fetchAll 查询失败")
+                    self.log.error(error, context: "PlaylistGroup.fetchAll 查询失败")
                     continuation.resume(returning: [])
                     return
                 }
-                continuation.resume(returning: results.compactMap { entity -> PlaylistGroup? in
-                    guard let id = entity.id, let name = entity.name, let created = entity.createdAt else { return nil }
-                    return PlaylistGroup(id: id, name: name, createdAt: created, sortOrder: Int(entity.sortOrder))
-                })
+                continuation.resume(returning: results.compactMap { PlaylistGroupMapper.toDomain($0) })
             }
         }
     }
@@ -31,35 +28,24 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
     func create(name: String) async throws -> PlaylistGroup {
         try await stack.performBackground { ctx in
             let entity = PlaylistGroupEntity(context: ctx)
-            entity.id = UUID()
+            let id = UUID()
+            let createdAt = Date()
+            entity.id = id
             entity.name = name
-            entity.createdAt = Date()
-            let maxReq: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "PlaylistGroupEntity")
-            maxReq.resultType = .dictionaryResultType
-            let expr = NSExpression(forKeyPath: "sortOrder")
-            let maxExpr = NSExpression(forFunction: "max:", arguments: [expr])
-            let desc = NSExpressionDescription()
-            desc.name = "maxSortOrder"
-            desc.expression = maxExpr
-            desc.expressionResultType = .integer32AttributeType
-            maxReq.propertiesToFetch = [desc]
-            let maxResult = (try? ctx.fetch(maxReq))?.first?["maxSortOrder"] as? Int32 ?? -1
-            entity.sortOrder = maxResult + 1
-            guard let id = entity.id, let createdAt = entity.createdAt else {
-                throw AppError.databaseError(NSError(domain: "CoreDataPlaylistGroupRepository", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "创建分组后属性为空"]))
-            }
+            entity.createdAt = createdAt
+            let maxOrder = (try? ctx.maxSortOrder(forEntity: "PlaylistGroupEntity")) ?? 0
+            entity.sortOrder = Int32(maxOrder + 1)
             return PlaylistGroup(id: id, name: name, createdAt: createdAt, sortOrder: Int(entity.sortOrder))
         }
     }
 
     func rename(id: UUID, name: String) async throws {
-        try await stack.performBackground { [log] ctx in
+        try await stack.performBackground { ctx in
             let request = PlaylistGroupEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
             request.fetchLimit = 1
             guard let entity = try ctx.fetch(request).first else {
-                log.debug("rename group: entity not found id=\(id)")
+                self.log.debug("rename group: entity not found id=\(id)")
                 return
             }
             entity.name = name
@@ -68,7 +54,6 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
 
     func delete(id: UUID) async throws {
         try await stack.performBackground { ctx in
-            // 先把该分组下的歌单 groupId 置 nil
             let playlistReq = PlaylistEntity.fetchRequest()
             playlistReq.predicate = NSPredicate(format: "groupId == %@", id as CVarArg)
             let playlists = try ctx.fetch(playlistReq)
@@ -82,12 +67,12 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
     }
 
     func movePlaylist(_ playlistId: UUID, toGroup groupId: UUID?) async throws {
-        try await stack.performBackground { [log] ctx in
+        try await stack.performBackground { ctx in
             let request = PlaylistEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id == %@", playlistId as CVarArg)
             request.fetchLimit = 1
             guard let entity = try ctx.fetch(request).first else {
-                log.debug("movePlaylist: entity not found id=\(playlistId)")
+                self.log.debug("movePlaylist: entity not found id=\(playlistId)")
                 return
             }
             entity.groupId = groupId
@@ -111,7 +96,7 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
 
     func fetchGroupDetails() async -> [PlaylistGroupDetail] {
         await withCheckedContinuation { continuation in
-            stack.viewContext.perform { [log] in
+            stack.viewContext.perform {
                 let groupRequest = PlaylistGroupEntity.fetchRequest()
                 groupRequest.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
                 groupRequest.fetchBatchSize = 50
@@ -120,28 +105,41 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
                     groups = try self.stack.viewContext.fetch(groupRequest)
                 } catch {
                     ErrorLogger.shared.log(.databaseError(error), context: "fetchGroupDetails: groups")
-                    log.error(error, context: "fetchGroupDetails groups 查询失败")
+                    self.log.error(error, context: "fetchGroupDetails groups 查询失败")
                     continuation.resume(returning: [])
                     return
                 }
 
                 let playlistRequest = PlaylistEntity.fetchRequest()
+                playlistRequest.predicate = NSPredicate(format: "groupId != nil")
                 playlistRequest.fetchBatchSize = 50
                 let playlists: [PlaylistEntity]
                 do {
                     playlists = try self.stack.viewContext.fetch(playlistRequest)
                 } catch {
                     ErrorLogger.shared.log(.databaseError(error), context: "fetchGroupDetails: playlists")
-                    log.error(error, context: "fetchGroupDetails playlists 查询失败")
+                    self.log.error(error, context: "fetchGroupDetails playlists 查询失败")
                     continuation.resume(returning: [])
                     return
+                }
+
+                let songCountMap: [UUID: Int]
+                do {
+                    songCountMap = try self.batchPlaylistSongCounts(context: self.stack.viewContext, playlists: playlists)
+                } catch {
+                    ErrorLogger.shared.log(.databaseError(error), context: "fetchGroupDetails: songCounts")
+                    self.log.error(error, context: "fetchGroupDetails songCounts 查询失败")
+                    songCountMap = [:]
                 }
 
                 let details = groups.compactMap { group -> PlaylistGroupDetail? in
                     guard let id = group.id, let name = group.name else { return nil }
                     let groupPlaylists = playlists
                         .filter { $0.groupId == id }
-                        .compactMap { PlaylistMapper.toDomain($0) }
+                        .compactMap { entity -> Playlist? in
+                            guard let pid = entity.id else { return nil }
+                            return PlaylistMapper.toDomain(entity, songCount: songCountMap[pid] ?? 0)
+                        }
                         .sorted { $0.sortOrder < $1.sortOrder }
                     let totalSongs = groupPlaylists.reduce(0) { $0 + $1.songCount }
                     return PlaylistGroupDetail(id: id, name: name, playlists: groupPlaylists, totalSongCount: totalSongs)
@@ -149,5 +147,30 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
                 continuation.resume(returning: details)
             }
         }
+    }
+
+    // MARK: - Private Helpers
+
+    private func batchPlaylistSongCounts(context: NSManagedObjectContext, playlists: [PlaylistEntity]) throws -> [UUID: Int] {
+        let playlistIds = playlists.compactMap { $0.id }
+        guard !playlistIds.isEmpty else { return [:] }
+
+        let countReq: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "PlaylistSongEntity")
+        countReq.resultType = .dictionaryResultType
+        countReq.predicate = NSPredicate(format: "playlistId IN %@", playlistIds as NSArray)
+        let countExpr = NSExpressionDescription()
+        countExpr.name = "count"
+        countExpr.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "songId")])
+        countExpr.expressionResultType = .integer64AttributeType
+        countReq.propertiesToFetch = ["playlistId", countExpr]
+        countReq.propertiesToGroupBy = ["playlistId"]
+        let countResults = try context.fetch(countReq)
+        var countMap: [UUID: Int] = [:]
+        for result in countResults {
+            if let pid = result["playlistId"] as? UUID, let count = result["count"] as? Int {
+                countMap[pid] = count
+            }
+        }
+        return countMap
     }
 }
