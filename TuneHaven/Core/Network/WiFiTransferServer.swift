@@ -17,8 +17,7 @@ final class WiFiTransferServer: ObservableObject {
     private var listener: NWListener?
     private var activeConnection: NWConnection?
     private var passwordEnabled = false
-    private var failedAttempts = 0
-    private var cooldownUntil: Date?
+    private var authAttempts: [String: (attempts: Int, cooldownUntil: Date?)] = [:]
     private var port: UInt16 = 8080
 
     // MARK: - Lifecycle
@@ -113,7 +112,6 @@ final class WiFiTransferServer: ObservableObject {
 
         activeConnection = connection
         connectionState = .connected(ip: ip)
-        failedAttempts = 0
 
         connection.stateUpdateHandler = { [weak self] state in
             Task { @MainActor [weak self] in

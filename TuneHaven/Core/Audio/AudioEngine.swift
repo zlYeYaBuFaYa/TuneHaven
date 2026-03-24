@@ -116,8 +116,11 @@ final class AudioEngine: ObservableObject, AudioEngineProtocol {
         player.replaceCurrentItem(with: item)
         addTimeObserver()
 
-        if let dur = try? await asset.load(.duration) {
+        do {
+            let dur = try await asset.load(.duration)
             duration = dur.seconds.isNaN ? 0 : dur.seconds
+        } catch {
+            log.info("duration 加载失败，将从 playerItem 补充获取: \(error.localizedDescription)")
         }
     }
 
@@ -255,8 +258,7 @@ final class AudioEngine: ObservableObject, AudioEngineProtocol {
                         log.error("音频中断恢复失败：无法激活音频会话")
                         return
                     }
-                    player.play()
-                    if playbackSpeed != 1.0 { player.rate = playbackSpeed }
+                    player.rate = playbackSpeed
                     state = .playing
                     log.info("音频中断结束，恢复播放")
                 }

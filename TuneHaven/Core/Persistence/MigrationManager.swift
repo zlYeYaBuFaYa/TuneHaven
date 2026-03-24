@@ -1,7 +1,7 @@
 import CoreData
 import Foundation
 
-/// CoreData 轻量级迁移管理（TDD Section 1.4）
+/// CoreData 轻量级迁移管理
 /// 当 xcdatamodel 版本变更时负责自动迁移
 final class MigrationManager {
     static let shared = MigrationManager()

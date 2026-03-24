@@ -18,13 +18,13 @@ final class AudioSessionManager: AudioSessionManaging {
             isConfigured = true
             return true
         } catch {
-            log.error("[AudioSessionManager] configure failed: \(error)")
+            log.error("configure failed: \(error)")
             do {
                 try session.setActive(true, options: [])
                 isConfigured = true
                 return true
             } catch {
-                log.error("[AudioSessionManager] setActive retry failed: \(error)")
+                log.error("setActive retry failed: \(error)")
             }
             return false
         }
@@ -44,7 +44,7 @@ final class AudioSessionManager: AudioSessionManaging {
             isConfigured = true
             return true
         } catch {
-            log.error("[AudioSessionManager] ensureActive failed: \(error)")
+            log.error("ensureActive failed: \(error)")
             return false
         }
     }

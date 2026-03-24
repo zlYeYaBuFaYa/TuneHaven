@@ -6,10 +6,7 @@ final class LRCLibAPIClient: LyricsAPIProviding {
     private let baseURL = "https://lrclib.net/api"
     private let userAgent = "TuneHaven/1.0 (iOS Music Player)"
     private let session: URLSession
-    private let decoder: JSONDecoder = {
-        let d = JSONDecoder()
-        return d
-    }()
+    private let decoder = JSONDecoder()
 
     init(session: URLSession = .shared) {
         self.session = session
