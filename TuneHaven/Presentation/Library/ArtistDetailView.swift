@@ -27,6 +27,9 @@ struct ArtistDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(palette.surface, for: .navigationBar)
         .task { await load() }
+        .onChange(of: libraryService.songs.count) { _, _ in
+            Task { await load() }
+        }
     }
 
     @ViewBuilder
@@ -89,11 +92,16 @@ struct ArtistDetailView: View {
                         isPlaying: currentSongId == song.id,
                         onTap: {
                             Task {
-                                await playback.prepare(song: song, in: .artist(name: artistName))
+                                await playback.play(song: song, in: .artist(name: artistName))
                                 router.openPlayer()
                             }
                         },
-                        onFavorite: { Task { try? await libraryService.toggleFavorite(songId: song.id) } },
+                        onFavorite: {
+                            Task {
+                                do { try await libraryService.toggleFavorite(songId: song.id) }
+                                catch { snackbar.show(message: "收藏操作失败") }
+                            }
+                        },
                         onDelete: {
                             SongDeletionHelper.softDelete(song: song, libraryService: libraryService, snackbar: snackbar)
                         },

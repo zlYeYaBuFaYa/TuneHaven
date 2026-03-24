@@ -43,7 +43,10 @@ struct WiFiTransferView: View {
                 }
             }
         }
-        .onDisappear { if server.isRunning { server.stop() } }
+        .onDisappear {
+            if server.isRunning { server.stop() }
+            receivedFiles.removeAll()
+        }
         .onChange(of: server.securityAlert) { _, alert in
             if let alert {
                 switch alert {
@@ -97,7 +100,6 @@ struct WiFiTransferView: View {
     private var connectionInfoSection: some View {
         Section {
             if let address = server.serverAddress {
-                // 二维码（TDD Section 7.2）
                 HStack {
                     Spacer()
                     VStack(spacing: 12) {
@@ -198,8 +200,8 @@ struct WiFiTransferView: View {
         do {
             try server.start(passwordEnabled: passwordEnabled)
             server.onFileReceived = { filename, url in
-                receivedFiles.append(ReceivedFile(name: filename))
-                Task { [url] in
+                Task { @MainActor [url] in
+                    receivedFiles.append(ReceivedFile(name: filename))
                     let result = await importService.processWiFiFile(tempURL: url, originalFilename: filename)
                     if result.status == .success || result.status == .successIncompleteMetadata {
                         await libraryService.loadSongs()

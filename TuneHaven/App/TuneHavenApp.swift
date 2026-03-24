@@ -26,12 +26,12 @@ struct TuneHavenApp: App {
                         .environmentObject(container.searchService)
                         .environmentObject(container.router)
                         .environmentObject(container.snackbar)
-                        .environmentObject(container.wallpaperManager)
                         .environmentObject(container.groupService)
                         .environmentObject(container.playbackService)
                         .environmentObject(container.audioEngine)
                         .environmentObject(container.webDAVService)
                         .environmentObject(container.lyricsService)
+                        .environment(\.imageCache, ImageCacheManager.shared)
                         .injectThemePalette(from: container.themeManager)
                         .snackbar(container.snackbar)
                 } else if let error = initError {
@@ -65,6 +65,7 @@ struct TuneHavenApp: App {
                 switch phase {
                 case .active:
                     container.playbackService.checkSleepTimerOnForeground()
+                    container.themeManager.scheduleWindowRefresh(delay: 0.1, fullApply: true)
                 case .background:
                     container.audioSessionManager.ensureActive()
                 default:
@@ -88,6 +89,7 @@ struct TuneHavenApp: App {
         let handler = OpenInImportHandler(
             importService: container.importService,
             libraryService: container.libraryService,
+            fileStorage: FileStorageService.shared,
             snackbar: container.snackbar
         )
         openInHandler = handler
@@ -97,15 +99,10 @@ struct TuneHavenApp: App {
     private func initialize() async {
         do {
             AppLogger.shared.info("[App] initialize start")
-            MigrationManager.shared.runVersionUpgradeTasks()
-            try await CoreDataStack.shared.load()
-            await MigrationManager.shared.runPostLoadMigrations()
-            SandboxPathManager.createAllDirectories()
-            WiFiTransferServer.cleanupTempFiles()
+            try await container.bootstrap()
             try await container.playlistService.initializeSystemPlaylists()
             await container.libraryService.loadSongs()
             await container.libraryService.cleanupOnLaunch()
-            OpenInImportHandler.cleanupInbox()
             container.playbackService.checkSleepTimerOnForeground()
             isReady = true
             AppLogger.shared.info("[App] initialize done — isReady=true")

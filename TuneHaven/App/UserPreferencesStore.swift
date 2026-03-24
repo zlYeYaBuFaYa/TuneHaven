@@ -28,6 +28,11 @@ final class UserPreferencesStore: UserPreferencesProviding {
         defaults.object(forKey: AppStorageKey.autoMatchLyrics) as? Bool ?? true
     }
 
+    var recentPlayRange: Int {
+        let v = defaults.integer(forKey: AppStorageKey.recentPlayRange)
+        return v == 0 && defaults.object(forKey: AppStorageKey.recentPlayRange) == nil ? 7 : v
+    }
+
     var lastPlayedSongId: String? {
         get { defaults.string(forKey: AppStorageKey.lastPlayedSongId) }
         set { defaults.set(newValue, forKey: AppStorageKey.lastPlayedSongId) }

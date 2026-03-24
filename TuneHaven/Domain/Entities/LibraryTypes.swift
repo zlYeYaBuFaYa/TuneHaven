@@ -83,11 +83,37 @@ enum SpeedMemoryMode: Int, CaseIterable {
     case perSong = 1
 }
 
+enum RecentPlayRange: Int, CaseIterable, Identifiable {
+    case three  = 3
+    case seven  = 7
+    case fourteen = 14
+    case thirty = 30
+    case all    = 0
+
+    var id: Int { rawValue }
+    var days: Int { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .three:    return "最近 3 天"
+        case .seven:    return "最近 7 天"
+        case .fourteen: return "最近 14 天"
+        case .thirty:   return "最近 30 天"
+        case .all:      return "全部历史"
+        }
+    }
+
+    init?(days: Int) {
+        self.init(rawValue: days)
+    }
+}
+
 enum PlayContext {
     case allSongs(sortBy: SongSortOption)
     case album(name: String, artist: String)
     case artist(name: String)
     case playlist(id: UUID)
+    case recentlyPlayed(days: Int)
     case queue
 }
 

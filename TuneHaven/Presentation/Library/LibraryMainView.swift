@@ -240,7 +240,11 @@ struct LibraryMainView: View {
 
     private func searchFavoriteSong(_ song: Song) {
         Task {
-            try? await libraryService.toggleFavorite(songId: song.id)
+            do {
+                try await libraryService.toggleFavorite(songId: song.id)
+            } catch {
+                snackbar.show(message: "收藏操作失败")
+            }
             refreshSearch()
         }
     }

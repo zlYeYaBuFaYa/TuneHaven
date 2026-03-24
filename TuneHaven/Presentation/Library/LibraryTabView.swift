@@ -3,11 +3,10 @@ import SwiftUI
 struct LibraryTabView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var themeManager: ThemeManager
-    @EnvironmentObject private var wallpaperManager: WallpaperManager
     @Environment(\.themePalette) private var palette
 
     var body: some View {
-        let hasCustomBg = themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
+        let hasCustomBg = themeManager.currentStyle.hasCustomBackground
         NavigationStack(path: $router.libraryPath) {
             LibraryMainView()
                 .themeContainerBackground()

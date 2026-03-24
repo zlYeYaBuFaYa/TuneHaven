@@ -136,10 +136,10 @@ struct WebDAVAccountListView: View {
 
     private var guideSection: some View {
         Section {
-            guideRow(step: "1", text: "点击右上角 + 添加 WebDAV 服务器")
-            guideRow(step: "2", text: "输入服务器地址和登录凭据")
-            guideRow(step: "3", text: "测试连接成功后保存")
-            guideRow(step: "4", text: "点击已添加的服务器浏览和导入")
+            StepGuideRow(step: "1", text: "点击右上角 + 添加 WebDAV 服务器")
+            StepGuideRow(step: "2", text: "输入服务器地址和登录凭据")
+            StepGuideRow(step: "3", text: "测试连接成功后保存")
+            StepGuideRow(step: "4", text: "点击已添加的服务器浏览和导入")
 
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -156,19 +156,5 @@ struct WebDAVAccountListView: View {
         }
     }
 
-    private func guideRow(step: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text(step)
-                .font(.caption.weight(.bold))
-                .foregroundColor(palette.textPrimary)
-                .frame(width: 20, height: 20)
-                .background(Circle().fill(palette.primary))
-            Text(text)
-                .font(.subheadline)
-                .foregroundColor(palette.textPrimary)
-        }
-        .padding(.vertical, 2)
-        .listRowBackground(palette.surface)
-    }
 }
 

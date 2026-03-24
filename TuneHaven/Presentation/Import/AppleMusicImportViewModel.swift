@@ -82,8 +82,13 @@ final class AppleMusicImportViewModel: ObservableObject {
         var incompleteMetadataCount = 0
         var details: [SingleImportResult] = []
 
+        var lastExportedURL: URL?
         for (i, item) in selected.enumerated() {
-            guard !Task.isCancelled else { break }
+            if Task.isCancelled {
+                if let url = lastExportedURL { try? FileManager.default.removeItem(at: url) }
+                break
+            }
+            lastExportedURL = nil
             importProgress = (i + 1, selected.count)
 
             guard let assetURL = item.assetURL else {
@@ -93,6 +98,7 @@ final class AppleMusicImportViewModel: ObservableObject {
             }
 
             if let exportedURL = await exportMediaItem(item, assetURL: assetURL) {
+                lastExportedURL = exportedURL
                 let artworkData = item.artwork?.image(at: CGSize(width: 600, height: 600))?.jpegData(compressionQuality: 1.0)
                 let result = await importService.processAppleMusicFile(
                     tempURL: exportedURL,
@@ -164,14 +170,16 @@ final class AppleMusicImportViewModel: ObservableObject {
         }
 
         if assetURL.isFileURL {
-            let copyURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "_" + assetURL.lastPathComponent)
-            do {
-                try FileManager.default.copyItem(at: assetURL, to: copyURL)
-                return copyURL
-            } catch {
-                AppLogger.shared.error(error, context: "Apple Music 文件复制失败")
-                return nil
-            }
+            return await Task.detached {
+                let copyURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "_" + assetURL.lastPathComponent)
+                do {
+                    try FileManager.default.copyItem(at: assetURL, to: copyURL)
+                    return copyURL
+                } catch {
+                    AppLogger.shared.error(error, context: "Apple Music 文件复制失败")
+                    return nil
+                }
+            }.value
         }
 
         return nil
@@ -193,11 +201,13 @@ final class AppleMusicImportViewModel: ObservableObject {
         return nil
     }
 
+    private static let unsafeFileNameCharacters = CharacterSet(charactersIn: "/:\\?*\"<>|\0")
+
     static func sanitizeFileName(_ title: String, artist: String?) -> String {
         let base = artist.map { "\($0) - \(title)" } ?? title
-        let cleaned = base.replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: ":", with: "_")
-            .replacingOccurrences(of: "\\", with: "_")
+        let cleaned = base.unicodeScalars
+            .filter { !unsafeFileNameCharacters.contains($0) }
+            .reduce(into: "") { $0.unicodeScalars.append($1) }
         return String(cleaned.prefix(100))
     }
 }

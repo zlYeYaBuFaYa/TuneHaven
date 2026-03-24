@@ -28,6 +28,9 @@ struct AlbumDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(palette.surface, for: .navigationBar)
         .task { await load() }
+        .onChange(of: libraryService.songs.count) { _, _ in
+            Task { await load() }
+        }
     }
 
     @ViewBuilder
@@ -115,7 +118,7 @@ struct AlbumDetailView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         Task {
-                            await playback.prepare(song: song, in: .album(name: albumName, artist: artistName))
+                            await playback.play(song: song, in: .album(name: albumName, artist: artistName))
                             router.openPlayer()
                         }
                     }

@@ -103,34 +103,8 @@ struct ImportFilesView: View {
                 }
 
                 if isImporting, let p = progress {
-                    Section {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("正在导入 \(p.currentFileName)")
-                                .font(.subheadline)
-                                .foregroundColor(palette.textPrimary)
-                                .lineLimit(1)
-                            ProgressView(value: p.percentage)
-                                .tint(palette.primary)
-                            HStack {
-                                Text("\(p.completedCount)/\(p.totalCount)")
-                                    .font(.caption)
-                                    .foregroundColor(palette.textSecondary)
-                                Spacer()
-                                if let remaining = p.estimatedRemainingSeconds {
-                                    Text("约剩 \(remaining.formattedTime)")
-                                        .font(.caption)
-                                        .foregroundColor(palette.textTertiary)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 4)
-                        .listRowBackground(palette.surface)
-
-                        Button("取消导入") {
-                            importService.cancelImport()
-                        }
-                        .foregroundColor(SemanticColor.danger)
-                        .listRowBackground(palette.surface)
+                    ImportProgressSection(progress: p) {
+                        importService.cancelImport()
                     }
                 }
 

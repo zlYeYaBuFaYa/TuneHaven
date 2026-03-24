@@ -6,15 +6,9 @@ struct CoverImageView: View {
     var cornerRadius: CGFloat = 8
 
     @Environment(\.themePalette) private var palette
+    @Environment(\.imageCache) private var imageCache
     @State private var cachedImage: UIImage?
     @State private var refreshToken = UUID()
-
-    init(path: String?, size: CGFloat, cornerRadius: CGFloat = 8) {
-        self.path = path
-        self.size = size
-        self.cornerRadius = cornerRadius
-        _cachedImage = State(initialValue: path.flatMap { ImageCacheManager.shared.memoryImage(forKey: $0) })
-    }
 
     var body: some View {
         Group {
@@ -30,12 +24,13 @@ struct CoverImageView: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .task(id: CoverLoadToken(path: path, refresh: refreshToken)) {
             guard let path else { cachedImage = nil; return }
-            if let memImg = ImageCacheManager.shared.memoryImage(forKey: path) {
+            if let memImg = imageCache.memoryImage(forKey: path) {
                 cachedImage = memImg
                 return
             }
+            let cache = imageCache
             let loaded = await Task.detached {
-                await ImageCacheManager.shared.imageAsync(forKey: path)
+                await cache.imageAsync(forKey: path)
             }.value
             cachedImage = loaded
         }

@@ -9,6 +9,7 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
     func fetchAll() async -> [Playlist] {
         await withCheckedContinuation { continuation in
             stack.viewContext.perform {
+                self.stack.viewContext.refreshAllObjects()
                 self.stack.viewContext.processPendingChanges()
                 let request = PlaylistEntity.fetchRequest()
                 request.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
@@ -33,6 +34,7 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
     func fetchPlaylistDetail(id: UUID) async -> PlaylistDetail? {
         await withCheckedContinuation { continuation in
             stack.viewContext.perform {
+                self.stack.viewContext.refreshAllObjects()
                 do {
                     guard let entity = try self.fetchPlaylistEntity(id: id, context: self.stack.viewContext) else {
                         continuation.resume(returning: nil)

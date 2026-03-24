@@ -5,6 +5,7 @@ protocol UserPreferencesProviding: AnyObject {
     var playbackSpeed: Float { get set }
     var speedMemoryMode: SpeedMemoryMode { get }
     var autoMatchLyrics: Bool { get }
+    var recentPlayRange: Int { get }
     var lastPlayedSongId: String? { get set }
     var songDislikes: [String: Int] { get set }
     var perSongSpeeds: [String: Float] { get set }

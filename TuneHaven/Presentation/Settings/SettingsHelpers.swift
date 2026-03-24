@@ -17,7 +17,7 @@ struct SettingsSectionIcon: View {
 }
 
 struct SettingsListRowBackground: EnvironmentKey {
-    static let defaultValue: Color = .clear
+    static let defaultValue: Color = Color(uiColor: .secondarySystemGroupedBackground)
 }
 
 extension EnvironmentValues {

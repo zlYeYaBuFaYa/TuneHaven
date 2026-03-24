@@ -1,13 +1,11 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import UserNotifications
-import PhotosUI
 
 struct SettingsView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
-    @EnvironmentObject private var wallpaperManager: WallpaperManager
     @Environment(\.themePalette) private var palette
 
     @AppStorage(AppStorageKey.recentPlayRange)       private var recentPlayRange: Int = 7
@@ -30,14 +28,15 @@ struct SettingsView: View {
     @State private var expandedAbout = false
 
     @State private var showDocumentPicker = false
-    @State private var showWifiTransfer = false
-    @State private var showAppleMusicImport = false
-    @State private var showCloudDriveImport = false
-    @State private var showWebDAVImport = false
-    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var activeSheet: SettingsSheet?
+
+    enum SettingsSheet: Identifiable {
+        case wifiTransfer, appleMusicImport, cloudDriveImport, webDAVImport
+        var id: Self { self }
+    }
 
     private var hasCustomBg: Bool {
-        themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
+        themeManager.currentStyle.hasCustomBackground
     }
 
     private var listRowBg: Color {
@@ -49,15 +48,11 @@ struct SettingsView: View {
             SettingsImportSection(
                 isExpanded: $expandedImport,
                 showDocumentPicker: $showDocumentPicker,
-                showAppleMusicImport: $showAppleMusicImport,
-                showCloudDriveImport: $showCloudDriveImport,
-                showWifiTransfer: $showWifiTransfer,
-                showWebDAVImport: $showWebDAVImport
+                activeSheet: $activeSheet
             )
 
             SettingsAppearanceSection(
-                isExpanded: $expandedAppearance,
-                selectedPhotoItem: $selectedPhotoItem
+                isExpanded: $expandedAppearance
             )
 
             SettingsPlaybackSection(
@@ -97,36 +92,32 @@ struct SettingsView: View {
             allowedContentTypes: UTType.allSupportedAudio,
             allowsMultipleSelection: true
         ) { result in
-            if case .success(let urls) = result {
+            switch result {
+            case .success(let urls):
                 Task {
                     _ = await importService.importFromFiles(urls: urls) { _ in }
                     await libraryService.loadSongs()
                 }
+            case .failure(let error):
+                AppLogger.shared.error("[Settings] fileImporter failure: \(error.localizedDescription)")
             }
         }
-        .sheet(isPresented: $showWifiTransfer) {
-            WiFiTransferView()
-                .environment(\.themePalette, palette)
-                .environmentObject(importService)
-                .environmentObject(libraryService)
-        }
-        .sheet(isPresented: $showAppleMusicImport) {
-            AppleMusicImportView()
-                .environment(\.themePalette, palette)
-                .environmentObject(importService)
-                .environmentObject(libraryService)
-        }
-        .sheet(isPresented: $showCloudDriveImport) {
-            CloudDriveImportView()
-                .environment(\.themePalette, palette)
-                .environmentObject(importService)
-                .environmentObject(libraryService)
-        }
-        .sheet(isPresented: $showWebDAVImport) {
-            WebDAVAccountListView()
-                .environment(\.themePalette, palette)
-                .environmentObject(importService)
-                .environmentObject(libraryService)
+        .sheet(item: $activeSheet) { sheet in
+            Group {
+                switch sheet {
+                case .wifiTransfer:
+                    WiFiTransferView()
+                case .appleMusicImport:
+                    AppleMusicImportView()
+                case .cloudDriveImport:
+                    CloudDriveImportView()
+                case .webDAVImport:
+                    WebDAVAccountListView()
+                }
+            }
+            .environment(\.themePalette, palette)
+            .environmentObject(importService)
+            .environmentObject(libraryService)
         }
     }
 
@@ -146,27 +137,3 @@ struct SettingsView: View {
     }
 }
 
-enum RecentPlayRange: Int, CaseIterable, Identifiable {
-    case three  = 3
-    case seven  = 7
-    case fourteen = 14
-    case thirty = 30
-    case all    = 0
-
-    var id: Int { rawValue }
-    var days: Int { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .three:    return "最近 3 天"
-        case .seven:    return "最近 7 天"
-        case .fourteen: return "最近 14 天"
-        case .thirty:   return "最近 30 天"
-        case .all:      return "全部历史"
-        }
-    }
-
-    init?(days: Int) {
-        self.init(rawValue: days)
-    }
-}

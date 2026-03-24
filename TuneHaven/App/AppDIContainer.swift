@@ -1,10 +1,22 @@
 import SwiftUI
 
+// MARK: - ImageCache EnvironmentKey
+
+struct ImageCacheKey: EnvironmentKey {
+    static let defaultValue: ImageCacheManaging = ImageCacheManager.shared
+}
+
+extension EnvironmentValues {
+    var imageCache: ImageCacheManaging {
+        get { self[ImageCacheKey.self] }
+        set { self[ImageCacheKey.self] = newValue }
+    }
+}
+
 @MainActor
 final class AppDIContainer: ObservableObject {
     // MARK: - UI State
     let themeManager: ThemeManager
-    let wallpaperManager: WallpaperManager
     let router: AppRouter
     let snackbar: SnackbarState
 
@@ -51,13 +63,22 @@ final class AppDIContainer: ObservableObject {
     // MARK: - Shared Repositories
     private let songRepo: SongRepository
 
+    /// App 启动时的基础设施初始化（迁移、数据库加载、沙盒目录、临时文件清理）
+    func bootstrap() async throws {
+        MigrationManager.shared.runVersionUpgradeTasks()
+        try await CoreDataStack.shared.load()
+        await MigrationManager.shared.runPostLoadMigrations()
+        SandboxPathManager.createAllDirectories()
+        WiFiTransferServer.cleanupTempFiles()
+        OpenInImportHandler.cleanupInbox(fileStorage: FileStorageService.shared)
+    }
+
     init() {
         let audioSession = AudioSessionManager.shared
         self.audioEngine = AudioEngine.shared
         self.audioSessionManager = audioSession
 
         self.themeManager = ThemeManager()
-        self.wallpaperManager = WallpaperManager()
         self.router = AppRouter()
         self.snackbar = SnackbarState()
 

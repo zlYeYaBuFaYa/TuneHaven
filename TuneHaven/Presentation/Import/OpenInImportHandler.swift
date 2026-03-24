@@ -4,6 +4,7 @@ import Foundation
 final class OpenInImportHandler {
     private let importService: ImportService
     private let libraryService: MusicLibraryService
+    private let fileStorage: FileStorageProviding
     private let snackbar: SnackbarState
     private let log = AppLogger.shared
 
@@ -12,9 +13,11 @@ final class OpenInImportHandler {
 
     init(importService: ImportService,
          libraryService: MusicLibraryService,
+         fileStorage: FileStorageProviding,
          snackbar: SnackbarState) {
         self.importService = importService
         self.libraryService = libraryService
+        self.fileStorage = fileStorage
         self.snackbar = snackbar
     }
 
@@ -40,7 +43,7 @@ final class OpenInImportHandler {
     }
 
     private func handleIncomingFile(url: URL) async {
-        guard FileManager.default.fileExists(atPath: url.path) else {
+        guard fileStorage.fileExists(at: url) else {
             log.info("[OpenIn] 文件不存在，跳过: \(url.lastPathComponent)")
             return
         }
@@ -48,14 +51,14 @@ final class OpenInImportHandler {
         let fileName = url.lastPathComponent
         let ext = (fileName as NSString).pathExtension.lowercased()
 
-        guard FileStorageService.supportedExtensions.contains(ext) else {
+        guard fileStorage.supportedExtensions.contains(ext) else {
             snackbar.show(message: "不支持的文件格式：.\(ext)")
             cleanup(url: url)
             return
         }
 
-        let fileSize = FileStorageService.shared.fileSize(at: url)
-        guard fileSize <= FileStorageService.maxFileSizeBytes else {
+        let fileSize = fileStorage.fileSize(at: url)
+        guard fileSize <= fileStorage.maxFileSizeBytes else {
             snackbar.show(message: "文件超过 500MB 大小限制")
             cleanup(url: url)
             return
@@ -85,20 +88,17 @@ final class OpenInImportHandler {
     }
 
     private func cleanup(url: URL) {
-        let inboxPath = SandboxPathManager.documentsURL
+        let inboxPath = fileStorage.documentsURL
             .appendingPathComponent("Inbox").path
         guard url.path.hasPrefix(inboxPath) else { return }
-        try? FileManager.default.removeItem(at: url)
+        try? fileStorage.removeItem(at: url)
     }
 
-    static func cleanupInbox() {
-        let inbox = SandboxPathManager.documentsURL
+    static func cleanupInbox(fileStorage: FileStorageProviding) {
+        let inbox = fileStorage.documentsURL
             .appendingPathComponent("Inbox", isDirectory: true)
-        guard let files = try? FileManager.default.contentsOfDirectory(
-            at: inbox, includingPropertiesForKeys: nil
-        ) else { return }
-        for file in files {
-            try? FileManager.default.removeItem(at: file)
+        for file in fileStorage.contentsOfDirectory(at: inbox) {
+            try? fileStorage.removeItem(at: file)
         }
     }
 }

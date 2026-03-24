@@ -63,7 +63,7 @@ struct SongInfoEditView: View {
                         ProgressView()
                     } else {
                         Button("保存") { saveChanges() }
-                            .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+                            .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             .foregroundColor(palette.primary)
                     }
                 }
@@ -144,7 +144,11 @@ struct SongInfoEditView: View {
                   let url = urls.first,
                   let song = self.song else { return }
             Task {
-                try? await lyricsService.importLyricsFile(url: url, for: song)
+                do {
+                    try await lyricsService.importLyricsFile(url: url, for: song)
+                } catch {
+                    snackbar.show(message: "歌词导入失败：\(error.localizedDescription)")
+                }
                 await reloadSong()
             }
         }
@@ -153,7 +157,11 @@ struct SongInfoEditView: View {
             Button("删除", role: .destructive) {
                 guard let song = self.song else { return }
                 Task {
-                    try? await lyricsService.deleteLyrics(for: song)
+                    do {
+                        try await lyricsService.deleteLyrics(for: song)
+                    } catch {
+                        snackbar.show(message: "歌词删除失败：\(error.localizedDescription)")
+                    }
                     await reloadSong()
                 }
             }
@@ -195,15 +203,15 @@ struct SongInfoEditView: View {
     }
 
     private func saveChanges() {
-        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         isSaving = true
         Task {
             do {
                 try await libraryService.updateSongInfo(
                     id: songId,
-                    title: title.trimmingCharacters(in: .whitespaces),
-                    artist: artist.trimmingCharacters(in: .whitespaces),
-                    album: album.trimmingCharacters(in: .whitespaces)
+                    title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+                    artist: artist.trimmingCharacters(in: .whitespacesAndNewlines),
+                    album: album.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
                 dismiss()
             } catch {

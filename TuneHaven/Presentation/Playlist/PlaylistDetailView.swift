@@ -45,26 +45,20 @@ struct PlaylistDetailView: View {
         .toolbar {
             if detail?.playlist.isSystem != true {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 16) {
+                    Menu {
+                        Button { router.present(.editPlaylist(id: playlistId)) } label: {
+                            Label("编辑歌单", systemImage: "pencil")
+                        }
                         Button { showBatchAdd = true } label: {
-                            Image(systemName: "plus")
-                                .foregroundColor(palette.primary)
+                            Label("批量添加歌曲", systemImage: "text.badge.plus")
                         }
-                        Menu {
-                            Button { router.present(.editPlaylist(id: playlistId)) } label: {
-                                Label("编辑歌单", systemImage: "pencil")
-                            }
-                            Button { showBatchAdd = true } label: {
-                                Label("批量添加歌曲", systemImage: "text.badge.plus")
-                            }
-                            Divider()
-                            Button(role: .destructive) { showDeleteConfirm = true } label: {
-                                Label("删除歌单", systemImage: "trash")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
-                                .foregroundColor(palette.primary)
+                        Divider()
+                        Button(role: .destructive) { showDeleteConfirm = true } label: {
+                            Label("删除歌单", systemImage: "trash")
                         }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundColor(palette.primary)
                     }
                 }
             }
@@ -87,7 +81,7 @@ struct PlaylistDetailView: View {
             }
         }
         .task { detail = await playlistService.fetchDetail(playlistId: playlistId) }
-        .onReceive(playlistService.$playlists) { _ in
+        .onReceive(playlistService.$playlists.dropFirst().debounce(for: .milliseconds(300), scheduler: RunLoop.main)) { _ in
             guard !isDeleted else { return }
             Task { detail = await playlistService.fetchDetail(playlistId: playlistId) }
         }
@@ -99,27 +93,7 @@ struct PlaylistDetailView: View {
     }
 
     private var playlistSearchBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(palette.textTertiary)
-            TextField("搜索歌单内歌曲", text: $searchText)
-                .textFieldStyle(.plain)
-                .foregroundColor(palette.textPrimary)
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(palette.textTertiary)
-                }
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(palette.surfaceSecondary)
-        .clipShape(Capsule())
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        SearchBar(text: $searchText, placeholder: "搜索歌单内歌曲")
     }
 }
 
@@ -189,12 +163,18 @@ private struct PlaylistContentView: View {
                         isPlaying: playback.currentSong?.id == song.id,
                         onTap: {
                             Task {
-                                await playback.prepare(song: song, in: .playlist(id: playlistId))
+                                await playback.play(song: song, in: .playlist(id: playlistId))
                                 router.openPlayer()
                             }
                         },
                         onFavorite: {
-                            Task { try? await libraryService.toggleFavorite(songId: song.id) }
+                            Task {
+                                do {
+                                    try await libraryService.toggleFavorite(songId: song.id)
+                                } catch {
+                                    snackbar.show(message: "操作失败，请重试")
+                                }
+                            }
                         },
                         onDelete: detail.playlist.isSystem ? nil : {
                             Task {

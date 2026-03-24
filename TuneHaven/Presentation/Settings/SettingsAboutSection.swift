@@ -10,7 +10,7 @@ struct SettingsAboutSection: View {
         Section {
             DisclosureGroup(isExpanded: $isExpanded) {
                 infoRow("版本", Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
-                infoRow("支持格式", "MP3 / M4A / AAC / WAV / ALAC")
+                infoRow("支持格式", "MP3 / M4A / AAC / WAV / FLAC / ALAC / AIFF / CAF")
                 infoRow("最大文件", "500 MB / 首")
                 infoRow("数据存储", "iTunes 文件共享 / iCloud 备份")
             } label: {

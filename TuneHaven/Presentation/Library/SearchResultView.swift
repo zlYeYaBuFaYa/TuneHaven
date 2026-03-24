@@ -25,7 +25,7 @@ struct SearchResultView: View {
                             isPlaying: playback.currentSong?.id == song.id,
                             onTap: {
                                 Task {
-                                    await playback.prepare(song: song, in: playContext(for: song))
+                                    await playback.play(song: song, in: playContext(for: song))
                                     router.openPlayer()
                                 }
                             },

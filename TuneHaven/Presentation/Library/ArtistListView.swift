@@ -42,6 +42,9 @@ struct ArtistListView: View {
             }
         }
         .task { await load() }
+        .onChange(of: libraryService.songs.count) { _, _ in
+            Task { await load() }
+        }
     }
 
     private var emptyState: some View {

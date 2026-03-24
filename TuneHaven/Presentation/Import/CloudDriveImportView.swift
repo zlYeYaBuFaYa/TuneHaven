@@ -134,10 +134,10 @@ struct CloudDriveImportView: View {
 
     private var guideSection: some View {
         Section {
-            guideRow(step: "1", text: "点击上方百度网盘，跳转到 App")
-            guideRow(step: "2", text: "找到音乐文件，先下载到手机本地")
-            guideRow(step: "3", text: "下载完成后长按文件 → 打开方式")
-            guideRow(step: "4", text: "选择 TuneHaven，文件将自动导入")
+            StepGuideRow(step: "1", text: "点击上方百度网盘，跳转到 App")
+            StepGuideRow(step: "2", text: "找到音乐文件，先下载到手机本地")
+            StepGuideRow(step: "3", text: "下载完成后长按文件 → 打开方式")
+            StepGuideRow(step: "4", text: "选择 TuneHaven，文件将自动导入")
 
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -164,53 +164,12 @@ struct CloudDriveImportView: View {
         }
     }
 
-    private func guideRow(step: String, text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text(step)
-                .font(.caption.weight(.bold))
-                .foregroundColor(palette.textPrimary)
-                .frame(width: 20, height: 20)
-                .background(Circle().fill(palette.primary))
-
-            Text(text)
-                .font(.subheadline)
-                .foregroundColor(palette.textPrimary)
-        }
-        .padding(.vertical, 2)
-        .listRowBackground(palette.surface)
-    }
 
     // MARK: - Importing Section
 
     private func importingSection(_ p: ImportProgress) -> some View {
-        Section {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("正在导入 \(p.currentFileName)")
-                    .font(.subheadline)
-                    .foregroundColor(palette.textPrimary)
-                    .lineLimit(1)
-                ProgressView(value: p.percentage)
-                    .tint(palette.primary)
-                HStack {
-                    Text("\(p.completedCount)/\(p.totalCount)")
-                        .font(.caption)
-                        .foregroundColor(palette.textSecondary)
-                    Spacer()
-                    if let remaining = p.estimatedRemainingSeconds {
-                        Text("约剩 \(remaining.formattedTime)")
-                            .font(.caption)
-                            .foregroundColor(palette.textTertiary)
-                    }
-                }
-            }
-            .padding(.vertical, 4)
-            .listRowBackground(palette.surface)
-
-            Button("取消导入") {
-                importService.cancelImport()
-            }
-            .foregroundColor(SemanticColor.danger)
-            .listRowBackground(palette.surface)
+        ImportProgressSection(progress: p) {
+            importService.cancelImport()
         }
     }
 

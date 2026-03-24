@@ -15,7 +15,7 @@ final class SearchService: ObservableObject {
     }
 
     func search(query: String, tab: LibraryTab, allSongs: [Song]) async -> SearchResult {
-        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !q.isEmpty else {
             return .empty
         }

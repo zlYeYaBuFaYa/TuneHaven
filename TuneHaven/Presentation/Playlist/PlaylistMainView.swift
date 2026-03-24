@@ -10,14 +10,9 @@ struct PlaylistMainView: View {
 
     @State private var showGroupManage = false
 
-    private var systemPlaylists: [Playlist] {
-        playlistService.playlists.filter { $0.isSystem }.sorted { $0.systemType.rawValue < $1.systemType.rawValue }
-    }
-    private var userPlaylists: [Playlist] {
-        playlistService.playlists.filter { !$0.isSystem }.sorted { $0.sortOrder < $1.sortOrder }
-    }
-
     var body: some View {
+        let systemPlaylists = playlistService.playlists.filter { $0.isSystem }.sorted { $0.systemType.rawValue < $1.systemType.rawValue }
+        let userPlaylists = playlistService.playlists.filter { !$0.isSystem }.sorted { $0.sortOrder < $1.sortOrder }
         List {
             Section {
                 ForEach(systemPlaylists) { playlist in
@@ -108,7 +103,7 @@ struct PlaylistMainView: View {
             }
         }
         .task { await playlistService.loadPlaylists() }
-        .onReceive(libraryService.$songs.dropFirst()) { _ in
+        .onReceive(libraryService.$songs.dropFirst().debounce(for: .milliseconds(500), scheduler: RunLoop.main)) { _ in
             Task { await playlistService.loadPlaylists() }
         }
         .sheet(isPresented: $showGroupManage) {

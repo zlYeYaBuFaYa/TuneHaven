@@ -9,6 +9,7 @@ struct SongListView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playback: PlaybackService
     @Environment(\.themePalette) private var palette
+    @AppStorage(AppStorageKey.recentPlayRange) private var recentPlayRange: Int = 7
 
     @State private var songs: [Song] = []
     @State private var isLoading = false
@@ -35,7 +36,7 @@ struct SongListView: View {
                             isPlaying: playback.currentSong?.id == song.id,
                             onTap: {
                                 Task {
-                                    await prepareContext(song: song)
+                                    await playContext(song: song)
                                     router.openPlayer()
                                 }
                             }
@@ -56,11 +57,12 @@ struct SongListView: View {
 
     private func load() async {
         isLoading = true
+        let days = recentPlayRange == 0 ? 0 : recentPlayRange
         switch context {
         case .favorites:
             songs = await playlistService.fetchFavorites()
         case .recentlyPlayed:
-            songs = await libraryService.fetchRecentlyPlayed(days: 30, page: 0).items
+            songs = await libraryService.fetchRecentlyPlayed(days: days, page: 0).items
         case .allSongs:
             songs = await libraryService.fetchAllSongs(sortBy: .title, ascending: true)
         default:
@@ -69,18 +71,19 @@ struct SongListView: View {
         isLoading = false
     }
 
-    private func prepareContext(song: Song) async {
+    private func playContext(song: Song) async {
         let ctx: PlayContext
+        let days = recentPlayRange == 0 ? 0 : recentPlayRange
         switch context {
         case .allSongs: ctx = .allSongs(sortBy: .title)
         case .favorites:
             let favId = playlistService.playlists.first { $0.systemType == .favorites }?.id
             ctx = favId.map { .playlist(id: $0) } ?? .allSongs(sortBy: .title)
-        case .recentlyPlayed: ctx = .allSongs(sortBy: .importDate)
+        case .recentlyPlayed: ctx = .recentlyPlayed(days: days)
         case .artist(let name): ctx = .artist(name: name)
         case .album(let name, let artist): ctx = .album(name: name, artist: artist)
         case .playlist(let id): ctx = .playlist(id: id)
         }
-        await playback.prepare(song: song, in: ctx)
+        await playback.play(song: song, in: ctx)
     }
 }

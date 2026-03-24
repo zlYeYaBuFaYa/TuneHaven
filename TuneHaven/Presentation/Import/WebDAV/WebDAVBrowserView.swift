@@ -246,6 +246,7 @@ struct WebDAVBrowserView: View {
     }
 
     private func navigateToParent() {
+        guard currentPath != "/" else { return }
         var path = currentPath
         if path.hasSuffix("/") { path = String(path.dropLast()) }
         let parent = (path as NSString).deletingLastPathComponent

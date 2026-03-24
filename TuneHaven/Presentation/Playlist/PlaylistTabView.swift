@@ -4,12 +4,11 @@ struct PlaylistTabView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var themeManager: ThemeManager
-    @EnvironmentObject private var wallpaperManager: WallpaperManager
     @EnvironmentObject private var groupService: PlaylistGroupService
     @Environment(\.themePalette) private var palette
 
     var body: some View {
-        let hasCustomBg = themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
+        let hasCustomBg = themeManager.currentStyle.hasCustomBackground
         NavigationStack(path: $router.playlistPath) {
             PlaylistMainView()
                 .themeContainerBackground()

@@ -99,11 +99,16 @@ struct AllSongsView: View {
                     isPlaying: playback.currentSong?.id == song.id,
                     onTap: {
                         Task {
-                            await playback.prepare(song: song, in: .allSongs(sortBy: sortOption))
+                            await playback.play(song: song, in: .allSongs(sortBy: sortOption))
                             router.openPlayer()
                         }
                     },
-                    onFavorite: { Task { try? await libraryService.toggleFavorite(songId: song.id) } },
+                    onFavorite: {
+                        Task {
+                            do { try await libraryService.toggleFavorite(songId: song.id) }
+                            catch { snackbar.show(message: "收藏操作失败") }
+                        }
+                    },
                     onDelete: { softDelete(song) },
                     onAddToPlaylist: { router.present(.addToPlaylist(songIds: [song.id])) },
                     onInsertNext: { _ = playback.queue.insertNext(song) }

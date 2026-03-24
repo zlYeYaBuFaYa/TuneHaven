@@ -261,6 +261,10 @@ final class PlaybackService: ObservableObject {
                 songs = [song]
                 startIndex = 0
             }
+        case .recentlyPlayed(let days):
+            let result = await libraryService.fetchRecentlyPlayed(days: days, page: 0, pageSize: 1000)
+            songs = result.items
+            startIndex = songs.firstIndex(where: { $0.id == song.id }) ?? 0
         case .queue:
             return
         }

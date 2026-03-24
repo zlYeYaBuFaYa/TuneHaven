@@ -10,6 +10,7 @@ final class MockUserPreferences: UserPreferencesProviding {
     var playbackSpeed: Float = 1.0
     var speedMemoryMode: SpeedMemoryMode = .global
     var autoMatchLyrics: Bool = true
+    var recentPlayRange: Int = 7
     var lastPlayedSongId: String?
     var songDislikes: [String: Int] = [:]
     var perSongSpeeds: [String: Float] = [:]
@@ -24,6 +25,9 @@ final class MockImageCacheManaging: ImageCacheManaging {
     func setCacheLimit(_ megabytes: Int) { cacheLimitMB = megabytes }
     func clearAll() async { cacheCleared = true }
     func cacheSizeAsync() async -> Int64 { mockCacheSize }
+    func memoryImage(forKey key: String) -> UIImage? { nil }
+    func imageAsync(forKey key: String) async -> UIImage? { nil }
+    func store(image: UIImage, forKey key: String) {}
 }
 
 final class MockCoverImageProcessing: CoverImageProcessing {
@@ -51,6 +55,7 @@ final class MockFileStorageProviding: FileStorageProviding {
     var maxFileSizeBytes: Int64 = 500 * 1024 * 1024
     var supportedExtensions: Set<String> = ["mp3", "m4a", "flac"]
     var importTempURL: URL = URL(fileURLWithPath: NSTemporaryDirectory())
+    var documentsURL: URL = URL(fileURLWithPath: NSTemporaryDirectory())
     var fileExistsResult = true
 
     func fileExists(relativePath: String) -> Bool { fileExistsResult }
@@ -61,6 +66,7 @@ final class MockFileStorageProviding: FileStorageProviding {
     func fileSize(at url: URL) -> Int64 { 1024 }
     func createDirectoryIfNeeded(at url: URL) throws {}
     func removeItem(at url: URL) throws {}
+    func contentsOfDirectory(at url: URL) -> [URL] { [] }
     func musicFileURL(relativePath: String) -> URL {
         URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(relativePath)
     }

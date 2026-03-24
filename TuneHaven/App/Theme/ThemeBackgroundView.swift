@@ -53,22 +53,13 @@ struct ThemeContainerBackgroundModifier: ViewModifier {
 
 struct ThemeBackgroundView: View {
     @EnvironmentObject private var themeManager: ThemeManager
-    @EnvironmentObject private var wallpaperManager: WallpaperManager
     @Environment(\.themePalette) private var palette
 
     var body: some View {
         ZStack {
             palette.background
-
-            if wallpaperManager.useCustomWallpaper, let image = wallpaperManager.currentWallpaper {
-                userWallpaperBackground(image)
-                    .transition(.opacity)
-            } else {
-                themeBackground
-                    .transition(.opacity)
-            }
+            themeBackground
         }
-        .animation(.easeInOut(duration: 0.25), value: themeManager.currentStyle.id)
         .ignoresSafeArea()
     }
 
@@ -91,25 +82,6 @@ struct ThemeBackgroundView: View {
             }
         case .userWallpaper:
             palette.background
-        }
-    }
-
-    private static let wallpaperOverlayOpacity: Double = 0.55
-    private static let wallpaperMaterialOpacity: Double = 0.3
-
-    private func userWallpaperBackground(_ image: UIImage) -> some View {
-        ZStack {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                .clipped()
-
-            palette.background.opacity(Self.wallpaperOverlayOpacity)
-
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .opacity(Self.wallpaperMaterialOpacity)
         }
     }
 }

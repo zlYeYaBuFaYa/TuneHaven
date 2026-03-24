@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// 歌单分组管理视图（TDD §3.4）
 struct PlaylistGroupView: View {
     @EnvironmentObject private var groupService: PlaylistGroupService
     @EnvironmentObject private var playlistService: PlaylistService
@@ -10,7 +9,7 @@ struct PlaylistGroupView: View {
 
     @State private var showCreateGroup = false
     @State private var newGroupName = ""
-    @State private var renameTarget: PlaylistGroupDetail? = nil
+    @State private var renameTarget: PlaylistGroupDetail?
     @State private var renameText = ""
     @State private var showMoveSheet = false
     @State private var movingPlaylist: Playlist? = nil
@@ -73,7 +72,7 @@ struct PlaylistGroupView: View {
         .alert("新建分组", isPresented: $showCreateGroup) {
             TextField("分组名称", text: $newGroupName)
             Button("创建") {
-                let name = newGroupName.trimmingCharacters(in: .whitespaces)
+                let name = newGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { return }
                 Task {
                     do { try await groupService.createGroup(name: name) }
@@ -90,7 +89,7 @@ struct PlaylistGroupView: View {
             TextField("新名称", text: $renameText)
             Button("确认") {
                 guard let target = renameTarget else { return }
-                let name = renameText.trimmingCharacters(in: .whitespaces)
+                let name = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { return }
                 Task {
                     do { try await groupService.renameGroup(id: target.id, name: name) }

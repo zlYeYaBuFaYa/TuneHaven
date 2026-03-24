@@ -125,7 +125,7 @@ final class LyricsService: ObservableObject {
                 result = String(result[result.startIndex..<range.lowerBound])
             }
         }
-        return result.trimmingCharacters(in: .whitespaces)
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Online Search (manual)
@@ -209,7 +209,7 @@ final class LyricsService: ObservableObject {
         var lines: [LyricsLine] = []
         let rawLines = content.components(separatedBy: "\n")
         for line in rawLines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             guard trimmed.hasPrefix("[") else { continue }
             guard let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) else { continue }
 
@@ -223,7 +223,7 @@ final class LyricsService: ObservableObject {
             let centiseconds = Double(group(3)) ?? 0
             let divisor: Double = group(3).count == 3 ? 1000 : 100
             let timestamp = minutes * 60 + seconds + centiseconds / divisor
-            let text = group(4).trimmingCharacters(in: .whitespaces)
+            let text = group(4).trimmingCharacters(in: .whitespacesAndNewlines)
             if !text.isEmpty {
                 lines.append(LyricsLine(timestamp: timestamp, text: text))
             }
@@ -292,7 +292,7 @@ final class LyricsService: ObservableObject {
 
     private func buildPlainLines(from text: String) -> [LyricsLine] {
         text.components(separatedBy: "\n")
-            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .enumerated()
             .map { LyricsLine(timestamp: Double($0.offset) * 3, text: $0.element) }
     }

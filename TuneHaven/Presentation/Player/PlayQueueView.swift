@@ -100,7 +100,7 @@ struct PlayQueueView: View {
         .alert("保存为歌单", isPresented: $showSaveAsPlaylist) {
             TextField("歌单名称", text: $savePlaylistName)
             Button("保存") {
-                let name = savePlaylistName.trimmingCharacters(in: .whitespaces)
+                let name = savePlaylistName.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { return }
                 Task {
                     do {

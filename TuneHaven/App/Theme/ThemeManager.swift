@@ -60,7 +60,10 @@ final class ThemeManager: ObservableObject {
 
     var colorScheme: ColorScheme { currentStyle.colorScheme }
 
+    var allAvailableThemes: [ThemeStyle] { registry.allThemes }
+
     func setTheme(_ style: ThemeStyle) {
+        objectWillChange.send()
         currentStyle = style
         storedThemeStyle = style.id
         scheduleWindowRefresh(fullApply: true)

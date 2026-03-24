@@ -98,27 +98,7 @@ struct BatchAddSongsView: View {
     }
 
     private var fixedHeader: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(palette.textTertiary)
-            TextField("搜索歌曲、艺术家、专辑", text: $searchText)
-                .textFieldStyle(.plain)
-                .foregroundColor(palette.textPrimary)
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(palette.textTertiary)
-                }
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(palette.surfaceSecondary)
-        .clipShape(Capsule())
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        SearchBar(text: $searchText, placeholder: "搜索歌曲、艺术家、专辑")
     }
 
     private var songList: some View {
@@ -133,21 +113,20 @@ struct BatchAddSongsView: View {
                         songSelectRow(song)
                     }
                 } header: {
+                    let sectionIds = Set(songs.map(\.id))
+                    let sectionAllSelected = sectionIds.isSubset(of: selectedIds)
                     HStack {
                         Text(artist)
                             .foregroundColor(palette.textSecondary)
                         Spacer()
                         Button {
-                            let songIds = Set(songs.map(\.id))
-                            let allSelected = songIds.isSubset(of: selectedIds)
-                            if allSelected {
-                                selectedIds.subtract(songIds)
+                            if sectionAllSelected {
+                                selectedIds.subtract(sectionIds)
                             } else {
-                                selectedIds.formUnion(songIds)
+                                selectedIds.formUnion(sectionIds)
                             }
                         } label: {
-                            let songIds = Set(songs.map(\.id))
-                            Text(songIds.isSubset(of: selectedIds) ? "取消全选" : "全选")
+                            Text(sectionAllSelected ? "取消全选" : "全选")
                                 .font(.caption)
                                 .foregroundColor(palette.primary)
                         }
@@ -160,19 +139,18 @@ struct BatchAddSongsView: View {
     }
 
     private var selectAllSection: some View {
-        Section {
+        let allFilteredIds = Set(filteredSongs.map(\.id))
+        let allSelected = allFilteredIds.isSubset(of: selectedIds)
+        return Section {
             HStack(spacing: 0) {
                 Button {
-                    let allIds = Set(filteredSongs.map(\.id))
-                    if allIds.isSubset(of: selectedIds) {
-                        selectedIds.subtract(allIds)
+                    if allSelected {
+                        selectedIds.subtract(allFilteredIds)
                     } else {
-                        selectedIds.formUnion(allIds)
+                        selectedIds.formUnion(allFilteredIds)
                     }
                 } label: {
                     HStack {
-                        let allIds = Set(filteredSongs.map(\.id))
-                        let allSelected = allIds.isSubset(of: selectedIds)
                         Image(systemName: allSelected ? "checkmark.circle.fill" : "circle")
                             .foregroundColor(allSelected ? palette.primary : palette.textTertiary)
                             .font(.title3)
@@ -185,8 +163,7 @@ struct BatchAddSongsView: View {
                 Spacer()
 
                 Button {
-                    let allIds = Set(filteredSongs.map(\.id))
-                    selectedIds.formSymmetricDifference(allIds)
+                    selectedIds.formSymmetricDifference(allFilteredIds)
                 } label: {
                     Text("反选")
                         .font(.subheadline)

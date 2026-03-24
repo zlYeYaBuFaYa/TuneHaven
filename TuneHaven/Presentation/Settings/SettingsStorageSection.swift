@@ -58,12 +58,12 @@ struct SettingsStorageSection: View {
             }
             Slider(value: Binding(
                 get: { Double(cacheLimitMB) },
-                set: {
-                    cacheLimitMB = Int($0)
-                    libraryService.imageCache.setCacheLimit(cacheLimitMB)
-                }
+                set: { cacheLimitMB = Int($0) }
             ), in: 50...300, step: 50)
             .tint(palette.primary)
+            .onChange(of: cacheLimitMB) { _, newValue in
+                libraryService.imageCache.setCacheLimit(newValue)
+            }
         }
         .listRowBackground(listRowBg)
     }

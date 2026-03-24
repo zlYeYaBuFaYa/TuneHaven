@@ -48,4 +48,14 @@ final class CoreDataStack {
             }
         }
     }
+
+    /// 强制刷新 viewContext，确保能读取到 backgroundContext 的最新写入
+    func refreshViewContext() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            viewContext.perform {
+                self.viewContext.refreshAllObjects()
+                continuation.resume()
+            }
+        }
+    }
 }

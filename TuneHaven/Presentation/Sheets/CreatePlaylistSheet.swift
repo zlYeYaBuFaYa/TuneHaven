@@ -37,7 +37,7 @@ struct CreatePlaylistSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("创建") { createPlaylist() }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isLoading)
+                        .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading)
                         .foregroundColor(palette.primary)
                 }
             }
@@ -104,7 +104,7 @@ struct EditPlaylistSheet: View {
                             }
                         }
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .foregroundColor(palette.primary)
                 }
             }

@@ -86,6 +86,11 @@ extension FileStorageService: FileStorageProviding {
     var maxFileSizeBytes: Int64 { Self.maxFileSizeBytes }
     var supportedExtensions: Set<String> { Self.supportedExtensions }
     var importTempURL: URL { SandboxPathManager.importTempURL }
+    var documentsURL: URL { SandboxPathManager.documentsURL }
+
+    func contentsOfDirectory(at url: URL) -> [URL] {
+        (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)) ?? []
+    }
 
     func createDirectoryIfNeeded(at url: URL) throws {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

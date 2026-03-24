@@ -193,7 +193,7 @@ struct LyricsSearchView: View {
     }
 
     private var searchDisabled: Bool {
-        trackName.trimmingCharacters(in: .whitespaces).isEmpty || isSearching
+        trackName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSearching
     }
 
     // MARK: - Result Content
@@ -360,7 +360,7 @@ struct LyricsSearchView: View {
 
     private func lyricsPreview(_ lyrics: String) -> some View {
         let nonEmptyLines = lyrics.components(separatedBy: "\n")
-            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         let previewLines = nonEmptyLines.prefix(6)
 
         return VStack(alignment: .leading, spacing: 2) {
@@ -386,7 +386,7 @@ struct LyricsSearchView: View {
     // MARK: - Actions
 
     private func performSearch() {
-        let query = trackName.trimmingCharacters(in: .whitespaces)
+        let query = trackName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
         isSearching = true
         searchError = nil
@@ -394,7 +394,7 @@ struct LyricsSearchView: View {
 
         Task {
             do {
-                let artist = artistName.trimmingCharacters(in: .whitespaces)
+                let artist = artistName.trimmingCharacters(in: .whitespacesAndNewlines)
                 let found = try await lyricsService.searchOnline(
                     title: query,
                     artist: artist.isEmpty ? nil : artist

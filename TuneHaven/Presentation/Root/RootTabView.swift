@@ -6,14 +6,13 @@ struct RootTabView: View {
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var snackbar: SnackbarState
     @EnvironmentObject private var libraryService: MusicLibraryService
-    @EnvironmentObject private var wallpaperManager: WallpaperManager
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
     @EnvironmentObject private var lyricsService: LyricsService
     @Environment(\.themePalette) private var palette
 
     private var hasCustomBg: Bool {
-        themeManager.currentStyle.hasCustomBackground || wallpaperManager.useCustomWallpaper
+        themeManager.currentStyle.hasCustomBackground
     }
 
     var body: some View {

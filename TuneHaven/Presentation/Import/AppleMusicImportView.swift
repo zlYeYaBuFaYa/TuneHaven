@@ -80,25 +80,7 @@ struct AppleMusicImportView: View {
     }
 
     private var searchBar: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(palette.textTertiary)
-            TextField("搜索歌曲、艺术家", text: $vm.searchText)
-                .textFieldStyle(.plain)
-                .foregroundColor(palette.textPrimary)
-            if !vm.searchText.isEmpty {
-                Button { vm.searchText = "" } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(palette.textTertiary)
-                }
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(palette.surfaceSecondary)
-        .clipShape(Capsule())
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        SearchBar(text: $vm.searchText, placeholder: "搜索歌曲、艺术家")
     }
 
     private var selectionToolbar: some View {
