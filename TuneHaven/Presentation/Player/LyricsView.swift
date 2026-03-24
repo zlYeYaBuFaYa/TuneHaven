@@ -20,12 +20,13 @@ struct LyricsPageView: View {
     @State private var lyricsScale: CGFloat = 1.0
     @GestureState private var pinchScale: CGFloat = 1.0
     @State private var isLyricsHorizontalSwipe = false
+    @State private var currentLineIndex: Int?
 
     private var effectiveScale: CGFloat {
         min(max(lyricsScale * pinchScale, 0.8), 2.0)
     }
 
-    private var currentLineIndex: Int? {
+    private func computeCurrentLineIndex() -> Int? {
         guard let lines = lyricsData?.lines, !lines.isEmpty else { return nil }
         let time = engine.currentTime
         if time < lines[0].timestamp { return nil }
@@ -70,6 +71,9 @@ struct LyricsPageView: View {
         .padding(.bottom, 36)
         .offset(x: dragOffsetX, y: dragOffset)
         .onAppear { dragOffset = 0; dragOffsetX = 0 }
+        .onChange(of: engine.currentTime) { _, _ in
+            currentLineIndex = computeCurrentLineIndex()
+        }
     }
 
     // MARK: - Gestures
@@ -378,99 +382,19 @@ struct LyricsPageView: View {
     // MARK: - Progress (compact)
 
     private var progressSection: some View {
-        VStack(spacing: 4) {
-            GeometryReader { geo in
-                let progress = engine.duration > 0 ? engine.currentTime / engine.duration : 0
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(palette.separator.opacity(0.6))
-                        .frame(height: 3)
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [palette.gradientStart, palette.gradientEnd],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: max(geo.size.width * progress, 3), height: 3)
-                }
-                .frame(maxHeight: .infinity, alignment: .center)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            let ratio = min(max(value.location.x / geo.size.width, 0), 1)
-                            playback.seek(to: ratio * engine.duration)
-                        }
-                )
-            }
-            .frame(height: 20)
-
-            HStack {
-                Text(engine.currentTime.formattedTime)
-                    .font(.caption2.monospacedDigit())
-                    .foregroundColor(palette.textTertiary)
-                Spacer()
-                Text("-\((engine.duration - engine.currentTime).formattedTime)")
-                    .font(.caption2.monospacedDigit())
-                    .foregroundColor(palette.textTertiary)
-            }
-        }
-        .padding(.bottom, 4)
+        PlayerProgressBar(barHeight: 3, touchHeight: 20, timeFont: .caption2.monospacedDigit(), timeColor: palette.textTertiary)
+            .padding(.bottom, 4)
     }
 
     // MARK: - Controls (compact)
 
     private var controlsSection: some View {
-        HStack(alignment: .center, spacing: 0) {
-            Button { playback.cyclePlayMode() } label: {
-                Image(systemName: playback.playMode.iconName)
-                    .font(.body)
-                    .foregroundColor(palette.textTertiary)
-            }
-            .frame(maxWidth: .infinity)
-
-            Button { playback.playPrevious() } label: {
-                Image(systemName: "backward.fill")
-                    .font(.title2)
-                    .foregroundColor(palette.textPrimary)
-            }
-            .frame(maxWidth: .infinity)
-
-            Button { playback.togglePlayPause() } label: {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [palette.gradientStart, palette.gradientEnd],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 52, height: 52)
-                        .shadow(color: palette.gradientStart.opacity(0.25), radius: 8, y: 3)
-                    Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.body.weight(.semibold))
-                        .foregroundColor(palette.onPrimary)
-                }
-            }
-            .frame(maxWidth: .infinity)
-
-            Button { playback.playNext() } label: {
-                Image(systemName: "forward.fill")
-                    .font(.title2)
-                    .foregroundColor(palette.textPrimary)
-            }
-            .frame(maxWidth: .infinity)
-
-            Button(action: onOpenQueue) {
-                Image(systemName: "list.bullet")
-                    .font(.body)
-                    .foregroundColor(palette.textTertiary)
-            }
-            .frame(maxWidth: .infinity)
-        }
+        PlayerControlsBar(
+            playButtonSize: 52,
+            navFont: .title2,
+            modeFont: .body,
+            onQueueTap: onOpenQueue
+        )
         .padding(.vertical, 8)
     }
 
@@ -492,7 +416,7 @@ struct LyricsPageView: View {
         scrollResumeTask = Task {
             try? await Task.sleep(for: .seconds(3))
             guard !Task.isCancelled else { return }
-            await MainActor.run { isUserScrolling = false }
+            isUserScrolling = false
         }
     }
 

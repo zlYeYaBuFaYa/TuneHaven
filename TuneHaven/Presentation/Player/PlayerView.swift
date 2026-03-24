@@ -8,6 +8,7 @@ struct PlayerView: View {
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
     @EnvironmentObject private var lyricsService: LyricsService
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
     private enum ActiveSheet: Identifiable {
         case moreActions
@@ -115,12 +116,20 @@ struct PlayerView: View {
             allowedContentTypes: [.plainText],
             allowsMultipleSelection: false
         ) { result in
-            guard case .success(let urls) = result,
-                  let url = urls.first,
-                  let song = playback.currentSong else { return }
-            Task {
-                try? await lyricsService.importLyricsFile(url: url, for: song)
-                await loadLyrics()
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first, let song = playback.currentSong else { return }
+                Task {
+                    do {
+                        try await lyricsService.importLyricsFile(url: url, for: song)
+                        await loadLyrics()
+                    } catch {
+                        snackbar.show(message: "歌词导入失败")
+                    }
+                }
+            case .failure(let error):
+                AppLogger.shared.error(error, context: "文件选择失败")
+                snackbar.show(message: "文件选择失败")
             }
         }
         .alert("删除歌词", isPresented: $showDeleteLyricsConfirm) {
@@ -128,8 +137,12 @@ struct PlayerView: View {
             Button("删除", role: .destructive) {
                 guard let song = playback.currentSong else { return }
                 Task {
-                    try? await lyricsService.deleteLyrics(for: song)
-                    lyricsData = nil
+                    do {
+                        try await lyricsService.deleteLyrics(for: song)
+                        lyricsData = nil
+                    } catch {
+                        snackbar.show(message: "歌词删除失败")
+                    }
                 }
             }
         } message: {
@@ -259,121 +272,16 @@ struct PlayerView: View {
     // MARK: - More Action Sheet
 
     private var moreActionSheet: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Button {
-                        switchSheet(to: .sleepTimer)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: playback.sleepTimerRemaining != nil ? "moon.zzz.fill" : "moon.zzz")
-                                .font(.body)
-                                .foregroundColor(palette.primary)
-                                .frame(width: 28)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("定时关闭")
-                                    .font(.subheadline)
-                                    .foregroundColor(palette.textPrimary)
-                                if let remaining = playback.sleepTimerRemaining {
-                                    Text(remaining.formattedTime)
-                                        .font(.caption)
-                                        .foregroundColor(palette.textSecondary)
-                                }
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption2)
-                                .foregroundColor(palette.textTertiary)
-                        }
-                    }
-                    .listRowBackground(palette.surface)
-
-                    Button {
-                        switchSheet(to: .speedPicker)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "speedometer")
-                                .font(.body)
-                                .foregroundColor(palette.primary)
-                                .frame(width: 28)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("倍速播放")
-                                    .font(.subheadline)
-                                    .foregroundColor(palette.textPrimary)
-                                Text("\(String(format: "%.1f", playback.playbackSpeed))x")
-                                    .font(.caption)
-                                    .foregroundColor(palette.textSecondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption2)
-                                .foregroundColor(palette.textTertiary)
-                        }
-                    }
-                    .listRowBackground(palette.surface)
-                }
-
-                if let song = playback.currentSong {
-                    Section {
-                        Button {
-                            switchSheet(to: .addToPlaylist(songIds: [song.id]))
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "text.badge.plus")
-                                    .font(.body)
-                                    .foregroundColor(palette.primary)
-                                    .frame(width: 28)
-                                Text("添加到歌单")
-                                    .font(.subheadline)
-                                    .foregroundColor(palette.textPrimary)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2)
-                                    .foregroundColor(palette.textTertiary)
-                            }
-                        }
-                        .listRowBackground(palette.surface)
-                    }
-
-                    Section {
-                        Button {
-                            switchSheet(to: .lyricsSearch(song))
-                        } label: {
-                            moreActionRow(icon: "magnifyingglass", title: "搜索歌词")
-                        }
-                        .listRowBackground(palette.surface)
-
-                        Button {
-                            scheduleAfterSheetDismiss { showLyricsImporter = true }
-                        } label: {
-                            moreActionRow(icon: "doc.text", title: "导入歌词")
-                        }
-                        .listRowBackground(palette.surface)
-
-                        if lyricsData != nil {
-                            Button {
-                                scheduleAfterSheetDismiss { showDeleteLyricsConfirm = true }
-                            } label: {
-                                moreActionRow(icon: "trash", title: "删除歌词", destructive: true)
-                            }
-                            .listRowBackground(palette.surface)
-                        }
-                    }
-                }
-            }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
-            .adaptiveBackground()
-            .navigationTitle("更多操作")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") { activeSheet = nil }
-                        .font(.subheadline)
-                        .foregroundColor(palette.primary)
-                }
-            }
-        }
+        PlayerMoreActionsSheet(
+            hasLyrics: lyricsData != nil,
+            onSleepTimer: { switchSheet(to: .sleepTimer) },
+            onSpeedPicker: { switchSheet(to: .speedPicker) },
+            onAddToPlaylist: { songId in switchSheet(to: .addToPlaylist(songIds: [songId])) },
+            onSearchLyrics: { song in switchSheet(to: .lyricsSearch(song)) },
+            onImportLyrics: { scheduleAfterSheetDismiss { showLyricsImporter = true } },
+            onDeleteLyrics: { scheduleAfterSheetDismiss { showDeleteLyricsConfirm = true } },
+            onDismiss: { activeSheet = nil }
+        )
     }
 
     // MARK: - Cover / Info / Progress / Controls
@@ -501,112 +409,18 @@ struct PlayerView: View {
     }
 
     private var progressBar: some View {
-        VStack(spacing: 6) {
-            GeometryReader { geo in
-                let progress = engine.duration > 0 ? engine.currentTime / engine.duration : 0
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(palette.progressBackground)
-                        .frame(height: 6)
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [palette.gradientStart, palette.gradientEnd],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: max(geo.size.width * progress, 6), height: 6)
-                }
-                .frame(maxHeight: .infinity, alignment: .center)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            let ratio = min(max(value.location.x / geo.size.width, 0), 1)
-                            playback.seek(to: ratio * engine.duration)
-                        }
-                )
-            }
-            .frame(height: 24)
-
-            HStack {
-                Text(engine.currentTime.formattedTime)
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(palette.textSecondary)
-                Spacer()
-                Text("-\((engine.duration - engine.currentTime).formattedTime)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(palette.textSecondary)
-            }
-        }
-        .padding(.bottom, 8)
+        PlayerProgressBar(barHeight: 6, touchHeight: 24, timeFont: .caption.monospacedDigit())
+            .padding(.bottom, 8)
     }
 
     private var controls: some View {
-        HStack(alignment: .center, spacing: 0) {
-            Button { playback.cyclePlayMode() } label: {
-                Image(systemName: playback.playMode.iconName)
-                    .font(.title3)
-                    .foregroundColor(palette.textSecondary)
-            }
-            .frame(maxWidth: .infinity)
-
-            Button { playback.playPrevious() } label: {
-                Image(systemName: "backward.fill")
-                    .font(.title)
-                    .foregroundColor(palette.textPrimary)
-            }
-            .frame(maxWidth: .infinity)
-
-            Button { playback.togglePlayPause() } label: {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [palette.gradientStart, palette.gradientEnd],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 68, height: 68)
-                        .shadow(color: palette.gradientStart.opacity(0.35), radius: 10, y: 4)
-                    Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.title2)
-                        .foregroundColor(palette.onPrimary)
-                }
-            }
-            .buttonStyle(PressableButtonStyle())
-            .frame(maxWidth: .infinity)
-
-            Button { playback.playNext() } label: {
-                Image(systemName: "forward.fill")
-                    .font(.title)
-                    .foregroundColor(palette.textPrimary)
-            }
-            .frame(maxWidth: .infinity)
-
-            Button { withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { showQueue = true } } label: {
-                Image(systemName: "list.bullet")
-                    .font(.title3)
-                    .foregroundColor(palette.textSecondary)
-            }
-            .frame(maxWidth: .infinity)
-        }
+        PlayerControlsBar(
+            playButtonSize: 68,
+            navFont: .title,
+            modeFont: .title3,
+            onQueueTap: { withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { showQueue = true } }
+        )
         .padding(.vertical, 12)
-    }
-
-    private func moreActionRow(icon: String, title: String, destructive: Bool = false) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.body)
-                .foregroundColor(destructive ? SemanticColor.danger : palette.primary)
-                .frame(width: 28)
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(destructive ? SemanticColor.danger : palette.textPrimary)
-            Spacer()
-        }
     }
 
     private func loadLyrics() async {
@@ -633,8 +447,4 @@ struct PlayerView: View {
             action()
         }
     }
-}
-
-enum DragDirection {
-    case horizontal, vertical
 }

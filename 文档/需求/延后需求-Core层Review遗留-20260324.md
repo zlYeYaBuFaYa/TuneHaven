@@ -1,6 +1,6 @@
-# 延后需求：Core 层 Review 遗留问题
+# 延后需求：Review 遗留问题
 
-> 创建日期：2026-03-24 | 来源：code-review-全量代码Review-模块4-Core层-20260323235952.md
+> 创建日期：2026-03-24 | 来源：模块 4 Core 层 / 模块 5 Presentation 层 Review
 
 ---
 
@@ -62,3 +62,46 @@
 | 延后理由 | 涉及跨模块联动（Core/Utils + Core/Storage + 可能的 AudioEngine），需统一设计格式注册机制                              |
 
 
+---
+
+## 5. RootTabView ZStack+opacity 全 Tab 常驻（5.1.3）
+
+
+| 属性   | 内容                                                                                             |
+| ---- | ---------------------------------------------------------------------------------------------- |
+| 等级   | 🟡 重要                                                                                          |
+| 文件   | `Presentation/Root/RootTabView.swift` L20-33                                                   |
+| 维度   | 性能                                                                                             |
+| 问题   | 使用 ZStack + opacity 管理 Tab 页面，三个 Tab 始终存在于视图层级中。不可见的 Tab 仍会接收 @Published 属性变化的 UI 更新，在数据频繁变化时可能产生不必要的视图重建 |
+| 建议   | 通过 Instruments 监控不可见 Tab 的视图刷新频率；可考虑对不可见 Tab 使用 `.task(id:)` 机制暂停数据加载 |
+| 延后理由 | 当前为切换流畅度和状态保持的合理权衡，需实际性能数据验证是否有优化必要                                     |
+
+
+---
+
+## 6. QRCodeView 直接引用 Core 层工具类（5.1.10）
+
+
+| 属性   | 内容                                                            |
+| ---- | ------------------------------------------------------------- |
+| 等级   | 🟢 轻微                                                         |
+| 文件   | `Presentation/Common/QRCodeView.swift` L13                    |
+| 维度   | 架构合规                                                          |
+| 问题   | Presentation 层直接引用 Core 层 `QRCodeGenerator` 工具类               |
+| 建议   | 如需严格遵循架构，可通过协议抽象                                              |
+| 延后理由 | 纯工具函数且无状态，当前实现可接受，仅作记录                                        |
+
+
+---
+
+## 7. PlayerView / LyricsPageView 手势逻辑重复（5.3.2）
+
+
+| 属性   | 内容                                                            |
+| ---- | ------------------------------------------------------------- |
+| 等级   | 🟡 重要                                                         |
+| 文件   | `Presentation/Player/LyricsView.swift` L77-174、`PlayerView.swift` L147-199 |
+| 维度   | 可维护性                                                          |
+| 问题   | 下拉/右滑关闭手势逻辑在两个文件中约 50 行相同代码，包括方向判断、偏移计算、阈值判断、动画恢复等 |
+| 建议   | 提取为通用的 `DismissGestureModifier` 或工具方法复用，通过闭包参数传入 dismiss 行为 |
+| 延后理由 | 两处手势上下文差异较大（PlayerView 有 showQueue/showLyricsPage guard 并调用 router.closePlayer()，LyricsView 调用 onDismiss()），强行提取会增加抽象复杂度，收益有限 |
