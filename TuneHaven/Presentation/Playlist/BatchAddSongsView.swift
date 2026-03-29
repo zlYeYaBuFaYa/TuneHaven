@@ -69,14 +69,14 @@ struct BatchAddSongsView: View {
             }
         }
         .task { await loadData() }
-        .onChange(of: searchText) { _, newValue in
+        .onChange(of: searchText) { newValue in
             searchDebouncer.send(newValue)
             if newValue.isEmpty { recomputeFiltered(query: "") }
         }
-        .onChange(of: searchDebouncer.debouncedQuery) { _, query in
+        .onChange(of: searchDebouncer.debouncedQuery) { query in
             recomputeFiltered(query: query)
         }
-        .onChange(of: allSongs) { _, _ in recomputeFiltered(query: searchDebouncer.debouncedQuery) }
+        .onChange(of: allSongs) { _ in recomputeFiltered(query: searchDebouncer.debouncedQuery) }
     }
 
     private func recomputeFiltered(query: String) {

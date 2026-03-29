@@ -47,7 +47,7 @@ struct WiFiTransferView: View {
             if server.isRunning { server.stop() }
             receivedFiles.removeAll()
         }
-        .onChange(of: server.securityAlert) { _, alert in
+        .onChange(of: server.securityAlert) { alert in
             if let alert {
                 switch alert {
                 case .bruteForceDetected:

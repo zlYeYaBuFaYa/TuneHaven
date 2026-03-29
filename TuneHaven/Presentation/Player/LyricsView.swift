@@ -71,7 +71,7 @@ struct LyricsPageView: View {
         .padding(.bottom, 36)
         .offset(x: dragOffsetX, y: dragOffset)
         .onAppear { dragOffset = 0; dragOffsetX = 0 }
-        .onChange(of: engine.currentTime) { _, _ in
+        .onChange(of: engine.currentTime) { _ in
             currentLineIndex = computeCurrentLineIndex()
         }
     }
@@ -255,7 +255,7 @@ struct LyricsPageView: View {
             }
             .simultaneousGesture(lyricsAreaGesture)
             .simultaneousGesture(lyricsPinchGesture)
-            .onChange(of: currentLineIndex) { _, newIdx in
+            .onChange(of: currentLineIndex) { newIdx in
                 guard !isUserScrolling, let idx = newIdx,
                       idx < data.lines.count else { return }
                 withAnimation(.easeInOut(duration: 0.4)) {

@@ -148,7 +148,7 @@ struct PlayerView: View {
         } message: {
             Text("确定要删除当前歌曲的歌词吗？")
         }
-        .onChange(of: playback.currentSong?.id) { _, newValue in
+        .onChange(of: playback.currentSong?.id) { newValue in
             if newValue == nil {
                 router.closePlayer()
             }

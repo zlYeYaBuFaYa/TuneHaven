@@ -99,7 +99,7 @@ struct SettingsPlaybackSection: View {
         }
         .tint(palette.primary)
         .listRowBackground(listRowBg)
-        .onChange(of: sleepTimerNotification) { _, enabled in
+        .onChange(of: sleepTimerNotification) { enabled in
             if enabled { requestNotificationPermission() }
         }
     }

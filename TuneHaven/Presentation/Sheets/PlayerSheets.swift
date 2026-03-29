@@ -152,7 +152,7 @@ struct PlaylistCoverPickerSheet: View {
                         .foregroundColor(palette.primary)
                 }
             }
-            .onChange(of: selectedPhotoItem) { _, newItem in
+            .onChange(of: selectedPhotoItem) { newItem in
                 guard let newItem else { return }
                 Task {
                     do {

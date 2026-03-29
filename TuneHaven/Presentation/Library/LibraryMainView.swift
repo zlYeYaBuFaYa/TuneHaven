@@ -75,10 +75,10 @@ struct LibraryMainView: View {
         .navigationTitle("音乐库")
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(hasCustomBg ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(palette.surface), for: .navigationBar)
-        .onChange(of: searchDebouncer.debouncedQuery) { _, query in
+        .onChange(of: searchDebouncer.debouncedQuery) { query in
             performSearch(query: query)
         }
-        .onChange(of: searchText) { _, newValue in
+        .onChange(of: searchText) { newValue in
             searchDebouncer.send(newValue)
             if newValue.isEmpty {
                 searchDebouncer.debouncedQuery = ""
@@ -88,12 +88,12 @@ struct LibraryMainView: View {
                 isSearchActive = true
             }
         }
-        .onChange(of: isSearchFieldFocused) { _, focused in
+        .onChange(of: isSearchFieldFocused) { focused in
             if focused && searchText.isEmpty {
                 Task { await searchService.fetchHistory(tab: selectedTab) }
             }
         }
-        .onChange(of: selectedTab) { _, newTab in
+        .onChange(of: selectedTab) { newTab in
             if isSearchFieldFocused && searchText.isEmpty {
                 Task { await searchService.fetchHistory(tab: newTab) }
             }

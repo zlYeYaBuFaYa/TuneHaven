@@ -61,7 +61,7 @@ struct SettingsStorageSection: View {
                 set: { cacheLimitMB = Int($0) }
             ), in: 50...300, step: 50)
             .tint(palette.primary)
-            .onChange(of: cacheLimitMB) { _, newValue in
+            .onChange(of: cacheLimitMB) { newValue in
                 libraryService.imageCache.setCacheLimit(newValue)
             }
         }

@@ -33,10 +33,16 @@ struct SongRow: View {
                             .foregroundColor(isPlaying ? palette.primary : palette.textPrimary)
                             .lineLimit(1)
                         if isPlaying {
-                            Image(systemName: "waveform")
-                                .font(.caption2)
-                                .foregroundColor(palette.primary)
-                                .symbolEffect(.variableColor.iterative)
+                            if #available(iOS 17.0, *) {
+                                Image(systemName: "waveform")
+                                    .font(.caption2)
+                                    .foregroundColor(palette.primary)
+                                    .symbolEffect(.variableColor.iterative)
+                            } else {
+                                Image(systemName: "waveform")
+                                    .font(.caption2)
+                                    .foregroundColor(palette.primary)
+                            }
                         }
                     }
                     HStack(spacing: 4) {

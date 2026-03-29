@@ -28,7 +28,7 @@ struct AlbumDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(palette.surface, for: .navigationBar)
         .task { await load() }
-        .onChange(of: libraryService.songs.count) { _, _ in
+        .onChange(of: libraryService.songs.count) { _ in
             Task { await load() }
         }
     }
@@ -109,10 +109,16 @@ struct AlbumDetailView: View {
                         }
                         Spacer()
                         if isCurrentSong && playback.isPlaying {
-                            Image(systemName: "waveform")
-                                .font(.caption)
-                                .foregroundColor(palette.primary)
-                                .symbolEffect(.variableColor)
+                            if #available(iOS 17.0, *) {
+                                Image(systemName: "waveform")
+                                    .font(.caption)
+                                    .foregroundColor(palette.primary)
+                                    .symbolEffect(.variableColor)
+                            } else {
+                                Image(systemName: "waveform")
+                                    .font(.caption)
+                                    .foregroundColor(palette.primary)
+                            }
                         }
                     }
                     .contentShape(Rectangle())

@@ -27,8 +27,8 @@ struct AllSongsView: View {
             recomputeDisplaySongs()
             Task { await libraryService.loadSongs(sortBy: sortOption, ascending: isAscending) }
         }
-        .onChange(of: libraryService.songs) { _, _ in recomputeDisplaySongs() }
-        .onChange(of: formatFilter) { _, _ in recomputeDisplaySongs() }
+        .onChange(of: libraryService.songs) { _ in recomputeDisplaySongs() }
+        .onChange(of: formatFilter) { _ in recomputeDisplaySongs() }
     }
 
     private func recomputeDisplaySongs() {

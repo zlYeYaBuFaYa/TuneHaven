@@ -27,7 +27,7 @@ struct ArtistDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbarBackground(palette.surface, for: .navigationBar)
         .task { await load() }
-        .onChange(of: libraryService.songs.count) { _, _ in
+        .onChange(of: libraryService.songs.count) { _ in
             Task { await load() }
         }
     }
