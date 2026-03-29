@@ -90,4 +90,16 @@
         <attribute name="searchedAt" attributeType="Date" usesScalarValueType="NO"/>
         <attribute name="tabContext" attributeType="String" defaultValueString="all"/>
     </entity>
+    <entity name="MissingSongReferenceEntity" representedClassName="MissingSongReferenceEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="album" attributeType="String" defaultValueString=""/>
+        <attribute name="artist" attributeType="String" defaultValueString=""/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="duration" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="playlistId" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="title" attributeType="String" defaultValueString=""/>
+        <fetchIndex name="byPlaylistId">
+            <fetchIndexElement property="playlistId" type="Binary" order="ascending"/>
+        </fetchIndex>
+    </entity>
 </model>

@@ -31,7 +31,7 @@ struct SettingsView: View {
     @State private var activeSheet: SettingsSheet?
 
     enum SettingsSheet: Identifiable {
-        case wifiTransfer, appleMusicImport, cloudDriveImport, webDAVImport
+        case wifiTransfer, appleMusicImport, cloudDriveImport, webDAVImport, syncTransfer
         var id: Self { self }
     }
 
@@ -45,6 +45,8 @@ struct SettingsView: View {
 
     var body: some View {
         List {
+            SettingsSyncSection(activeSheet: $activeSheet)
+
             SettingsImportSection(
                 isExpanded: $expandedImport,
                 showDocumentPicker: $showDocumentPicker,
@@ -113,6 +115,8 @@ struct SettingsView: View {
                     CloudDriveImportView()
                 case .webDAVImport:
                     WebDAVAccountListView()
+                case .syncTransfer:
+                    SyncTransferView()
                 }
             }
             .environment(\.themePalette, palette)

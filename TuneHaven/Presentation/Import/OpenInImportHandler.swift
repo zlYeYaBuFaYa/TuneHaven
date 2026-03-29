@@ -7,6 +7,7 @@ final class OpenInImportHandler {
     private let fileStorage: FileStorageProviding
     private let snackbar: SnackbarState
     private let log = AppLogger.shared
+    var syncImportService: SyncImportService?
 
     private var queue: [URL] = []
     private var isProcessing = false
@@ -51,6 +52,11 @@ final class OpenInImportHandler {
         let fileName = url.lastPathComponent
         let ext = (fileName as NSString).pathExtension.lowercased()
 
+        if ext == "tunehaven" {
+            await handleTuneHavenFile(url: url)
+            return
+        }
+
         guard fileStorage.supportedExtensions.contains(ext) else {
             snackbar.show(message: "不支持的文件格式：.\(ext)")
             cleanup(url: url)
@@ -85,6 +91,38 @@ final class OpenInImportHandler {
         case .failed:
             snackbar.show(message: "导入失败：\(result.errorMessage ?? "未知错误")")
         }
+    }
+
+    private func handleTuneHavenFile(url: URL) async {
+        guard let syncService = syncImportService else {
+            log.info("[OpenIn] syncImportService 未注入，无法处理 .tunehaven 文件")
+            snackbar.show(message: "同步服务未就绪，请稍后重试")
+            cleanup(url: url)
+            return
+        }
+
+        do {
+            let result = try await syncService.analyze(fileURL: url)
+            if result.songConflicts.isEmpty && result.playlistConflicts.isEmpty {
+                let importResult = try await syncService.executeImport(
+                    analysisResult: result,
+                    songResolution: nil,
+                    playlistResolution: nil
+                )
+                await libraryService.loadSongs()
+                var msg = "同步导入完成"
+                if importResult.songsImported > 0 { msg += "，\(importResult.songsImported) 首歌曲" }
+                if importResult.playlistsImported > 0 { msg += "，\(importResult.playlistsImported) 个歌单" }
+                snackbar.show(message: msg)
+            } else {
+                snackbar.show(message: "同步文件包含冲突，请在「同步与传输」中手动导入")
+            }
+        } catch {
+            log.error(error, context: "[OpenIn] .tunehaven 导入失败")
+            snackbar.show(message: "同步文件导入失败：\(error.localizedDescription)")
+        }
+
+        cleanup(url: url)
     }
 
     private func cleanup(url: URL) {

@@ -112,6 +112,10 @@ extension FileStorageService: FileStorageProviding {
         SandboxPathManager.lyricsURL
     }
 
+    var coverImagesDirectoryURL: URL {
+        SandboxPathManager.coverImagesURL
+    }
+
     func fileExists(at url: URL) -> Bool {
         FileManager.default.fileExists(atPath: url.path)
     }

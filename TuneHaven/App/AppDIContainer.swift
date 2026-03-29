@@ -59,6 +59,29 @@ final class AppDIContainer: ObservableObject {
             embeddedReader: EmbeddedLyricsReader()
         )
     }()
+    lazy var syncExportService: SyncExportService = {
+        SyncExportService(
+            songRepo: songRepo,
+            playlistService: playlistService,
+            groupService: groupService,
+            packager: TuneHavenPackager()
+        )
+    }()
+    lazy var syncImportService: SyncImportService = {
+        let service = SyncImportService(
+            songRepo: songRepo,
+            playlistService: playlistService,
+            groupService: groupService,
+            importService: self.importService,
+            syncRepo: CoreDataSyncRepository(),
+            packager: TuneHavenPackager(),
+            fileStorage: FileStorageService.shared
+        )
+        self.importService.onNewSongsImported = { [weak service] in
+            await service?.checkAndRecoverMissingSongs()
+        }
+        return service
+    }()
 
     // MARK: - Shared Repositories
     private let songRepo: SongRepository
@@ -70,6 +93,8 @@ final class AppDIContainer: ObservableObject {
         await MigrationManager.shared.runPostLoadMigrations()
         SandboxPathManager.createAllDirectories()
         WiFiTransferServer.cleanupTempFiles()
+        TuneHavenPackager.cleanupExportTemp()
+        TuneHavenPackager.cleanupSyncExtract()
         OpenInImportHandler.cleanupInbox(fileStorage: FileStorageService.shared)
     }
 

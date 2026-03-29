@@ -32,6 +32,8 @@ struct TuneHavenApp: App {
                         .environmentObject(container.audioEngine)
                         .environmentObject(container.webDAVService)
                         .environmentObject(container.lyricsService)
+                        .environmentObject(container.syncExportService)
+                        .environmentObject(container.syncImportService)
                         .environment(\.imageCache, ImageCacheManager.shared)
                         .injectThemePalette(from: container.themeManager)
                         .snackbar(container.snackbar)
@@ -94,6 +96,7 @@ struct TuneHavenApp: App {
             fileStorage: FileStorageService.shared,
             snackbar: container.snackbar
         )
+        handler.syncImportService = container.syncImportService
         openInHandler = handler
         return handler
     }

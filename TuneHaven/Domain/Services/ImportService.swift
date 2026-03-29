@@ -12,6 +12,9 @@ final class ImportService: ObservableObject, FileImporting {
     private let coverProcessor: CoverImageProcessing
     private let metadataParser: AudioMetadataParsing
 
+    /// 新歌曲导入成功后的回调，用于触发缺失歌曲恢复等后续逻辑
+    var onNewSongsImported: (@MainActor () async -> Void)?
+
     init(songRepo: SongRepository,
          fileService: FileStorageProviding,
          coverProcessor: CoverImageProcessing,
@@ -68,6 +71,11 @@ final class ImportService: ObservableObject, FileImporting {
         isImporting = false
         progress = nil
         log.info("导入完成: 成功=\(successCount), 重复=\(skippedDuplicateCount), 格式不支持=\(skippedFormatCount), 超限=\(skippedOversizeCount), 失败=\(failedCount)")
+
+        if successCount > 0 {
+            await onNewSongsImported?()
+        }
+
         return ImportResult(
             successCount: successCount,
             skippedDuplicateCount: skippedDuplicateCount,

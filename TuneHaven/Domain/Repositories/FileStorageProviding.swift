@@ -16,6 +16,7 @@ protocol FileStorageProviding: AnyObject {
     func musicFileURL(relativePath: String) -> URL
     func lyricsFileURL(relativePath: String) -> URL
     var lyricsDirectoryURL: URL { get }
+    var coverImagesDirectoryURL: URL { get }
     func fileExists(at url: URL) -> Bool
     func isReadableFile(at url: URL) -> Bool
     func readStringContents(at url: URL) -> String?

@@ -41,10 +41,19 @@ enum SandboxPathManager {
         tmpURL.appendingPathComponent("import_temp", isDirectory: true)
     }
 
+    static var exportTempURL: URL {
+        tmpURL.appendingPathComponent("export_temp", isDirectory: true)
+    }
+
+    static var syncExtractURL: URL {
+        tmpURL.appendingPathComponent("sync_extract", isDirectory: true)
+    }
+
     static func createAllDirectories() {
         let fm = FileManager.default
         let dirs = [musicURL, lyricsURL, coverImagesURL, playlistCoversURL,
-                    pendingDeleteURL, wifiUploadURL, importTempURL]
+                    pendingDeleteURL, wifiUploadURL, importTempURL,
+                    exportTempURL, syncExtractURL]
         for dir in dirs {
             if !fm.fileExists(atPath: dir.path) {
                 do {
