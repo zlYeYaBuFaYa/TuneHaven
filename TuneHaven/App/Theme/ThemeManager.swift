@@ -83,7 +83,7 @@ final class ThemeManager: ObservableObject {
 
         windowScene.windows.forEach { window in
             window.backgroundColor = bgColor
-            Self.updateNavigationBars(on: window.rootViewController, bgColor: bgColor, surfaceColor: surfaceColor)
+            Self.updateNavigationBars(on: window.rootViewController, surfaceColor: surfaceColor)
         }
     }
 
@@ -143,10 +143,9 @@ final class ThemeManager: ObservableObject {
 
     // MARK: - Navigation Bar
 
-    private static func updateNavigationBars(on vc: UIViewController?, bgColor: UIColor, surfaceColor: UIColor) {
+    private static func updateNavigationBars(on vc: UIViewController?, surfaceColor: UIColor) {
         guard let vc = vc else { return }
         if let nav = vc as? UINavigationController {
-            nav.view.backgroundColor = bgColor
             let appearance = UINavigationBarAppearance()
             appearance.configureWithOpaqueBackground()
             appearance.backgroundColor = surfaceColor
@@ -156,10 +155,10 @@ final class ThemeManager: ObservableObject {
             nav.navigationBar.scrollEdgeAppearance = appearance
         }
         for child in vc.children {
-            updateNavigationBars(on: child, bgColor: bgColor, surfaceColor: surfaceColor)
+            updateNavigationBars(on: child, surfaceColor: surfaceColor)
         }
         if let presented = vc.presentedViewController {
-            updateNavigationBars(on: presented, bgColor: bgColor, surfaceColor: surfaceColor)
+            updateNavigationBars(on: presented, surfaceColor: surfaceColor)
         }
     }
 }

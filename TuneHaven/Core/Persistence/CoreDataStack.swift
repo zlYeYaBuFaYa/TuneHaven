@@ -8,16 +8,19 @@ final class CoreDataStack {
 
     var viewContext: NSManagedObjectContext { container.viewContext }
 
-    private let backgroundContext: NSManagedObjectContext
+    private var _backgroundContext: NSManagedObjectContext?
+
+    private var backgroundContext: NSManagedObjectContext {
+        guard let ctx = _backgroundContext else {
+            fatalError("CoreDataStack.load() must be called before accessing backgroundContext")
+        }
+        return ctx
+    }
 
     private init() {
         container = NSPersistentContainer(name: "MusicPlayer")
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-        let ctx = container.newBackgroundContext()
-        ctx.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-        ctx.automaticallyMergesChangesFromParent = true
-        backgroundContext = ctx
     }
 
     func load() async throws {
@@ -30,6 +33,10 @@ final class CoreDataStack {
                 }
             }
         }
+        let ctx = container.newBackgroundContext()
+        ctx.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        ctx.automaticallyMergesChangesFromParent = true
+        _backgroundContext = ctx
     }
 
     func performBackground<T: Sendable>(_ block: @Sendable @escaping (NSManagedObjectContext) throws -> T) async throws -> T {

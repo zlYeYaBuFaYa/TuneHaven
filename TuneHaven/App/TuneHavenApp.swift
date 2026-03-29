@@ -7,6 +7,7 @@ struct TuneHavenApp: App {
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var isReady = false
+    @State private var isInitializing = false
     @State private var initError: String?
     @State private var pendingImportURLs: [URL] = []
     @State private var openInHandler: OpenInImportHandler?
@@ -34,6 +35,7 @@ struct TuneHavenApp: App {
                         .environment(\.imageCache, ImageCacheManager.shared)
                         .injectThemePalette(from: container.themeManager)
                         .snackbar(container.snackbar)
+                        .transition(.identity)
                 } else if let error = initError {
                     VStack(spacing: 16) {
                         Image(systemName: "exclamationmark.triangle")
@@ -52,6 +54,7 @@ struct TuneHavenApp: App {
                         .progressViewStyle(.circular)
                 }
             }
+            .animation(nil, value: isReady)
             .task { await initialize() }
             .onOpenURL { url in
                 handleIncomingURL(url)
@@ -65,7 +68,6 @@ struct TuneHavenApp: App {
                 switch phase {
                 case .active:
                     container.playbackService.checkSleepTimerOnForeground()
-                    container.themeManager.scheduleWindowRefresh(delay: 0.1, fullApply: true)
                 case .background:
                     container.audioSessionManager.ensureActive()
                 default:
@@ -97,6 +99,10 @@ struct TuneHavenApp: App {
     }
 
     private func initialize() async {
+        guard !isReady && !isInitializing else { return }
+        isInitializing = true
+        defer { isInitializing = false }
+
         do {
             AppLogger.shared.info("[App] initialize start")
             try await container.bootstrap()
