@@ -44,13 +44,13 @@ struct RootTabView: View {
             set:  { router.isPlayerPresented = $0 }
         )) {
             PlayerView()
-                .presentationBackground(
+                .modifier(PresentationBackgroundModifier {
                     LinearGradient(
                         colors: [themeManager.palette.background, themeManager.palette.surfaceSecondary, themeManager.palette.highlight],
                         startPoint: .top,
                         endPoint: .bottom
                     )
-                )
+                })
                 .withFullEnvironment(
                     themeManager: themeManager,
                     router: router,
@@ -64,7 +64,7 @@ struct RootTabView: View {
         }
         .sheet(item: $router.sheet) { destination in
             sheetView(for: destination)
-                .presentationBackground(themeManager.palette.elevatedSurface)
+                .modifier(PresentationBackgroundModifier { themeManager.palette.elevatedSurface })
                 .withFullEnvironment(
                     themeManager: themeManager,
                     router: router,
@@ -125,6 +125,8 @@ struct RootTabView: View {
 
     // MARK: - Helpers
 
+    // MARK: - Sheet Content
+
     @ViewBuilder
     private func sheetView(for destination: SheetDestination) -> some View {
         switch destination {
@@ -144,6 +146,22 @@ struct RootTabView: View {
             PlaylistCoverPickerSheet(playlistId: id)
         case .batchAddSongs(let id):
             BatchAddSongsView(playlistId: id)
+        }
+    }
+}
+
+private struct PresentationBackgroundModifier<S: ShapeStyle>: ViewModifier {
+    let style: S
+
+    init(@ViewBuilder _ content: () -> S) {
+        self.style = content()
+    }
+
+    func body(content: Content) -> some View {
+        if #available(iOS 16.4, *) {
+            content.presentationBackground(style)
+        } else {
+            content
         }
     }
 }
