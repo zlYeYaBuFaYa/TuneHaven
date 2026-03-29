@@ -39,8 +39,13 @@ struct WebDAVAccountListView: View {
                     .foregroundColor(palette.primary)
                 }
             }
-            .navigationDestination(item: $navigateToAccount) { account in
-                WebDAVBrowserView(account: account)
+            .navigationDestination(isPresented: Binding(
+                get: { navigateToAccount != nil },
+                set: { if !$0 { navigateToAccount = nil } }
+            )) {
+                if let account = navigateToAccount {
+                    WebDAVBrowserView(account: account)
+                }
             }
             .sheet(isPresented: $showAddAccount) {
                 WebDAVAccountEditView(mode: .add)
