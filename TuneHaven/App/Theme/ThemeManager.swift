@@ -63,10 +63,10 @@ final class ThemeManager: ObservableObject {
     var allAvailableThemes: [ThemeStyle] { registry.allThemes }
 
     func setTheme(_ style: ThemeStyle) {
-        objectWillChange.send()
         currentStyle = style
         storedThemeStyle = style.id
-        scheduleWindowRefresh(fullApply: true)
+        pendingFullApply = false
+        scheduleWindowRefresh(delay: 0.3, fullApply: false)
     }
 
     // MARK: - Window Management
@@ -93,6 +93,9 @@ final class ThemeManager: ObservableObject {
             return
         }
         let bgColor = UIColor(currentStyle.palette.background)
+        let surfaceColor = UIColor(currentStyle.palette.surface)
+
+        AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
 
         windowScene.windows.forEach { window in
             window.backgroundColor = bgColor
