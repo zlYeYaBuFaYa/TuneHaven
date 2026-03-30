@@ -24,7 +24,7 @@ final class ShareServer: ObservableObject, ShareServerProviding {
 
     // MARK: - Lifecycle
 
-    func start() throws {
+    func start() async throws {
         guard !isRunning else { return }
         log.info("[ShareServer] 启动")
 
@@ -36,26 +36,50 @@ final class ShareServer: ObservableObject, ShareServerProviding {
         let newListener = try NWListener(using: params, on: nwPort)
         self.listener = newListener
 
-        newListener.stateUpdateHandler = { [weak self] state in
-            Task { @MainActor [weak self] in
-                switch state {
-                case .ready:
-                    self?.isRunning = true
-                    self?.serverAddress = self?.resolveLocalIP()
-                case .failed, .cancelled:
-                    self?.isRunning = false
-                default: break
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            var resumed = false
+
+            newListener.stateUpdateHandler = { [weak self] state in
+                Task { @MainActor [weak self] in
+                    switch state {
+                    case .ready:
+                        self?.isRunning = true
+                        self?.serverAddress = self?.resolveLocalIP()
+                        if !resumed {
+                            resumed = true
+                            continuation.resume()
+                        }
+                    case .failed(let error):
+                        self?.isRunning = false
+                        if !resumed {
+                            resumed = true
+                            continuation.resume(throwing: error)
+                        }
+                    case .cancelled:
+                        self?.isRunning = false
+                        if !resumed {
+                            resumed = true
+                            continuation.resume(throwing: AppError.wifiServerStartFailed)
+                        }
+                    default:
+                        break
+                    }
                 }
             }
-        }
 
-        newListener.newConnectionHandler = { [weak self] conn in
-            Task { @MainActor [weak self] in
-                self?.handleNewConnection(conn)
+            newListener.newConnectionHandler = { [weak self] conn in
+                Task { @MainActor [weak self] in
+                    self?.handleNewConnection(conn)
+                }
             }
+
+            newListener.start(queue: .main)
         }
 
-        newListener.start(queue: .main)
+        guard serverAddress != nil else {
+            stop()
+            throw AppError.fileSystemError("无法获取服务器地址")
+        }
     }
 
     func stop() {

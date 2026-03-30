@@ -4,35 +4,37 @@ struct SettingsShareSection: View {
     @Environment(\.themePalette) private var palette
     @Environment(\.settingsListRowBg) private var listRowBg
 
+    @Binding var isExpanded: Bool
     @Binding var activeSheet: SettingsView.SettingsSheet?
 
     var body: some View {
         Section {
-            shareRow(
-                icon: "square.and.arrow.up",
-                title: "发送歌曲 / 歌单",
-                subtitle: "选择内容，生成二维码供对方扫描"
-            ) {
-                activeSheet = .shareSend
-            }
+            DisclosureGroup(isExpanded: $isExpanded) {
+                shareRow(
+                    icon: "square.and.arrow.up",
+                    title: "发送歌曲 / 歌单",
+                    subtitle: "选择内容，生成二维码供对方扫描"
+                ) {
+                    activeSheet = .shareSend
+                }
 
-            shareRow(
-                icon: "qrcode.viewfinder",
-                title: "扫码接收",
-                subtitle: "扫描对方二维码，直接接收歌曲和歌单"
-            ) {
-                activeSheet = .shareReceive
+                shareRow(
+                    icon: "qrcode.viewfinder",
+                    title: "扫码接收",
+                    subtitle: "扫描对方二维码，直接接收歌曲和歌单"
+                ) {
+                    activeSheet = .shareReceive
+                }
+            } label: {
+                Label {
+                    Text("分享")
+                        .foregroundColor(palette.textPrimary)
+                } icon: {
+                    SettingsSectionIcon(systemName: "qrcode")
+                }
             }
-        } header: {
-            Label {
-                Text("分享传输")
-                    .foregroundColor(palette.textSecondary)
-            } icon: {
-                SettingsSectionIcon(systemName: "qrcode")
-            }
-        } footer: {
-            Text("确保两台设备连接同一 Wi-Fi 网络")
-                .foregroundColor(palette.textSecondary)
+            .tint(palette.textSecondary)
+            .listRowBackground(listRowBg)
         }
     }
 

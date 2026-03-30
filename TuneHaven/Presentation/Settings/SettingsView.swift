@@ -22,6 +22,7 @@ struct SettingsView: View {
     @State private var notificationPermissionStatus: UNAuthorizationStatus = .notDetermined
 
     @State private var expandedImport = false
+    @State private var expandedShare = false
     @State private var expandedAppearance = false
     @State private var expandedPlayback = false
     @State private var expandedStorage = false
@@ -51,7 +52,10 @@ struct SettingsView: View {
                 activeSheet: $activeSheet
             )
 
-            SettingsShareSection(activeSheet: $activeSheet)
+            SettingsShareSection(
+                isExpanded: $expandedShare,
+                activeSheet: $activeSheet
+            )
 
             SettingsAppearanceSection(
                 isExpanded: $expandedAppearance

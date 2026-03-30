@@ -11,7 +11,7 @@ protocol ShareServerProviding: AnyObject {
 
     var dataSource: ShareDataSource? { get set }
 
-    func start() throws
+    func start() async throws
     func stop()
 }
 

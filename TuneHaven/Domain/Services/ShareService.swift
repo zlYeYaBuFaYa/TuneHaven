@@ -55,7 +55,7 @@ final class ShareService: ObservableObject, ShareDataSource {
         log.info("[Share] 准备分享 \(songs.count) 首歌曲")
         sharedSongs = songs
         sharedPlaylists = []
-        return try startServer()
+        return try await startServer()
     }
 
     func prepareSendPlaylists(_ playlists: [PlaylistDetail]) async throws -> String {
@@ -73,7 +73,7 @@ final class ShareService: ObservableObject, ShareDataSource {
             }
         }
         sharedSongs = unique
-        return try startServer()
+        return try await startServer()
     }
 
     func stopSending() {
@@ -412,10 +412,10 @@ final class ShareService: ObservableObject, ShareDataSource {
 
     // MARK: - Private
 
-    private func startServer() throws -> String {
+    private func startServer() async throws -> String {
         let server = serverFactory()
         server.dataSource = self
-        try server.start()
+        try await server.start()
         self.server = server
         isSending = true
 
