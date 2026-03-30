@@ -243,6 +243,19 @@ final class CoreDataSongRepository: SongRepository {
         }
     }
 
+    func updateCoverPath(songId: UUID, coverImagePath: String?) async throws {
+        try await stack.performBackground { ctx in
+            let request = SongEntity.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@ AND softDeleted == NO", songId as CVarArg)
+            request.fetchLimit = 1
+            guard let entity = try ctx.fetch(request).first else {
+                self.log.debug("updateCoverPath: entity not found id=\(songId)")
+                return
+            }
+            entity.coverImagePath = coverImagePath
+        }
+    }
+
     func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws {
         try await stack.performBackground { ctx in
             let request = SongEntity.fetchRequest()

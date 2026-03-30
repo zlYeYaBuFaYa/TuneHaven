@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TuneHaven 接收端展示预览</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --card: #1f2b47;
+    --primary: #4ecca3;
+    --primary-dark: #3ba888;
+    --text: #e8e8e8;
+    --text-secondary: #a0a0b8;
+    --text-tertiary: #6b6b82;
+    --separator: #2a3555;
+    --success: #4ecca3;
+    --warning: #f0c040;
+    --skip: #7b8cad;
+    --link: #6ec1e4;
+    --danger: #e74c3c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    font-weight: 500;
+  }
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 3px;
+    width: 100%;
+    max-width: 380px;
+  }
+  .tab {
+    flex: 1;
+    padding: 10px 8px;
+    text-align: center;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.25s ease;
+    user-select: none;
+  }
+  .tab.active {
+    background: var(--primary);
+    color: #111;
+    font-weight: 600;
+  }
+  .tab:hover:not(.active) {
+    color: var(--text);
+  }
+  .phone-frame {
+    width: 380px;
+    background: var(--surface);
+    border-radius: 28px;
+    padding: 20px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    min-height: 560px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stage { display: none; }
+  .stage.active { display: block; }
+
+  /* Shared */
+  .nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .nav-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .nav-btn {
+    font-size: 15px;
+    color: var(--primary);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-weight: 500;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    margin-top: 20px;
+  }
+  .section-icon {
+    font-size: 18px;
+  }
+  .section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--card);
+    border-radius: 10px;
+    margin-bottom: 6px;
+  }
+  .info-row-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .info-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-new { background: var(--primary); }
+  .dot-skip { background: var(--skip); }
+  .dot-link { background: var(--link); }
+  .dot-fail { background: var(--danger); }
+  .info-label {
+    font-size: 14px;
+    color: var(--text);
+  }
+  .info-value {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .value-new { color: var(--primary); }
+  .value-skip { color: var(--skip); }
+  .value-link { color: var(--link); }
+  .value-fail { color: var(--danger); }
+  .value-size { color: var(--text-secondary); font-size: 12px; }
+
+  /* Playlist card */
+  .playlist-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .playlist-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .playlist-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .playlist-count {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--separator);
+    padding: 2px 8px;
+    border-radius: 8px;
+  }
+  .playlist-detail {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .playlist-detail span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .detail-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* Summary bar */
+  .summary-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 20px;
+  }
+  .summary-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .summary-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  /* CTA button */
+  .cta-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--primary);
+    color: #111;
+    border: none;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 24px;
+    transition: background 0.2s;
+  }
+  .cta-btn:hover { background: var(--primary-dark); }
+  .cta-btn.secondary {
+    background: var(--card);
+    color: var(--text);
+  }
+
+  /* Progress */
+  .progress-container {
+    margin-top: 30px;
+  }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .progress-title {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .progress-count {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .progress-bar-bg {
+    width: 100%;
+    height: 8px;
+    background: var(--separator);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+  .progress-file {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+  }
+  .progress-file span {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .skip-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(123, 140, 173, 0.15);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 16px;
+  }
+  .skip-icon {
+    font-size: 20px;
+  }
+  .skip-text {
+    font-size: 13px;
+    color: var(--skip);
+  }
+
+  /* Result */
+  .result-icon {
+    text-align: center;
+    margin-top: 20px;
+    margin-bottom: 8px;
+    font-size: 48px;
+  }
+  .result-title {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--success);
+  }
+  .result-subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+  }
+  .result-section {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .result-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .result-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+  .result-row:not(:last-child) {
+    border-bottom: 1px solid var(--separator);
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+  }
+  .result-row-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+  .result-row-value {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .device-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(78, 204, 163, 0.12);
+    border: 1px solid rgba(78, 204, 163, 0.25);
+    border-radius: 10px;
+    padding: 8px 14px;
+    margin-bottom: 4px;
+  }
+  .device-badge-icon { font-size: 16px; }
+  .device-badge-text { font-size: 14px; color: var(--primary); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<h1>TuneHaven 接收端 · 三阶段展示预览</h1>
+
+<div class="tabs">
+  <div class="tab active" onclick="showStage('preview')">传输前预览</div>
+  <div class="tab" onclick="showStage('progress')">传输中</div>
+  <div class="tab" onclick="showStage('result')">传输完成</div>
+</div>
+
+<div class="phone-frame">
+
+  <!-- ========== Stage 1: Preview ========== -->
+  <div class="stage active" id="stage-preview">
+    <div class="nav-bar">
+      <button class="nav-btn">取消</button>
+      <span class="nav-title">接收分享</span>
+      <span style="width:40px"></span>
+    </div>
+
+    <div class="device-badge">
+      <span class="device-badge-icon">📱</span>
+      <span class="device-badge-text">来自「iPhone 15 Pro」</span>
+    </div>
+
+    <!-- Songs section -->
+    <div class="section-header">
+      <span class="section-icon">🎵</span>
+      <span class="section-title">歌曲</span>
+    </div>
+    <div class="info-row">
+      <div class="info-row-left">
+        <span class="info-dot dot-new"></span>
+        <span class="info-label">新歌曲</span>
+      </div>
+      <div>
+        <span class="info-value value-new">12 首</span>
+        <span class="value-size"> · 128.5 MB</span>
+      </div>
+    </div>
+    <div class="info-row">
+      <div class="info-row-left">
+        <span class="info-dot dot-skip"></span>
+        <span class="info-label">已有歌曲（将跳过）</span>
+      </div>
+      <span class="info-value value-skip">3 首</span>
+    </div>
+
+    <!-- Playlists section -->
+    <div class="section-header">
+      <span class="section-icon">📋</span>
+      <span class="section-title">歌单</span>
+    </div>
+    <div class="playlist-card">
+      <div class="playlist-header">
+        <span class="playlist-name">我的摇滚</span>
+        <span class="playlist-count">8 首</span>
+      </div>
+      <div class="playlist-detail">
+        <span><span class="detail-dot dot-new"></span> 6 首需下载</span>
+        <span><span class="detail-dot dot-link"></span> 2 首关联本地</span>
+      </div>
+    </div>
+    <div class="playlist-card">
+      <div class="playlist-header">
+        <span class="playlist-name">午后爵士</span>
+        <span class="playlist-count">5 首</span>
+      </div>
+      <div class="playlist-detail">
+        <span><span class="detail-dot dot-new"></span> 4 首需下载</span>
+        <span><span class="detail-dot dot-link"></span> 1 首关联本地</span>
+      </div>
+    </div>
+
+    <div class="summary-bar">
+      <span class="summary-label">预计下载</span>
+      <span class="summary-value">128.5 MB</span>
+    </div>
+
+    <button class="cta-btn" onclick="showStage('progress')">开始接收</button>
+  </div>
+
+  <!-- ========== Stage 2: Progress ========== -->
+  <div class="stage" id="stage-progress">
+    <div class="nav-bar">
+      <button class="nav-btn">取消</button>
+      <span class="nav-title">接收分享</span>
+      <span style="width:40px"></span>
+    </div>
+
+    <div class="device-badge">
+      <span class="device-badge-icon">📱</span>
+      <span class="device-badge-text">正在从「iPhone 15 Pro」接收</span>
+    </div>
+
+    <div class="progress-container">
+      <div class="progress-header">
+        <span class="progress-title">正在接收...</span>
+        <span class="progress-count" id="progress-text">8 / 12</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill" style="width: 66%"></div>
+      </div>
+      <div class="progress-file">
+        当前：<span id="current-file">晴天-周杰伦.mp3</span>
+      </div>
+
+      <!-- Live stats -->
+      <div class="info-row">
+        <div class="info-row-left">
+          <span class="info-dot dot-new"></span>
+          <span class="info-label">已接收</span>
+        </div>
+        <span class="info-value value-new" id="received-count">7 首</span>
+      </div>
+      <div class="info-row">
+        <div class="info-row-left">
+          <span class="info-dot dot-skip"></span>
+          <span class="info-label">已跳过</span>
+        </div>
+        <span class="info-value value-skip">3 首</span>
+      </div>
+
+      <div class="skip-banner">
+        <span class="skip-icon">⏭️</span>
+        <div>
+          <div class="skip-text">已智能跳过 3 首本地已有歌曲</div>
+          <div style="font-size:11px;color:var(--text-tertiary);margin-top:2px">
+            七里香 · 夜曲 · 稻香
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Stage 3: Result ========== -->
+  <div class="stage" id="stage-result">
+    <div class="nav-bar">
+      <span style="width:40px"></span>
+      <span class="nav-title">接收分享</span>
+      <span style="width:40px"></span>
+    </div>
+
+    <div class="result-icon">✅</div>
+    <div class="result-title">接收完成</div>
+    <div class="result-subtitle">来自「iPhone 15 Pro」的分享</div>
+
+    <div class="result-section">
+      <div class="result-section-title">歌曲</div>
+      <div class="result-row">
+        <div class="result-row-left">
+          <span class="info-dot dot-new"></span>
+          <span>新增</span>
+        </div>
+        <span class="result-row-value value-new">12 首</span>
+      </div>
+      <div class="result-row">
+        <div class="result-row-left">
+          <span class="info-dot dot-skip"></span>
+          <span>跳过（本地已有）</span>
+        </div>
+        <span class="result-row-value value-skip">3 首</span>
+      </div>
+      <div class="result-row">
+        <div class="result-row-left">
+          <span class="info-dot dot-fail"></span>
+          <span>失败</span>
+        </div>
+        <span class="result-row-value" style="color:var(--text-tertiary)">0 首</span>
+      </div>
+    </div>
+
+    <div class="result-section">
+      <div class="result-section-title">歌单</div>
+      <div class="result-row">
+        <div class="result-row-left">
+          <span class="info-dot dot-new"></span>
+          <span>创建歌单</span>
+        </div>
+        <span class="result-row-value value-new">2 个</span>
+      </div>
+      <div class="result-row">
+        <div class="result-row-left">
+          <span class="info-dot dot-link"></span>
+          <span>关联本地歌曲</span>
+        </div>
+        <span class="result-row-value value-link">3 首</span>
+      </div>
+    </div>
+
+    <div class="result-section" style="background:rgba(78,204,163,0.08);border:1px solid rgba(78,204,163,0.15)">
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.6">
+        <div style="margin-bottom:6px;font-weight:500;color:var(--text)">📋 歌单详情</div>
+        <div>「我的摇滚」— 8 首（6 新增 + 2 关联本地）</div>
+        <div>「午后爵士」— 5 首（4 新增 + 1 关联本地）</div>
+      </div>
+    </div>
+
+    <button class="cta-btn" onclick="showStage('preview')">完成</button>
+  </div>
+
+</div>
+
+<script>
+  const files = ['晴天-周杰伦.mp3', 'Bohemian Rhapsody.flac', 'Yesterday.m4a', 'Imagine.mp3'];
+  let animFrame;
+
+  function showStage(stage) {
+    document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
+    document.getElementById('stage-' + stage).classList.add('active');
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', 
+        (stage === 'preview' && i === 0) ||
+        (stage === 'progress' && i === 1) ||
+        (stage === 'result' && i === 2)
+      );
+    });
+
+    if (animFrame) cancelAnimationFrame(animFrame);
+    if (stage === 'progress') startProgressAnim();
+  }
+
+  function startProgressAnim() {
+    let progress = 0;
+    let fileIdx = 0;
+    const fill = document.getElementById('progress-fill');
+    const text = document.getElementById('progress-text');
+    const file = document.getElementById('current-file');
+    const count = document.getElementById('received-count');
+
+    function tick() {
+      progress += 0.3;
+      if (progress > 100) progress = 0;
+      const current = Math.floor(progress / 100 * 12) + 1;
+      fill.style.width = progress + '%';
+      text.textContent = Math.min(current, 12) + ' / 12';
+      count.textContent = Math.min(current, 12) + ' 首';
+      fileIdx = Math.floor(progress / 25) % files.length;
+      file.textContent = files[fileIdx];
+      if (progress >= 99) {
+        setTimeout(() => showStage('result'), 500);
+        return;
+      }
+      animFrame = requestAnimationFrame(tick);
+    }
+    tick();
+  }
+</script>
+</body>
+</html>

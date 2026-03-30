@@ -15,6 +15,7 @@ protocol SongRepository: AnyObject {
     func toggleFavorite(id: UUID) async throws
     func recordPlay(id: UUID) async throws
     func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws
+    func updateCoverPath(songId: UUID, coverImagePath: String?) async throws
     func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws
     func countReferences(toFileHash hash: String) async -> Int
     func cleanupPendingDeletes() async

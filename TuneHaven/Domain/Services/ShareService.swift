@@ -30,6 +30,7 @@ final class ShareService: ObservableObject, ShareDataSource {
     private var client: ShareClientProviding?
     private var sharedSongs: [Song] = []
     private var sharedPlaylists: [PlaylistDetail] = []
+    private var sharedSongIdToIndex: [UUID: Int] = [:]
     private var songIndex: [String: [Song]] = [:]
     private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
 
@@ -55,6 +56,7 @@ final class ShareService: ObservableObject, ShareDataSource {
         log.info("[Share] 准备分享 \(songs.count) 首歌曲")
         sharedSongs = songs
         sharedPlaylists = []
+        rebuildSharedSongIndex()
         return try await startServer()
     }
 
@@ -73,18 +75,21 @@ final class ShareService: ObservableObject, ShareDataSource {
             }
         }
         sharedSongs = unique
+        rebuildSharedSongIndex()
         return try await startServer()
     }
 
     func stopSending() {
         log.info("[Share] 停止发送")
         server?.stop()
+        server?.onAudioFileServed = nil
         server = nil
         isSending = false
         sendProgress = nil
         connectedReceiver = nil
         sharedSongs = []
         sharedPlaylists = []
+        sharedSongIdToIndex = [:]
     }
 
     // MARK: - 接收端 API
@@ -115,12 +120,15 @@ final class ShareService: ObservableObject, ShareDataSource {
         await buildSongIndex()
 
         var newSongs: [ShareSongSummary] = []
-        var skippedSongs: [ShareSongSummary] = []
+        var exactMatchSongs: [ShareSongSummary] = []
+        var fuzzyMatchSongs: [ShareSongSummary] = []
         for song in songs {
             let match = matchSong(title: song.title, artist: song.artist, album: song.album, duration: song.duration)
             switch match {
-            case .exactMatch, .fuzzyMatch:
-                skippedSongs.append(song)
+            case .exactMatch:
+                exactMatchSongs.append(song)
+            case .fuzzyMatch:
+                fuzzyMatchSongs.append(song)
             case .noMatch:
                 newSongs.append(song)
             }
@@ -151,13 +159,14 @@ final class ShareService: ObservableObject, ShareDataSource {
             songs: songs,
             playlists: playlists,
             newSongs: newSongs,
-            skippedSongs: skippedSongs,
+            exactMatchSongs: exactMatchSongs,
+            fuzzyMatchSongs: fuzzyMatchSongs,
             playlistLocalSongs: playlistLocalSongs,
             estimatedDownloadSize: downloadSize
         )
         analysis = result
         receiveProgress = nil
-        log.info("[Share] 分析完成: 新歌曲=\(newSongs.count), 跳过=\(skippedSongs.count), 歌单=\(playlists.count)")
+        log.info("[Share] 分析完成: 新歌曲=\(newSongs.count), 精确匹配=\(exactMatchSongs.count), 模糊匹配=\(fuzzyMatchSongs.count), 歌单=\(playlists.count)")
         return result
     }
 
@@ -222,6 +231,7 @@ final class ShareService: ObservableObject, ShareDataSource {
             }
         }
 
+        // 新歌曲已导入，重建索引以便歌单关联阶段能匹配到刚导入的歌曲
         await buildSongIndex()
 
         let playlists = analysis.playlists
@@ -366,9 +376,9 @@ final class ShareService: ObservableObject, ShareDataSource {
         guard index >= 0 && index < sharedPlaylists.count else { return [] }
         let detail = sharedPlaylists[index]
         return detail.songs.compactMap { song in
-            guard let songIndex = sharedSongs.firstIndex(where: { $0.id == song.id }) else { return nil }
+            guard let idx = sharedSongIdToIndex[song.id] else { return nil }
             return ShareSongSummary(
-                index: songIndex,
+                index: idx,
                 title: song.title,
                 artist: song.artist,
                 album: song.album,
@@ -383,18 +393,31 @@ final class ShareService: ObservableObject, ShareDataSource {
     func songExportData(at index: Int) -> SongExportData? {
         guard index >= 0 && index < sharedSongs.count else { return nil }
         let song = sharedSongs[index]
-        return SongExportData(song: song, audioFileName: "", coverFileName: nil, lyricsFileName: nil)
+        let audioName = URL(fileURLWithPath: song.fileRelativePath).lastPathComponent
+        return SongExportData(song: song, audioFileName: audioName, coverFileName: nil, lyricsFileName: nil)
+    }
+
+    // MARK: - 发送端索引
+
+    private func rebuildSharedSongIndex() {
+        sharedSongIdToIndex = Dictionary(uniqueKeysWithValues: sharedSongs.enumerated().map { ($1.id, $0) })
     }
 
     // MARK: - 歌曲匹配
 
     private func buildSongIndex() async {
         let allSongs = await songRepo.fetchAll(sortBy: .title, ascending: true)
-        songIndex = Dictionary(grouping: allSongs) { "\($0.title)|\($0.artist)" }
+        songIndex = Dictionary(grouping: allSongs) { Self.normalizedKey($0.title, $0.artist) }
+    }
+
+    private static func normalizedKey(_ title: String, _ artist: String) -> String {
+        let t = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let a = artist.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return "\(t)|\(a)"
     }
 
     private func matchSong(title: String, artist: String, album: String, duration: TimeInterval) -> SongMatchResult {
-        let key = "\(title)|\(artist)"
+        let key = Self.normalizedKey(title, artist)
         guard let candidates = songIndex[key] else { return .noMatch }
 
         if let exact = candidates.first(where: {
@@ -415,9 +438,21 @@ final class ShareService: ObservableObject, ShareDataSource {
     private func startServer() async throws -> String {
         let server = serverFactory()
         server.dataSource = self
+        let totalSongs = sharedSongs.count
+        server.onAudioFileServed = { [weak self] _ in
+            guard let self else { return }
+            let served = (self.sendProgress?.current ?? 0) + 1
+            self.sendProgress = ShareProgress(
+                phase: served >= totalSongs ? .completed : .transferring,
+                current: served,
+                total: totalSongs,
+                currentFileName: "已传输 \(served)/\(totalSongs)"
+            )
+        }
         try await server.start()
         self.server = server
         isSending = true
+        sendProgress = ShareProgress(phase: .preparing, current: 0, total: totalSongs, currentFileName: "等待接收方连接…")
 
         guard let qr = server.qrCodeContent else {
             throw AppError.fileSystemError("无法获取服务器地址")
@@ -429,10 +464,13 @@ final class ShareService: ObservableObject, ShareDataSource {
         guard song.hasCover else { return }
         do {
             if let coverURL = try await client.downloadCover(at: song.index, to: tempDir) {
-                let destURL = fileStorage.coverImagesDirectoryURL
-                    .appendingPathComponent("\(importedSong.id.uuidString)_medium.jpg")
+                let coverName = "\(importedSong.id.uuidString)_medium.jpg"
+                let destURL = fileStorage.coverImagesDirectoryURL.appendingPathComponent(coverName)
                 try? FileManager.default.removeItem(at: destURL)
                 try FileManager.default.copyItem(at: coverURL, to: destURL)
+                if importedSong.coverImagePath == nil {
+                    try? await songRepo.updateCoverPath(songId: importedSong.id, coverImagePath: coverName)
+                }
             }
         } catch {
             log.error(error, context: "[Share] 封面下载失败: \(song.title)")

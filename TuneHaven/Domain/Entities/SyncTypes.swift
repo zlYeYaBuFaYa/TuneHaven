@@ -95,9 +95,12 @@ struct ShareAnalysis {
     let songs: [ShareSongSummary]
     let playlists: [SharePlaylistSummary]
     let newSongs: [ShareSongSummary]
-    let skippedSongs: [ShareSongSummary]
+    let exactMatchSongs: [ShareSongSummary]
+    let fuzzyMatchSongs: [ShareSongSummary]
     let playlistLocalSongs: [String: Int]
     let estimatedDownloadSize: Int64
+
+    var skippedSongs: [ShareSongSummary] { exactMatchSongs + fuzzyMatchSongs }
 }
 
 struct ShareTransferResult {

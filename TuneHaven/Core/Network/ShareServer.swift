@@ -16,6 +16,7 @@ final class ShareServer: ObservableObject, ShareServerProviding {
     private let streamChunkSize = 1_048_576 // 1 MB
 
     var dataSource: ShareDataSource?
+    var onAudioFileServed: ((Int) -> Void)?
 
     var qrCodeContent: String? {
         guard let addr = serverAddress else { return nil }
@@ -96,13 +97,17 @@ final class ShareServer: ObservableObject, ShareServerProviding {
     // MARK: - Connection
 
     private func handleNewConnection(_ connection: NWConnection) {
-        if let active = activeConnection { active.cancel() }
+        if let active = activeConnection {
+            active.stateUpdateHandler = nil
+            active.cancel()
+        }
         activeConnection = connection
 
         connection.stateUpdateHandler = { [weak self] state in
             Task { @MainActor [weak self] in
-                if case .failed = state { self?.activeConnection = nil }
-                if case .cancelled = state { self?.activeConnection = nil }
+                guard let self, self.activeConnection === connection else { return }
+                if case .failed = state { self.activeConnection = nil }
+                if case .cancelled = state { self.activeConnection = nil }
             }
         }
 
@@ -277,18 +282,22 @@ final class ShareServer: ObservableObject, ShareServerProviding {
         let disposition = contentDisposition(for: fileName)
         let header = "HTTP/1.1 200 OK\r\nContent-Type: \(mimeType)\r\nContent-Length: \(fileSize)\r\n\(disposition)\r\nConnection: close\r\n\r\n"
 
+        let onComplete: (() -> Void)? = (type == .audio) ? { [weak self] in
+            Task { @MainActor in self?.onAudioFileServed?(index) }
+        } : nil
+
         connection.send(content: Data(header.utf8), completion: .contentProcessed { [weak self] error in
             guard error == nil else {
                 connection.cancel()
                 return
             }
             Task { @MainActor in
-                self?.streamFile(url: fileURL, size: fileSize, connection: connection)
+                self?.streamFile(url: fileURL, size: fileSize, connection: connection, onComplete: onComplete)
             }
         })
     }
 
-    private func streamFile(url: URL, size: UInt64, connection: NWConnection) {
+    private func streamFile(url: URL, size: UInt64, connection: NWConnection, onComplete: (() -> Void)? = nil) {
         guard let handle = try? FileHandle(forReadingFrom: url) else {
             connection.cancel()
             return
@@ -309,6 +318,7 @@ final class ShareServer: ObservableObject, ShareServerProviding {
                 if error != nil || isLast {
                     try? handle.close()
                     if isLast {
+                        onComplete?()
                         connection.cancel()
                     }
                 } else {
@@ -412,22 +422,30 @@ final class ShareServer: ObservableObject, ShareServerProviding {
         }
     }
 
+    /// WiFi 通常为 en0，个人热点桥接为 bridge100 / ap1 等
+    private static let preferredInterfaces = ["en0", "en1", "bridge100", "ap1"]
+
     private func resolveLocalIP() -> String? {
-        var address: String?
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else { return nil }
         defer { freeifaddrs(ifaddr) }
+
+        var candidates: [String: String] = [:]
         for ptr in sequence(first: firstAddr, next: { $0.pointee.ifa_next }) {
             let sa = ptr.pointee.ifa_addr.pointee
             guard sa.sa_family == UInt8(AF_INET) else { continue }
             let name = String(cString: ptr.pointee.ifa_name)
-            guard name == "en0" else { continue }
+            guard Self.preferredInterfaces.contains(name) else { continue }
             var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
             getnameinfo(ptr.pointee.ifa_addr, socklen_t(sa.sa_len),
                         &hostname, socklen_t(hostname.count),
                         nil, 0, NI_NUMERICHOST)
-            address = String(cString: hostname)
+            candidates[name] = String(cString: hostname)
         }
-        return address
+
+        for iface in Self.preferredInterfaces {
+            if let ip = candidates[iface] { return ip }
+        }
+        return nil
     }
 }

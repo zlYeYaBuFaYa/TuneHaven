@@ -24,12 +24,23 @@ struct ShareContentPreviewView: View {
                     .foregroundColor(SemanticColor.success)
                     .listRowBackground(palette.surface)
 
-                    if !analysis.skippedSongs.isEmpty {
+                    if !analysis.exactMatchSongs.isEmpty {
                         HStack {
-                            Text("已有歌曲：\(analysis.skippedSongs.count) 首（将跳过）")
+                            Text("已有歌曲：\(analysis.exactMatchSongs.count) 首（将跳过）")
                             Spacer()
                         }
-                        .foregroundColor(SemanticColor.warning)
+                        .foregroundColor(palette.textSecondary)
+                        .listRowBackground(palette.surface)
+                    }
+
+                    if !analysis.fuzzyMatchSongs.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("同名但版本可能不同：\(analysis.fuzzyMatchSongs.count) 首（将跳过）")
+                                .foregroundColor(SemanticColor.warning)
+                            Text("本地已有同名歌曲，但专辑或时长不同")
+                                .font(.caption)
+                                .foregroundColor(palette.textTertiary)
+                        }
                         .listRowBackground(palette.surface)
                     }
                 } header: {

@@ -10,6 +10,8 @@ protocol ShareServerProviding: AnyObject {
     var connectedDevice: String? { get }
 
     var dataSource: ShareDataSource? { get set }
+    /// 每完成一首歌曲音频的传输时回调（用于发送端进度跟踪）
+    var onAudioFileServed: ((Int) -> Void)? { get set }
 
     func start() async throws
     func stop()
