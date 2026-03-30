@@ -34,10 +34,6 @@ enum AppError: LocalizedError {
     case lyricsDeleteFailed(String)
     case fileSystemError(String)
     case imageProcessingFailed(String)
-    case syncExportFailed(String)
-    case syncImportFailed(String)
-    case syncInvalidPackage(String)
-    case syncInsufficientStorage
 
     var errorDescription: String? {
         switch self {
@@ -74,10 +70,6 @@ enum AppError: LocalizedError {
         case .lyricsDeleteFailed: return "歌词删除失败"
         case .fileSystemError(let msg): return "文件系统错误：\(msg)"
         case .imageProcessingFailed(let msg): return "图片处理失败：\(msg)"
-        case .syncExportFailed(let msg): return "导出失败：\(msg)"
-        case .syncImportFailed(let msg): return "导入失败：\(msg)"
-        case .syncInvalidPackage(let msg): return "无效的同步文件：\(msg)"
-        case .syncInsufficientStorage: return "存储空间不足，无法完成导入"
         }
     }
 
@@ -116,10 +108,6 @@ enum AppError: LocalizedError {
         case .lyricsDeleteFailed: return "LYR004"
         case .fileSystemError: return "FS001"
         case .imageProcessingFailed: return "IMG001"
-        case .syncExportFailed: return "SYN001"
-        case .syncImportFailed: return "SYN002"
-        case .syncInvalidPackage: return "SYN003"
-        case .syncInsufficientStorage: return "SYN004"
         }
     }
 }
@@ -162,10 +150,6 @@ extension AppError: Equatable {
         case (.lyricsDeleteFailed(let a), .lyricsDeleteFailed(let b)): return a == b
         case (.fileSystemError(let a), .fileSystemError(let b)): return a == b
         case (.imageProcessingFailed(let a), .imageProcessingFailed(let b)): return a == b
-        case (.syncExportFailed(let a), .syncExportFailed(let b)): return a == b
-        case (.syncImportFailed(let a), .syncImportFailed(let b)): return a == b
-        case (.syncInvalidPackage(let a), .syncInvalidPackage(let b)): return a == b
-        case (.syncInsufficientStorage, .syncInsufficientStorage): return true
         default: return false
         }
     }
@@ -175,7 +159,7 @@ extension AppError: Equatable {
 extension AppError: CaseIterable {
     /// 含关联值的枚举无法由编译器合成 CaseIterable；此处为测试与完整性检查提供代表性实例。
     /// `expectedCaseCount` 与此列表长度在单元测试中交叉验证，新增 case 时两处须同步更新。
-    static let expectedCaseCount = 37
+    static let expectedCaseCount = 33
 
     static var allCases: [AppError] {
         let id = UUID()
@@ -213,10 +197,6 @@ extension AppError: CaseIterable {
             .lyricsDeleteFailed("test"),
             .fileSystemError("test"),
             .imageProcessingFailed("test"),
-            .syncExportFailed("test"),
-            .syncImportFailed("test"),
-            .syncInvalidPackage("test"),
-            .syncInsufficientStorage,
         ]
     }
 }

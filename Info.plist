@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>需要使用相机扫描二维码以接收分享的音乐</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
@@ -36,38 +38,6 @@
 				<string>public.aifc-audio</string>
 				<string>com.apple.coreaudio-format</string>
 			</array>
-		</dict>
-		<dict>
-			<key>CFBundleTypeName</key>
-			<string>TuneHaven Package</string>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>LSHandlerRank</key>
-			<string>Owner</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>com.tunehaven.package</string>
-			</array>
-		</dict>
-	</array>
-	<key>UTExportedTypeDeclarations</key>
-	<array>
-		<dict>
-			<key>UTTypeConformsTo</key>
-			<array>
-				<string>public.data</string>
-			</array>
-			<key>UTTypeDescription</key>
-			<string>TuneHaven 同步包</string>
-			<key>UTTypeIdentifier</key>
-			<string>com.tunehaven.package</string>
-			<key>UTTypeTagSpecification</key>
-			<dict>
-				<key>public.filename-extension</key>
-				<array>
-					<string>tunehaven</string>
-				</array>
-			</dict>
 		</dict>
 	</array>
 	<key>LSSupportsOpeningDocumentsInPlace</key>

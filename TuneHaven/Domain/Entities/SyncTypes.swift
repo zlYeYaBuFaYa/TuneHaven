@@ -1,13 +1,5 @@
 import Foundation
 
-// MARK: - 导出内容类型
-
-enum SyncContentType: String, Codable {
-    case songs = "songs"
-    case playlists = "playlists"
-    case playlistsWithAudio = "playlists_with_audio"
-}
-
 // MARK: - 导出数据模型
 
 struct SongExportData: Codable, Hashable {
@@ -55,33 +47,7 @@ struct PlaylistExportData: Codable {
     let sortOrder: Int
 }
 
-// MARK: - 包清单
-
-struct TuneHavenManifest: Codable {
-    let version: Int
-    let exportDate: Date
-    let contentType: SyncContentType
-    let deviceName: String
-    let songs: [SongExportData]?
-    let playlists: [PlaylistExportData]?
-
-    init(
-        exportDate: Date = Date(),
-        contentType: SyncContentType,
-        deviceName: String,
-        songs: [SongExportData]? = nil,
-        playlists: [PlaylistExportData]? = nil
-    ) {
-        self.version = 1
-        self.exportDate = exportDate
-        self.contentType = contentType
-        self.deviceName = deviceName
-        self.songs = songs
-        self.playlists = playlists
-    }
-}
-
-// MARK: - 匹配与冲突
+// MARK: - 匹配
 
 enum SongMatchResult {
     case exactMatch(Song)
@@ -89,36 +55,63 @@ enum SongMatchResult {
     case noMatch
 }
 
-enum SongConflictResolution {
-    case replace
-    case skip
-    case saveAsCopy
+// MARK: - 分享会话
+
+struct ShareSessionInfo: Codable {
+    let deviceName: String
+    let sessionToken: String
+    let songCount: Int
+    let playlistCount: Int
+    let totalSize: Int64
 }
 
-enum PlaylistConflictResolution {
-    case replace
-    case merge
-    case createCopy
+struct ShareSongSummary: Codable, Identifiable {
+    let index: Int
+    let title: String
+    let artist: String
+    let album: String
+    let duration: TimeInterval
+    let fileSize: Int64
+    let hasCover: Bool
+    let hasLyrics: Bool
+
+    var id: Int { index }
 }
 
-struct SongConflict: Identifiable {
-    let id = UUID()
-    let incoming: SongExportData
-    let existing: Song
-    var resolution: SongConflictResolution?
+struct SharePlaylistSummary: Codable, Identifiable {
+    let index: Int
+    let name: String
+    let description: String?
+    let groupName: String?
+    let songCount: Int
+
+    var id: Int { index }
 }
 
-struct PlaylistConflict: Identifiable {
-    let id = UUID()
-    let incoming: PlaylistExportData
-    let existing: Playlist
-    var resolution: PlaylistConflictResolution?
+// MARK: - 分享分析与结果
+
+struct ShareAnalysis {
+    let sessionInfo: ShareSessionInfo
+    let songs: [ShareSongSummary]
+    let playlists: [SharePlaylistSummary]
+    let newSongs: [ShareSongSummary]
+    let skippedSongs: [ShareSongSummary]
+    let playlistLocalSongs: [String: Int]
+    let estimatedDownloadSize: Int64
 }
 
-// MARK: - 进度与结果
+struct ShareTransferResult {
+    let songsReceived: Int
+    let songsSkipped: Int
+    let playlistsCreated: Int
+    let localSongsLinked: Int
+    let failedCount: Int
+}
 
-struct SyncProgress {
-    let phase: SyncPhase
+// MARK: - 分享进度
+
+struct ShareProgress {
+    let phase: SharePhase
     let current: Int
     let total: Int
     let currentFileName: String?
@@ -129,58 +122,20 @@ struct SyncProgress {
     }
 }
 
-enum SyncPhase {
+enum SharePhase {
     case preparing
-    case exporting
     case transferring
     case importing
-    case matching
     case completed
     case failed(String)
-}
 
-struct SyncImportResult {
-    let songsImported: Int
-    let songsSkipped: Int
-    let songsFailed: Int
-    let playlistsImported: Int
-    let playlistsSkipped: Int
-    let missingSongsCount: Int
-}
-
-struct SyncAnalysisResult {
-    let manifest: TuneHavenManifest
-    let extractedDir: URL
-    let songConflicts: [SongConflict]
-    let playlistConflicts: [PlaylistConflict]
-    let newSongsCount: Int
-    let newPlaylistsCount: Int
-    let estimatedImportSize: Int64
-}
-
-// MARK: - 缺失歌曲引用
-
-struct MissingSongReference: Codable, Identifiable, Hashable {
-    let id: UUID
-    let title: String
-    let artist: String
-    let album: String
-    let duration: TimeInterval
-    let playlistId: UUID
-
-    init(
-        id: UUID = UUID(),
-        title: String,
-        artist: String,
-        album: String,
-        duration: TimeInterval,
-        playlistId: UUID
-    ) {
-        self.id = id
-        self.title = title
-        self.artist = artist
-        self.album = album
-        self.duration = duration
-        self.playlistId = playlistId
+    var label: String {
+        switch self {
+        case .preparing: return "准备中..."
+        case .transferring: return "传输中..."
+        case .importing: return "导入中..."
+        case .completed: return "完成"
+        case .failed(let msg): return "失败: \(msg)"
+        }
     }
 }
