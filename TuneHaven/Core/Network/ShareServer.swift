@@ -17,6 +17,13 @@ final class ShareServer: ObservableObject, ShareServerProviding {
 
     var dataSource: ShareDataSource?
     var onAudioFileServed: ((Int) -> Void)?
+    var onDeviceConnected: ((String) -> Void)?
+    var onTransferCompleted: ((ShareTransferResult) -> Void)?
+    var onReceiverDisconnected: (() -> Void)?
+
+    private var hasReceivedComplete = false
+    private var inactivityTimer: Timer?
+    private let inactivityTimeout: TimeInterval = 30
 
     var qrCodeContent: String? {
         guard let addr = serverAddress else { return nil }
@@ -85,6 +92,8 @@ final class ShareServer: ObservableObject, ShareServerProviding {
 
     func stop() {
         log.info("[ShareServer] 停止")
+        inactivityTimer?.invalidate()
+        inactivityTimer = nil
         listener?.cancel()
         listener = nil
         activeConnection?.cancel()
@@ -92,6 +101,7 @@ final class ShareServer: ObservableObject, ShareServerProviding {
         isRunning = false
         serverAddress = nil
         connectedDevice = nil
+        hasReceivedComplete = false
     }
 
     // MARK: - Connection
@@ -128,18 +138,34 @@ final class ShareServer: ObservableObject, ShareServerProviding {
                         if !buffer.isEmpty { self.routeRequest(buffer, connection: connection) }
                         return
                     }
-                    if buffer.range(of: Data("\r\n\r\n".utf8)) != nil {
-                        self.routeRequest(buffer, connection: connection)
-                    } else if buffer.count > 16_384 {
-                        self.sendResponse(connection: connection, status: 400, body: Data(#"{"error":"请求头过大"}"#.utf8))
-                    } else {
+                    guard let headerEnd = buffer.range(of: Data("\r\n\r\n".utf8)) else {
+                        if buffer.count > 16_384 {
+                            self.sendResponse(connection: connection, status: 400, body: Data(#"{"error":"请求头过大"}"#.utf8))
+                        } else {
+                            readLoop()
+                        }
+                        return
+                    }
+                    let contentLength = self.parseContentLength(from: buffer[buffer.startIndex..<headerEnd.lowerBound])
+                    let bodyReceived = buffer.endIndex - headerEnd.upperBound
+                    if bodyReceived < contentLength {
                         readLoop()
+                    } else {
+                        self.routeRequest(buffer, connection: connection)
                     }
                 }
             }
         }
 
         readLoop()
+    }
+
+    private func parseContentLength(from headerData: Data) -> Int {
+        guard let headerStr = String(data: headerData, encoding: .utf8) else { return 0 }
+        let lines = headerStr.components(separatedBy: "\r\n")
+        guard let value = extractHeader(from: lines, key: "Content-Length"),
+              let length = Int(value), length > 0 else { return 0 }
+        return length
     }
 
     // MARK: - Routing
@@ -171,6 +197,14 @@ final class ShareServer: ObservableObject, ShareServerProviding {
             .replacingOccurrences(of: "Bearer ", with: "")
         if token != sessionToken {
             sendResponse(connection: connection, status: 401, body: Data(#"{"error":"未授权"}"#.utf8))
+            return
+        }
+
+        resetInactivityTimer()
+
+        if method == "POST" && path == "/api/share/complete" {
+            let bodyData = data[headerEnd.upperBound...]
+            handleComplete(body: Data(bodyData), connection: connection)
             return
         }
 
@@ -208,7 +242,9 @@ final class ShareServer: ObservableObject, ShareServerProviding {
     private func handleInfo(connection: NWConnection) {
         if connectedDevice == nil, let endpoint = activeConnection?.endpoint,
            case let .hostPort(host, _) = endpoint {
-            connectedDevice = "\(host)"
+            let deviceId = "\(host)"
+            connectedDevice = deviceId
+            onDeviceConnected?(deviceId)
         }
         guard let info = dataSource?.sessionInfo() else {
             sendResponse(connection: connection, status: 500, body: Data(#"{"error":"数据源未就绪"}"#.utf8))
@@ -254,6 +290,19 @@ final class ShareServer: ObservableObject, ShareServerProviding {
             return
         }
         sendJSON(connection: connection, value: meta)
+    }
+
+    private func handleComplete(body: Data, connection: NWConnection) {
+        guard let result = try? JSONDecoder().decode(ShareTransferResult.self, from: body) else {
+            sendResponse(connection: connection, status: 400, body: Data(#"{"error":"无法解析完成通知"}"#.utf8))
+            return
+        }
+        hasReceivedComplete = true
+        inactivityTimer?.invalidate()
+        inactivityTimer = nil
+        log.info("[ShareServer] 收到接收端完成通知: 新增=\(result.songsReceived) 跳过=\(result.songsSkipped)")
+        onTransferCompleted?(result)
+        sendResponse(connection: connection, status: 200, body: Data(#"{"ok":true}"#.utf8))
     }
 
     private enum FileType { case audio, cover, lyrics }
@@ -419,6 +468,20 @@ final class ShareServer: ObservableObject, ShareServerProviding {
         case "png": return "image/png"
         case "lrc", "txt": return "text/plain; charset=utf-8"
         default: return "application/octet-stream"
+        }
+    }
+
+    // MARK: - Inactivity Timeout
+
+    private func resetInactivityTimer() {
+        guard connectedDevice != nil, !hasReceivedComplete else { return }
+        inactivityTimer?.invalidate()
+        inactivityTimer = Timer.scheduledTimer(withTimeInterval: inactivityTimeout, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, !self.hasReceivedComplete, self.connectedDevice != nil else { return }
+                self.log.info("[ShareServer] 接收端无活动超时 (\(self.inactivityTimeout)s)")
+                self.onReceiverDisconnected?()
+            }
         }
     }
 

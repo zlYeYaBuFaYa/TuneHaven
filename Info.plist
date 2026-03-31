@@ -4,6 +4,8 @@
 <dict>
 	<key>NSCameraUsageDescription</key>
 	<string>需要使用相机扫描二维码以接收分享的音乐</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>需要访问本地网络以在设备间传输音乐和歌单</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

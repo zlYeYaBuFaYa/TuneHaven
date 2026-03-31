@@ -109,6 +109,21 @@ final class ShareClient: ShareClientProviding {
         )
     }
 
+    func notifyComplete(result: ShareTransferResult) async throws {
+        let (baseURL, token) = try credentials()
+        let url = try absoluteURL(path: "/api/share/complete", baseURL: baseURL)
+        var request = authorizedRequest(url: url, token: token)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(result)
+        do {
+            let (_, response) = try await urlSession.data(for: request)
+            try validateHTTP(response: response, path: "/api/share/complete")
+        } catch {
+            AppLogger.shared.error(error, context: "[ShareClient] notifyComplete")
+        }
+    }
+
     func disconnect() {
         lock.lock()
         storedBaseURL = nil
@@ -174,8 +189,31 @@ final class ShareClient: ShareClientProviding {
         }
     }
 
+    private var localNetworkSettingsPath: String {
+        if #available(iOS 18, *) {
+            return "设置 → App → TuneHaven → 本地网络"
+        } else {
+            return "设置 → TuneHaven → 本地网络"
+        }
+    }
+
     private func mapURLError(_ error: Error) -> AppError {
-        AppError.fileSystemError(error.localizedDescription)
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain {
+            switch nsError.code {
+            case NSURLErrorNotConnectedToInternet, NSURLErrorCannotConnectToHost, NSURLErrorNetworkConnectionLost:
+                if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError,
+                   underlying.domain == "kCFErrorDomainCFNetwork" || underlying.localizedDescription.contains("local network") {
+                    return AppError.fileSystemError("无法连接到发送端设备，请确认已在「\(localNetworkSettingsPath)」中允许访问，并确保两台设备在同一 WiFi 下")
+                }
+                return AppError.fileSystemError("无法连接到发送端设备，请确保两台设备在同一 WiFi 网络下，并在「\(localNetworkSettingsPath)」中检查权限是否已开启")
+            case NSURLErrorTimedOut:
+                return AppError.fileSystemError("连接超时，请确保两台设备在同一 WiFi 网络下")
+            default:
+                break
+            }
+        }
+        return AppError.fileSystemError(error.localizedDescription)
     }
 
     private func performDownload(

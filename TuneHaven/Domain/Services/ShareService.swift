@@ -83,6 +83,9 @@ final class ShareService: ObservableObject, ShareDataSource {
         log.info("[Share] 停止发送")
         server?.stop()
         server?.onAudioFileServed = nil
+        server?.onDeviceConnected = nil
+        server?.onTransferCompleted = nil
+        server?.onReceiverDisconnected = nil
         server = nil
         isSending = false
         sendProgress = nil
@@ -204,9 +207,14 @@ final class ShareService: ObservableObject, ShareDataSource {
 
             do {
                 let audioURL = try await client.downloadAudio(at: song.index, to: tempDir) { _ in }
-                let result = await importService.processWiFiFile(
+                let ext = audioURL.pathExtension.isEmpty ? "mp3" : audioURL.pathExtension
+                let result = await importService.processAppleMusicFile(
                     tempURL: audioURL,
-                    originalFilename: audioURL.lastPathComponent
+                    originalFilename: "\(song.title).\(ext)",
+                    title: song.title,
+                    artist: song.artist,
+                    album: song.album,
+                    coverData: nil
                 )
 
                 switch result.status {
@@ -292,6 +300,9 @@ final class ShareService: ObservableObject, ShareDataSource {
         transferResult = result
         receiveProgress = ShareProgress(phase: .completed, current: total, total: total, currentFileName: nil)
         log.info("[Share] 接收完成: 新增=\(songsReceived), 跳过=\(result.songsSkipped), 歌单=\(playlistsCreated), 关联=\(localSongsLinked)")
+
+        try? await client.notifyComplete(result: result)
+
         return result
     }
 
@@ -439,16 +450,47 @@ final class ShareService: ObservableObject, ShareDataSource {
         let server = serverFactory()
         server.dataSource = self
         let totalSongs = sharedSongs.count
+
         server.onAudioFileServed = { [weak self] _ in
             guard let self else { return }
             let served = (self.sendProgress?.current ?? 0) + 1
             self.sendProgress = ShareProgress(
-                phase: served >= totalSongs ? .completed : .transferring,
+                phase: .transferring,
                 current: served,
                 total: totalSongs,
                 currentFileName: "已传输 \(served)/\(totalSongs)"
             )
         }
+
+        server.onDeviceConnected = { [weak self] device in
+            guard let self else { return }
+            self.connectedReceiver = device
+        }
+
+        server.onTransferCompleted = { [weak self] result in
+            guard let self else { return }
+            let totalTransferred = result.songsReceived + result.songsSkipped
+            self.sendProgress = ShareProgress(
+                phase: .completed,
+                current: totalTransferred,
+                total: totalTransferred,
+                currentFileName: "传输完成"
+            )
+        }
+
+        server.onReceiverDisconnected = { [weak self] in
+            guard let self else { return }
+            if case .completed = self.sendProgress?.phase { return }
+            self.log.info("[Share] 接收端断开连接")
+            let served = self.sendProgress?.current ?? 0
+            self.sendProgress = ShareProgress(
+                phase: .failed("接收端已断开"),
+                current: served,
+                total: served,
+                currentFileName: nil
+            )
+        }
+
         try await server.start()
         self.server = server
         isSending = true

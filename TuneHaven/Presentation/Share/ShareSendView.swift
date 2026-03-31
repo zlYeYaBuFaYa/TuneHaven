@@ -103,9 +103,36 @@ struct ShareSendView: View {
         .adaptiveBackground()
     }
 
-    // MARK: - Waiting for Connection
+    // MARK: - Waiting / Transferring / Completed
 
+    private var sendPhaseState: SendPhaseState {
+        guard let phase = shareService.sendProgress?.phase else { return .active }
+        switch phase {
+        case .completed: return .completed
+        case .failed(let msg): return .failed(msg)
+        default: return .active
+        }
+    }
+
+    private enum SendPhaseState {
+        case active
+        case completed
+        case failed(String)
+    }
+
+    @ViewBuilder
     private var waitingView: some View {
+        switch sendPhaseState {
+        case .completed:
+            sendCompletedView
+        case .failed(let message):
+            sendDisconnectedView(message: message)
+        case .active:
+            sendActiveView
+        }
+    }
+
+    private var sendActiveView: some View {
         VStack(spacing: 24) {
             if let qr = qrContent {
                 Text("请用另一台设备的 TuneHaven 扫描此二维码")
@@ -159,6 +186,90 @@ struct ShareSendView: View {
             Spacer()
         }
         .padding(.top, 32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .adaptiveBackground()
+    }
+
+    private var sendCompletedView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 56))
+                .foregroundColor(.green)
+
+            Text("发送完成")
+                .font(.title2.bold())
+                .foregroundColor(palette.textPrimary)
+
+            if let progress = shareService.sendProgress {
+                Text("共处理 \(progress.total) 首歌曲")
+                    .font(.subheadline)
+                    .foregroundColor(palette.textSecondary)
+            }
+
+            Spacer()
+
+            Button {
+                shareService.stopSending()
+                dismiss()
+            } label: {
+                Text("完成")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(palette.primary)
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .adaptiveBackground()
+    }
+
+    private func sendDisconnectedView(message: String) -> some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 56))
+                .foregroundColor(.orange)
+
+            Text("连接已断开")
+                .font(.title2.bold())
+                .foregroundColor(palette.textPrimary)
+
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(palette.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            if let progress = shareService.sendProgress, progress.current > 0 {
+                Text("已传输 \(progress.current) 首歌曲")
+                    .font(.subheadline)
+                    .foregroundColor(palette.textSecondary)
+            }
+
+            Spacer()
+
+            Button {
+                shareService.stopSending()
+                dismiss()
+            } label: {
+                Text("关闭")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(palette.primary)
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .adaptiveBackground()
     }

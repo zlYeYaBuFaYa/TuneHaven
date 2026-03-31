@@ -103,7 +103,7 @@ struct ShareAnalysis {
     var skippedSongs: [ShareSongSummary] { exactMatchSongs + fuzzyMatchSongs }
 }
 
-struct ShareTransferResult {
+struct ShareTransferResult: Codable {
     let songsReceived: Int
     let songsSkipped: Int
     let playlistsCreated: Int
