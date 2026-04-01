@@ -11,7 +11,6 @@ struct AllSongsView: View {
     @Environment(\.themePalette) private var palette
 
     @EnvironmentObject private var playback: PlaybackService
-    @State private var pendingDeleteToken: UndoToken?
     @State private var displaySongs: [Song] = []
 
     var body: some View {
@@ -109,7 +108,9 @@ struct AllSongsView: View {
                             catch { snackbar.show(message: "收藏操作失败") }
                         }
                     },
-                    onDelete: { softDelete(song) },
+                    onDelete: {
+                        SongDeletionHelper.softDelete(song: song, libraryService: libraryService, snackbar: snackbar)
+                    },
                     onAddToPlaylist: { router.present(.addToPlaylist(songIds: [song.id])) },
                     onInsertNext: { _ = playback.queue.insertNext(song) }
                 )
@@ -122,30 +123,4 @@ struct AllSongsView: View {
         .scrollContentBackground(.hidden)
     }
 
-    private func softDelete(_ song: Song) {
-        Task {
-            do {
-                let token = try await libraryService.softDelete(songIds: [song.id])
-                pendingDeleteToken = token
-                snackbar.show(
-                    message: "已删除《\(song.title)》",
-                    actionTitle: "撤销",
-                    action: { undoDelete(token) },
-                    duration: 30
-                )
-            } catch {
-                snackbar.show(message: "删除失败，请重试")
-            }
-        }
-    }
-
-    private func undoDelete(_ token: UndoToken) {
-        Task {
-            do {
-                try await libraryService.undoDelete(token: token)
-            } catch {
-                snackbar.show(message: "撤销删除失败，请重试")
-            }
-        }
-    }
 }

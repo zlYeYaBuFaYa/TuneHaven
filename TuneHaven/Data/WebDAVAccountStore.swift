@@ -1,5 +1,6 @@
 import Foundation
 
+// 账户元数据（URL、用户名）存 UserDefaults，密码存 Keychain 加密保护
 final class WebDAVAccountStore: WebDAVAccountStoring {
     static let shared = WebDAVAccountStore()
     private init() {}
@@ -38,7 +39,7 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
     }
 
     func deleteAccount(id: UUID) {
-        queue.async { [self] in
+        queue.sync {
             var accounts = _loadAccounts()
             accounts.removeAll { $0.id == id }
             do {
@@ -58,7 +59,7 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
     }
 
     func updateLastConnected(accountId: UUID) {
-        queue.async { [self] in
+        queue.sync {
             var accounts = _loadAccounts()
             if let index = accounts.firstIndex(where: { $0.id == accountId }) {
                 accounts[index].lastConnectedAt = Date()

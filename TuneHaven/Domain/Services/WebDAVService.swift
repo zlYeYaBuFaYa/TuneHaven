@@ -110,6 +110,8 @@ final class WebDAVService: ObservableObject {
 
     // MARK: - Download & Import
 
+    private static let maxDownloadConcurrency = 3
+
     func downloadAndImport(
         files: [WebDAVFile],
         onTaskUpdate: @escaping @MainActor (WebDAVDownloadTask) -> Void
@@ -133,48 +135,96 @@ final class WebDAVService: ObservableObject {
                                bytesReceived: 0, totalBytes: file.contentLength, error: nil)
         }
 
+        let tempDir = fileStorage.importTempURL
+        try? fileStorage.createDirectoryIfNeeded(at: tempDir)
+
+        var downloadableIndices: [Int] = []
         for i in 0..<total {
-            if isCancelRequested { break }
-
-            downloadTasks[i].status = .downloading
-            onTaskUpdate(downloadTasks[i])
-            overallProgress = Double(i) / Double(total)
-
-            let file = files[i]
-
-            if file.contentLength > fileStorage.maxFileSizeBytes {
+            if files[i].contentLength > fileStorage.maxFileSizeBytes {
                 downloadTasks[i].status = .skippedOversize
                 oversizeCount += 1
                 onTaskUpdate(downloadTasks[i])
-                continue
+            } else {
+                downloadableIndices.append(i)
             }
+        }
 
-            let tempDir = fileStorage.importTempURL
-            try? fileStorage.createDirectoryIfNeeded(at: tempDir)
-            let destURL = tempDir.appendingPathComponent(file.fileName)
+        for i in downloadableIndices {
+            downloadTasks[i].status = .downloading
+            onTaskUpdate(downloadTasks[i])
+        }
 
-            do {
-                _ = try await client.downloadFile(
-                    remotePath: file.href,
-                    to: destURL
-                ) { [weak self] received, fileTotal in
-                    Task { @MainActor [weak self] in
-                        guard let self, i < self.downloadTasks.count else { return }
-                        self.downloadTasks[i].bytesReceived = received
-                        self.downloadTasks[i].totalBytes = fileTotal > 0 ? fileTotal : file.contentLength
+        var nextPos = 0
+        var downloadResults: [(Int, Result<URL, Error>)] = []
+
+        await withTaskGroup(of: (Int, Result<URL, Error>).self) { group in
+            for _ in 0..<min(Self.maxDownloadConcurrency, downloadableIndices.count) {
+                guard nextPos < downloadableIndices.count else { break }
+                let i = downloadableIndices[nextPos]
+                nextPos += 1
+                let file = files[i]
+                let destURL = tempDir.appendingPathComponent(file.fileName)
+                group.addTask { [weak self] in
+                    do {
+                        _ = try await client.downloadFile(
+                            remotePath: file.href,
+                            to: destURL
+                        ) { [weak self] received, fileTotal in
+                            Task { @MainActor [weak self] in
+                                guard let self, i < self.downloadTasks.count else { return }
+                                self.downloadTasks[i].bytesReceived = received
+                                self.downloadTasks[i].totalBytes = fileTotal > 0 ? fileTotal : file.contentLength
+                            }
+                        }
+                        return (i, .success(destURL))
+                    } catch {
+                        return (i, .failure(error))
                     }
                 }
-                downloadTasks[i].status = .completed(localURL: destURL)
-                downloadedURLs.append(destURL)
-                onTaskUpdate(downloadTasks[i])
-            } catch {
+            }
+
+            for await result in group {
+                downloadResults.append(result)
+                if nextPos < downloadableIndices.count {
+                    let ni = downloadableIndices[nextPos]
+                    nextPos += 1
+                    let nextFile = files[ni]
+                    let destURL = tempDir.appendingPathComponent(nextFile.fileName)
+                    group.addTask { [weak self] in
+                        do {
+                            _ = try await client.downloadFile(
+                                remotePath: nextFile.href,
+                                to: destURL
+                            ) { [weak self] received, fileTotal in
+                                Task { @MainActor [weak self] in
+                                    guard let self, ni < self.downloadTasks.count else { return }
+                                    self.downloadTasks[ni].bytesReceived = received
+                                    self.downloadTasks[ni].totalBytes = fileTotal > 0 ? fileTotal : nextFile.contentLength
+                                }
+                            }
+                            return (ni, .success(destURL))
+                        } catch {
+                            return (ni, .failure(error))
+                        }
+                    }
+                }
+            }
+        }
+
+        for (i, result) in downloadResults {
+            switch result {
+            case .success(let url):
+                downloadTasks[i].status = .completed(localURL: url)
+                downloadedURLs.append(url)
+            case .failure(let error):
                 downloadTasks[i].status = .failed
                 downloadTasks[i].error = error.localizedDescription
                 failedCount += 1
-                errors.append("\(file.fileName): \(error.localizedDescription)")
-                onTaskUpdate(downloadTasks[i])
-                log.error(error, context: "WebDAV 下载失败: \(file.fileName)")
+                errors.append("\(files[i].fileName): \(error.localizedDescription)")
+                log.error(error, context: "WebDAV 下载失败: \(files[i].fileName)")
             }
+            onTaskUpdate(downloadTasks[i])
+            overallProgress = Double(downloadedURLs.count + failedCount + oversizeCount) / Double(total)
         }
 
         overallProgress = 1.0

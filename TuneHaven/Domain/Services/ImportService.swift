@@ -156,8 +156,14 @@ final class ImportService: ObservableObject, FileImporting {
 
         let songId = UUID()
         var coverImagePath: String?
+        var coverFailed = false
         if let coverData = finalCoverData {
-            coverImagePath = try? await coverProcessor.processSongCover(data: coverData, songId: songId)
+            do {
+                coverImagePath = try await coverProcessor.processSongCover(data: coverData, songId: songId)
+            } catch {
+                log.error(error, context: "[Import] 封面处理失败: \(fileName)")
+                coverFailed = true
+            }
         }
 
         let song = Song(
@@ -192,7 +198,7 @@ final class ImportService: ObservableObject, FileImporting {
         do {
             try await songRepo.insert(song: song)
             log.info("[Import] 入库成功: \(song.title) id=\(song.id)")
-            return SingleImportResult(fileName: fileName, status: isIncomplete ? .successIncompleteMetadata : .success, song: song, errorMessage: nil)
+            return SingleImportResult(fileName: fileName, status: (isIncomplete || coverFailed) ? .successIncompleteMetadata : .success, song: song, errorMessage: nil)
         } catch {
             log.error(error, context: "[Import] 歌曲入库失败: \(fileName)")
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: error.localizedDescription)

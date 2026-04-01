@@ -99,7 +99,7 @@ final class AppleMusicImportViewModel: ObservableObject {
 
             if let exportedURL = await exportMediaItem(item, assetURL: assetURL) {
                 lastExportedURL = exportedURL
-                let artworkData = item.artwork?.image(at: CGSize(width: 600, height: 600))?.jpegData(compressionQuality: 1.0)
+                let artworkData = item.artwork?.image(at: CGSize(width: 400, height: 400))?.jpegData(compressionQuality: 0.8)
                 let result = await importService.processAppleMusicFile(
                     tempURL: exportedURL,
                     originalFilename: exportedURL.lastPathComponent,

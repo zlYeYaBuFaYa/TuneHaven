@@ -1,6 +1,6 @@
 import Foundation
 
-protocol FileStorageProviding: AnyObject {
+protocol FileStorageProviding: AnyObject, Sendable {
     var maxFileSizeBytes: Int64 { get }
     var supportedExtensions: Set<String> { get }
     var importTempURL: URL { get }

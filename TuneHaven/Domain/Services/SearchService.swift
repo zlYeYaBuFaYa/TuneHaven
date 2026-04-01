@@ -32,6 +32,8 @@ final class SearchService: ObservableObject {
                 $0.album.lowercased().contains(q)
             }
 
+            // 设计意图：按 Tab 缩小搜索范围——artist Tab 仅匹配 artist 字段，
+            // album Tab 仅匹配 album 字段，all Tab 搜索全部字段
             let filteredSongs: [Song]
             switch tab {
             case .artist:

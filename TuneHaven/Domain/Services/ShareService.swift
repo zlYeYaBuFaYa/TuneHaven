@@ -26,19 +26,21 @@ final class ShareService: ObservableObject, ShareDataSource {
     private let serverFactory: () -> ShareServerProviding
     private let clientFactory: () -> ShareClientProviding
 
+    private let backgroundTask: BackgroundTaskProviding
     private var server: ShareServerProviding?
     private var client: ShareClientProviding?
     private var sharedSongs: [Song] = []
     private var sharedPlaylists: [PlaylistDetail] = []
     private var sharedSongIdToIndex: [UUID: Int] = [:]
     private var songIndex: [String: [Song]] = [:]
-    private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+    private var backgroundTaskID: UInt = 0
 
     init(songRepo: SongRepository,
          playlistService: PlaylistService,
          groupService: PlaylistGroupService,
          importService: ImportService,
          fileStorage: FileStorageProviding,
+         backgroundTask: BackgroundTaskProviding,
          serverFactory: @escaping () -> ShareServerProviding,
          clientFactory: @escaping () -> ShareClientProviding) {
         self.songRepo = songRepo
@@ -46,6 +48,7 @@ final class ShareService: ObservableObject, ShareDataSource {
         self.groupService = groupService
         self.importService = importService
         self.fileStorage = fileStorage
+        self.backgroundTask = backgroundTask
         self.serverFactory = serverFactory
         self.clientFactory = clientFactory
     }
@@ -90,9 +93,7 @@ final class ShareService: ObservableObject, ShareDataSource {
         isSending = false
         sendProgress = nil
         connectedReceiver = nil
-        sharedSongs = []
-        sharedPlaylists = []
-        sharedSongIdToIndex = [:]
+        clearShareData()
     }
 
     // MARK: - 接收端 API
@@ -153,7 +154,8 @@ final class ShareService: ObservableObject, ShareDataSource {
         let downloadSize = newSongs.reduce(Int64(0)) { $0 + $1.fileSize }
 
         let availableBytes = availableDiskSpace()
-        if downloadSize > availableBytes {
+        let diskInsufficient = downloadSize > availableBytes
+        if diskInsufficient {
             log.info("[Share] 磁盘空间不足: 需要 \(downloadSize), 可用 \(availableBytes)")
         }
 
@@ -165,7 +167,8 @@ final class ShareService: ObservableObject, ShareDataSource {
             exactMatchSongs: exactMatchSongs,
             fuzzyMatchSongs: fuzzyMatchSongs,
             playlistLocalSongs: playlistLocalSongs,
-            estimatedDownloadSize: downloadSize
+            estimatedDownloadSize: downloadSize,
+            insufficientDiskSpace: diskInsufficient
         )
         analysis = result
         receiveProgress = nil
@@ -222,6 +225,7 @@ final class ShareService: ObservableObject, ShareDataSource {
                     songsReceived += 1
                     if let importedSong = result.song {
                         importedSongMap[song.index] = importedSong.id
+                        addToSongIndex(importedSong)
                         await importCover(client: client, song: song, importedSong: importedSong, tempDir: tempDir)
                         await importLyrics(client: client, song: song, importedSong: importedSong, tempDir: tempDir)
                     }
@@ -238,9 +242,6 @@ final class ShareService: ObservableObject, ShareDataSource {
                 failedCount += 1
             }
         }
-
-        // 新歌曲已导入，重建索引以便歌单关联阶段能匹配到刚导入的歌曲
-        await buildSongIndex()
 
         let playlists = analysis.playlists
         for (i, playlist) in playlists.enumerated() {
@@ -314,6 +315,7 @@ final class ShareService: ObservableObject, ShareDataSource {
         receiveProgress = nil
         analysis = nil
         transferResult = nil
+        clearShareData()
         endBackgroundTask()
     }
 
@@ -414,11 +416,29 @@ final class ShareService: ObservableObject, ShareDataSource {
         sharedSongIdToIndex = Dictionary(uniqueKeysWithValues: sharedSongs.enumerated().map { ($1.id, $0) })
     }
 
+    private func clearShareData() {
+        sharedSongs = []
+        sharedPlaylists = []
+        sharedSongIdToIndex = [:]
+        songIndex = [:]
+    }
+
     // MARK: - 歌曲匹配
 
     private func buildSongIndex() async {
-        let allSongs = await songRepo.fetchAll(sortBy: .title, ascending: true)
+        let allSongs: [Song]
+        do {
+            allSongs = try await songRepo.fetchAll(sortBy: .title, ascending: true)
+        } catch {
+            log.error(error, context: "构建歌曲索引失败")
+            allSongs = []
+        }
         songIndex = Dictionary(grouping: allSongs) { Self.normalizedKey($0.title, $0.artist) }
+    }
+
+    private func addToSongIndex(_ song: Song) {
+        let key = Self.normalizedKey(song.title, song.artist)
+        songIndex[key, default: []].append(song)
     }
 
     private static func normalizedKey(_ title: String, _ artist: String) -> String {
@@ -567,14 +587,16 @@ final class ShareService: ObservableObject, ShareDataSource {
     }
 
     private func beginBackgroundTask() {
-        backgroundTaskID = UIApplication.shared.beginBackgroundTask { [weak self] in
-            self?.endBackgroundTask()
+        backgroundTaskID = backgroundTask.beginTask { [weak self] in
+            Task { @MainActor in
+                self?.endBackgroundTask()
+            }
         }
     }
 
     private func endBackgroundTask() {
-        guard backgroundTaskID != .invalid else { return }
-        UIApplication.shared.endBackgroundTask(backgroundTaskID)
-        backgroundTaskID = .invalid
+        guard backgroundTaskID != 0 else { return }
+        backgroundTask.endTask(backgroundTaskID)
+        backgroundTaskID = 0
     }
 }

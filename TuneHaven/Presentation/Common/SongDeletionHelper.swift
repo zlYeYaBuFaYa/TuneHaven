@@ -21,7 +21,8 @@ enum SongDeletionHelper {
                                 snackbar.show(message: "撤销删除失败，请重试")
                             }
                         }
-                    }
+                    },
+                    duration: 30
                 )
             } catch {
                 snackbar.show(message: "删除失败，请重试")

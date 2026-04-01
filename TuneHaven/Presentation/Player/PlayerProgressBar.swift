@@ -5,7 +5,7 @@ struct PlayerProgressBar: View {
     let barHeight: CGFloat
     let touchHeight: CGFloat
     let timeFont: Font
-    let timeColor: Color
+    let timeColor: Color?
 
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
@@ -20,11 +20,11 @@ struct PlayerProgressBar: View {
         self.barHeight = barHeight
         self.touchHeight = touchHeight
         self.timeFont = timeFont
-        self.timeColor = timeColor ?? .clear
+        self.timeColor = timeColor
     }
 
     var body: some View {
-        let resolvedTimeColor = timeColor == .clear ? palette.textSecondary : timeColor
+        let resolvedTimeColor = timeColor ?? palette.textSecondary
 
         VStack(spacing: barHeight >= 5 ? 6 : 4) {
             GeometryReader { geo in

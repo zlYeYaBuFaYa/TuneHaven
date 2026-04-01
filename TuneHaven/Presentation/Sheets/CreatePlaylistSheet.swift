@@ -49,6 +49,7 @@ struct CreatePlaylistSheet: View {
         Task {
             do {
                 _ = try await playlistService.createPlaylist(name: name, description: description.isEmpty ? nil : description)
+                try? await Task.sleep(nanoseconds: 300_000_000)
                 dismiss()
             } catch {
                 AppLogger.shared.error(error, context: "创建歌单失败")

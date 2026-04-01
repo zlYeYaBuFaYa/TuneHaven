@@ -1,6 +1,9 @@
 import SwiftUI
 import UIKit
 
+// ⚠️ 技术债务：依赖 UIKit responder chain 内部实现遍历视图层级，
+// 未来 iOS 版本可能导致行为变化，需关注兼容性
+
 /// 通过 UIKit responder chain 找到父级 UINavigationController，
 /// 设置其 view.backgroundColor，防止导航转场时露出系统默认黑色背景。
 struct NavigationBackgroundFixer: UIViewRepresentable {

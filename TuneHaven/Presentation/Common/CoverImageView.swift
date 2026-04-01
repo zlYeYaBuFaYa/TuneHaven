@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 struct CoverImageView: View {
@@ -34,9 +35,11 @@ struct CoverImageView: View {
             }.value
             cachedImage = loaded
         }
-        .onReceive(NotificationCenter.default.publisher(for: .imageCacheDidUpdate)) { note in
-            guard let updatedKey = note.userInfo?["key"] as? String,
-                  updatedKey == path else { return }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .imageCacheDidUpdate)
+                .compactMap { $0.userInfo?["key"] as? String }
+                .filter { $0 == path }
+        ) { _ in
             refreshToken = UUID()
         }
     }

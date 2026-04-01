@@ -11,6 +11,7 @@ struct SearchResultView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playback: PlaybackService
     @Environment(\.themePalette) private var palette
+    @AppStorage(AppStorageKey.songSortOption) private var songSortOptionRaw: Int = SongSortOption.title.rawValue
     @State private var showAllSongs = false
     @State private var showAllArtists = false
     @State private var showAllAlbums = false
@@ -137,7 +138,8 @@ struct SearchResultView: View {
         case .album:
             return .album(name: song.album, artist: song.artist)
         case .all:
-            return .allSongs(sortBy: .title)
+            let sortBy = SongSortOption(rawValue: songSortOptionRaw) ?? .title
+            return .allSongs(sortBy: sortBy)
         }
     }
 }

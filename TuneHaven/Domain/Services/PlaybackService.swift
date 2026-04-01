@@ -26,6 +26,7 @@ final class PlaybackService: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var currentCoverPath: String?
     private var consecutivePlayNextFailures = 0
+    private var loadTask: Task<Void, Never>?
     private static let maxConsecutiveFailures = 5
 
     init(playlistRepo: PlaylistRepository,
@@ -81,7 +82,10 @@ final class PlaybackService: ObservableObject {
                 isPlaying = true
                 return
             }
+            // .idle / .error / .loading → fall through to reload
         }
+
+        loadTask?.cancel()
 
         if case .queue = context {
             await loadAndPlay(song: song)
@@ -95,6 +99,8 @@ final class PlaybackService: ObservableObject {
     func prepare(song: Song, in context: PlayContext) async {
         if song.id == currentSong?.id { return }
 
+        loadTask?.cancel()
+
         if case .queue = context {
             await loadAndPlay(song: song, autoPlay: false)
             return
@@ -106,7 +112,7 @@ final class PlaybackService: ObservableObject {
 
     func togglePlayPause() {
         if let song = currentSong, case .idle = engine.state {
-            Task { await loadAndPlay(song: song) }
+            startLoadAndPlay(song: song)
             return
         }
         engine.togglePlayPause()
@@ -121,7 +127,7 @@ final class PlaybackService: ObservableObject {
         }
         log.debug("播放下一首: \(nextItem.song.title)")
         queueService.advanceToCurrent(nextItem)
-        Task { await loadAndPlay(song: nextItem.song) }
+        startLoadAndPlay(song: nextItem.song)
     }
 
     func playPrevious() {
@@ -133,7 +139,7 @@ final class PlaybackService: ObservableObject {
         }
         guard let prevItem = queueService.previousSong() else { return }
         queueService.advanceToCurrent(prevItem)
-        Task { await loadAndPlay(song: prevItem.song) }
+        startLoadAndPlay(song: prevItem.song)
     }
 
     func seek(to time: TimeInterval) {
@@ -237,13 +243,25 @@ final class PlaybackService: ObservableObject {
 
     // MARK: - Private
 
+    private func startLoadAndPlay(song: Song, autoPlay: Bool = true) {
+        loadTask?.cancel()
+        loadTask = Task {
+            await loadAndPlay(song: song, autoPlay: autoPlay)
+        }
+    }
+
     private func buildQueue(for song: Song, in context: PlayContext) async {
         var songs: [Song]
         var startIndex = 0
 
         switch context {
         case .allSongs(let sortBy):
-            songs = await songRepo.fetchAll(sortBy: sortBy, ascending: true)
+            do {
+                songs = try await songRepo.fetchAll(sortBy: sortBy, ascending: true)
+            } catch {
+                log.error(error, context: "构建播放队列时获取歌曲失败")
+                songs = []
+            }
             startIndex = songs.firstIndex(where: { $0.id == song.id }) ?? 0
         case .album(let name, let artist):
             let detail = await libraryService.fetchAlbumDetail(album: name, artist: artist)
@@ -293,6 +311,9 @@ final class PlaybackService: ObservableObject {
         audioSession.ensureActive()
 
         await engine.load(url: fileURL)
+
+        guard !Task.isCancelled, currentSong?.id == song.id else { return }
+
         applySpeedForSong(song)
 
         if autoPlay {
@@ -333,6 +354,8 @@ final class PlaybackService: ObservableObject {
             self?.objectWillChange.send()
         }.store(in: &cancellables)
 
+        // iOS 16.4: sink 闭包为 @Sendable，需 Task { @MainActor } 跨隔离域访问 self；
+        // iOS 17+ 可改用 MainActor.assumeIsolated
         engine.statePublisher.sink { [weak self] state in
             Task { @MainActor [weak self] in
                 guard let self else { return }

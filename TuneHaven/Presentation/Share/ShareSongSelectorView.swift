@@ -8,6 +8,7 @@ struct ShareSongSelectorView: View {
 
     @State private var selectedIds: Set<UUID> = []
     @State private var searchText = ""
+    @State private var filteredSongs: [Song] = []
     @State private var errorMessage: String?
     @State private var showErrorAlert = false
 
@@ -17,15 +18,6 @@ struct ShareSongSelectorView: View {
         f.countStyle = .file
         return f
     }()
-
-    private var filteredSongs: [Song] {
-        let base = libraryService.songs
-        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !q.isEmpty else { return base }
-        return base.filter {
-            $0.title.lowercased().contains(q) || $0.artist.lowercased().contains(q)
-        }
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -94,7 +86,26 @@ struct ShareSongSelectorView: View {
         }
         .task {
             await libraryService.loadSongs()
+            await updateFilteredSongsAsync()
         }
+        .onChange(of: searchText) { _ in
+            Task { await updateFilteredSongsAsync() }
+        }
+        .onChange(of: libraryService.songs) { _ in
+            Task { await updateFilteredSongsAsync() }
+        }
+    }
+
+    private func updateFilteredSongsAsync() async {
+        let base = libraryService.songs
+        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let result: [Song] = await Task.detached(priority: .userInitiated) {
+            guard !q.isEmpty else { return base }
+            return base.filter {
+                $0.title.lowercased().contains(q) || $0.artist.lowercased().contains(q)
+            }
+        }.value
+        await MainActor.run { filteredSongs = result }
     }
 
     private var bottomBar: some View {

@@ -18,6 +18,7 @@ struct BatchAddSongsView: View {
     @StateObject private var searchDebouncer = SearchDebouncer()
     @State private var filteredSongs: [Song] = []
     @State private var groupedByArtist: [(String, [Song])] = []
+    @State private var recomputeFilteredToken = 0
 
     var body: some View {
         NavigationStack {
@@ -80,21 +81,31 @@ struct BatchAddSongsView: View {
     }
 
     private func recomputeFiltered(query: String) {
-        let available = allSongs.filter { !existingSongIds.contains($0.id) }
-        let filtered: [Song]
-        if query.isEmpty {
-            filtered = available
-        } else {
-            let keyword = query.lowercased()
-            filtered = available.filter {
-                $0.title.lowercased().contains(keyword) ||
-                $0.artist.lowercased().contains(keyword) ||
-                $0.album.lowercased().contains(keyword)
+        recomputeFilteredToken += 1
+        let token = recomputeFilteredToken
+        let songs = allSongs
+        let excluded = existingSongIds
+        Task.detached {
+            let available = songs.filter { !excluded.contains($0.id) }
+            let filtered: [Song]
+            if query.isEmpty {
+                filtered = available
+            } else {
+                let keyword = query.lowercased()
+                filtered = available.filter {
+                    $0.title.lowercased().contains(keyword) ||
+                    $0.artist.lowercased().contains(keyword) ||
+                    $0.album.lowercased().contains(keyword)
+                }
+            }
+            let grouped = Dictionary(grouping: filtered) { $0.artist }
+            let sorted = grouped.sorted { $0.key < $1.key }
+            await MainActor.run {
+                guard token == recomputeFilteredToken else { return }
+                filteredSongs = filtered
+                groupedByArtist = sorted
             }
         }
-        filteredSongs = filtered
-        let grouped = Dictionary(grouping: filtered) { $0.artist }
-        groupedByArtist = grouped.sorted { $0.key < $1.key }
     }
 
     private var fixedHeader: some View {

@@ -21,7 +21,12 @@ final class MusicLibraryService: ObservableObject {
     func loadSongs(sortBy: SongSortOption = .title, ascending: Bool = true) async {
         log.info("加载音乐库，排序: \(sortBy)")
         isLoading = true
-        songs = await songRepo.fetchAll(sortBy: sortBy, ascending: ascending)
+        do {
+            songs = try await songRepo.fetchAll(sortBy: sortBy, ascending: ascending)
+        } catch {
+            log.error(error, context: "加载音乐库失败")
+            songs = []
+        }
         isLoading = false
     }
 
@@ -89,7 +94,12 @@ final class MusicLibraryService: ObservableObject {
     }
 
     func fetchAllSongs(sortBy: SongSortOption = .title, ascending: Bool = true) async -> [Song] {
-        await songRepo.fetchAll(sortBy: sortBy, ascending: ascending)
+        do {
+            return try await songRepo.fetchAll(sortBy: sortBy, ascending: ascending)
+        } catch {
+            log.error(error, context: "获取歌曲列表失败")
+            return []
+        }
     }
 
     func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws {

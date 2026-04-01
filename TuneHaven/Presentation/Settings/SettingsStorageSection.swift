@@ -108,10 +108,6 @@ struct SettingsStorageSection: View {
     }
 
     private func calculateCacheSize() async {
-        let bytes = await libraryService.imageCache.cacheSizeAsync()
-        let mb = Double(bytes) / 1024 / 1024
-        currentCacheSize = mb < 1
-            ? String(format: "%.0f KB", Double(bytes) / 1024)
-            : String(format: "%.1f MB", mb)
+        currentCacheSize = await libraryService.imageCache.formattedCacheSize()
     }
 }

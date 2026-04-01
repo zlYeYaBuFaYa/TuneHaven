@@ -10,6 +10,7 @@ enum SongMapper {
         entity.fileRelativePath = song.fileRelativePath
         entity.fileHash = song.fileHash
         entity.importDate = song.importDate
+        entity.softDeleted = false
         applyCommonFields(entity: entity, from: song)
         return entity
     }
@@ -60,11 +61,11 @@ enum SongMapper {
         )
     }
 
-    static func isValidTrackNumber(_ value: Int16) -> Bool {
+    private static func isValidTrackNumber(_ value: Int16) -> Bool {
         value != int16Nil && value >= 0
     }
 
-    static func isValidYear(_ value: Int16) -> Bool {
+    private static func isValidYear(_ value: Int16) -> Bool {
         value > 0
     }
 
@@ -91,7 +92,6 @@ enum SongMapper {
         entity.isFavorite = song.isFavorite
         entity.favoriteDate = song.favoriteDate
         entity.lastPlayedDate = song.lastPlayedDate
-        entity.softDeleted = false
     }
 
     private static func isValidLyricsSource(_ value: Int16) -> Bool {

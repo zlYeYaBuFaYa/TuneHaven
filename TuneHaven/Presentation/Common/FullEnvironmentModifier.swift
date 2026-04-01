@@ -1,5 +1,6 @@
 import SwiftUI
 
+// TODO: 环境注入集中在一处导致修改面大，后续考虑按功能拆分为多个 ViewModifier
 private struct FullEnvironmentModifier: ViewModifier {
     let themeManager: ThemeManager
     let router: AppRouter

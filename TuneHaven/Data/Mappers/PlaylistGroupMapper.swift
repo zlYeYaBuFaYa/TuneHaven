@@ -8,4 +8,13 @@ enum PlaylistGroupMapper {
               let createdAt = entity.createdAt else { return nil }
         return PlaylistGroup(id: id, name: name, createdAt: createdAt, sortOrder: Int(entity.sortOrder))
     }
+
+    static func toEntity(from group: PlaylistGroup, context: NSManagedObjectContext) -> PlaylistGroupEntity {
+        let entity = PlaylistGroupEntity(context: context)
+        entity.id = group.id
+        entity.name = group.name
+        entity.sortOrder = Int32(group.sortOrder)
+        entity.createdAt = group.createdAt
+        return entity
+    }
 }

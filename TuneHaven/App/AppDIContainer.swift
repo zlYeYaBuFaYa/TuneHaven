@@ -66,6 +66,7 @@ final class AppDIContainer: ObservableObject {
             groupService: groupService,
             importService: importService,
             fileStorage: FileStorageService.shared,
+            backgroundTask: BackgroundTaskProvider(),
             serverFactory: { ShareServer() },
             clientFactory: { ShareClient() }
         )

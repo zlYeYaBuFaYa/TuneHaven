@@ -155,9 +155,15 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
         let playlistIds = playlists.compactMap { $0.id }
         guard !playlistIds.isEmpty else { return [:] }
 
+        let deletedIds = try context.softDeletedSongIds()
+
         let countReq: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "PlaylistSongEntity")
         countReq.resultType = .dictionaryResultType
-        countReq.predicate = NSPredicate(format: "playlistId IN %@", playlistIds as NSArray)
+        if deletedIds.isEmpty {
+            countReq.predicate = NSPredicate(format: "playlistId IN %@", playlistIds as NSArray)
+        } else {
+            countReq.predicate = NSPredicate(format: "playlistId IN %@ AND NOT (songId IN %@)", playlistIds as NSArray, deletedIds as NSArray)
+        }
         let countExpr = NSExpressionDescription()
         countExpr.name = "count"
         countExpr.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "songId")])
@@ -173,4 +179,5 @@ final class CoreDataPlaylistGroupRepository: PlaylistGroupRepository {
         }
         return countMap
     }
+
 }

@@ -114,7 +114,7 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
         try await stack.performBackground { ctx in
             let existRequest = PlaylistSongEntity.fetchRequest()
             existRequest.predicate = NSPredicate(format: "playlistId == %@", playlistId as CVarArg)
-            existRequest.propertiesToFetch = ["songId", "sortOrder"]
+            existRequest.returnsObjectsAsFaults = false
             let existing = try ctx.fetch(existRequest)
             let existingIds = Set(existing.compactMap { $0.songId })
 
@@ -299,7 +299,7 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
         return songIds.compactMap { idToSong[$0] }
     }
 
-    private func computeSongCount(entity: PlaylistEntity, id: UUID, context: NSManagedObjectContext) throws -> Int {
+    private func computeSongCount(entity: PlaylistEntity, id: UUID, context: NSManagedObjectContext, softDeletedIds: [UUID]? = nil) throws -> Int {
         if entity.isSystem {
             let systemType = SystemPlaylistType(rawValue: entity.systemType) ?? .normal
             switch systemType {
@@ -315,8 +315,13 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
                 return 0
             }
         } else {
+            let deletedIds = try softDeletedIds ?? context.softDeletedSongIds()
             let req = PlaylistSongEntity.fetchRequest()
-            req.predicate = NSPredicate(format: "playlistId == %@", id as CVarArg)
+            if deletedIds.isEmpty {
+                req.predicate = NSPredicate(format: "playlistId == %@", id as CVarArg)
+            } else {
+                req.predicate = NSPredicate(format: "playlistId == %@ AND NOT (songId IN %@)", id as CVarArg, deletedIds as NSArray)
+            }
             req.includesSubentities = false
             req.includesPropertyValues = false
             return try context.count(for: req)
@@ -326,8 +331,13 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
     private func batchSongCounts(context: NSManagedObjectContext, playlists: [PlaylistEntity]) throws -> [UUID: Int] {
         var countMap: [UUID: Int] = [:]
 
+        let deletedIds = try context.softDeletedSongIds()
+
         let countReq: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "PlaylistSongEntity")
         countReq.resultType = .dictionaryResultType
+        if !deletedIds.isEmpty {
+            countReq.predicate = NSPredicate(format: "NOT (songId IN %@)", deletedIds as NSArray)
+        }
         let countExpr = NSExpressionDescription()
         countExpr.name = "count"
         countExpr.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "songId")])
@@ -348,23 +358,5 @@ final class CoreDataPlaylistRepository: PlaylistRepository {
 
         return countMap
     }
-}
 
-// MARK: - Shared maxSortOrder utility
-
-extension NSManagedObjectContext {
-    func maxSortOrder(forEntity entityName: String, predicate: NSPredicate? = nil) throws -> Int {
-        let request: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: entityName)
-        request.resultType = .dictionaryResultType
-        request.predicate = predicate
-        let expr = NSExpression(forKeyPath: "sortOrder")
-        let maxExpr = NSExpression(forFunction: "max:", arguments: [expr])
-        let desc = NSExpressionDescription()
-        desc.name = "maxSortOrder"
-        desc.expression = maxExpr
-        desc.expressionResultType = .integer32AttributeType
-        request.propertiesToFetch = [desc]
-        let results = try self.fetch(request)
-        return (results.first?["maxSortOrder"] as? Int) ?? 0
-    }
 }

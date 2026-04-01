@@ -1,11 +1,12 @@
 import Foundation
 
+// TODO: 国际化 — 当前仅支持中文，后续改为 NSLocalizedString
 enum SongDefaults {
     static let unknownArtist = "未知艺术家"
     static let unknownAlbum = "未知专辑"
 }
 
-struct Song: Identifiable, Hashable {
+struct Song: Identifiable, Hashable, Sendable {
     let id: UUID
     var title: String
     var artist: String
@@ -32,7 +33,7 @@ enum LyricsSource: Int16, Codable {
     case manual = 2
 }
 
-struct Metadata: Hashable {
+struct Metadata: Hashable, Sendable {
     let format: String
     let sampleRate: Int?
     let bitRate: Int?

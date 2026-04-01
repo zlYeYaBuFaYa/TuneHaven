@@ -1,7 +1,7 @@
 import Foundation
 import CryptoKit
 
-final class FileStorageService {
+final class FileStorageService: @unchecked Sendable {
     static let shared = FileStorageService()
     private init() {}
     private let log = AppLogger.shared

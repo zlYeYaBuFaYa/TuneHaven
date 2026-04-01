@@ -29,6 +29,8 @@ final class SleepTimerService: ObservableObject {
         let end = Date().addingTimeInterval(TimeInterval(minutes * 60))
         endDate = end
 
+        // iOS 16.4: Timer 闭包为 @Sendable，需 Task { @MainActor } 跨隔离域访问 tick()；
+        // iOS 17+ 可改用 MainActor.assumeIsolated
         let t = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in self?.tick() }
         }

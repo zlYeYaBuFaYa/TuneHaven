@@ -99,6 +99,7 @@ struct ShareAnalysis {
     let fuzzyMatchSongs: [ShareSongSummary]
     let playlistLocalSongs: [String: Int]
     let estimatedDownloadSize: Int64
+    let insufficientDiskSpace: Bool
 
     var skippedSongs: [ShareSongSummary] { exactMatchSongs + fuzzyMatchSongs }
 }

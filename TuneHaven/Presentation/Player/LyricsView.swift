@@ -74,6 +74,10 @@ struct LyricsPageView: View {
         .onChange(of: engine.currentTime) { _ in
             currentLineIndex = computeCurrentLineIndex()
         }
+        .onChange(of: playback.currentSong?.id) { _ in
+            isUserScrolling = false
+            hasPerformedInitialScroll = false
+        }
     }
 
     // MARK: - Gestures

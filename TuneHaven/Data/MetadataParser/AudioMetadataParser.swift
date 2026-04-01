@@ -36,14 +36,17 @@ final class AudioMetadataParser: AudioMetadataParsing {
         coverImageData = commonResult.coverImageData
         if commonResult.isIncomplete { isIncomplete = true }
 
-        let extResult = await parseExtendedMetadata(asset: asset)
+        async let extFuture = parseExtendedMetadata(asset: asset)
+        async let trackFuture = parseAudioTrackInfo(asset: asset)
+        let extResult = await extFuture
+        let trackResult = await trackFuture
+
         trackNumber = extResult.trackNumber ?? trackNumber
         year = extResult.year ?? year
         genre = extResult.genre ?? genre
         encoder = extResult.encoder ?? encoder
         if extResult.isIncomplete { isIncomplete = true }
 
-        let trackResult = await parseAudioTrackInfo(asset: asset)
         sampleRate = trackResult.sampleRate
         bitRate = trackResult.bitRate
         channels = trackResult.channels

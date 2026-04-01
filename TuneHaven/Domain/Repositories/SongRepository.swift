@@ -2,7 +2,7 @@ import Foundation
 
 /// 歌曲仓储协议 — Domain 层抽象，Data 层提供具体实现
 protocol SongRepository: AnyObject {
-    func fetchAll(sortBy: SongSortOption, ascending: Bool) async -> [Song]
+    func fetchAll(sortBy: SongSortOption, ascending: Bool) async throws -> [Song]
     func fetchSong(id: UUID) async -> Song?
     func fetchByHash(_ hash: String) async -> Song?
     func fetchSongs(byIds ids: [UUID]) async -> [Song]

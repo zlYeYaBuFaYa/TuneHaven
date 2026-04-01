@@ -44,38 +44,22 @@ struct RootTabView: View {
             get:  { router.isPlayerPresented },
             set:  { router.isPlayerPresented = $0 }
         )) {
-            PlayerView()
-                .presentationBackground(
-                    LinearGradient(
-                        colors: [themeManager.palette.background, themeManager.palette.surfaceSecondary, themeManager.palette.highlight],
-                        startPoint: .top,
-                        endPoint: .bottom
+            injectPresentedEnvironment(
+                PlayerView()
+                    .presentationBackground(
+                        LinearGradient(
+                            colors: [themeManager.palette.background, themeManager.palette.surfaceSecondary, themeManager.palette.highlight],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
                     )
-                )
-                .withFullEnvironment(
-                    themeManager: themeManager,
-                    router: router,
-                    libraryService: libraryService,
-                    playlistService: playlistService,
-                    snackbar: snackbar,
-                    playback: playback,
-                    engine: engine,
-                    lyricsService: lyricsService
-                )
+            )
         }
         .sheet(item: $router.sheet) { destination in
-            sheetView(for: destination)
-                .presentationBackground(themeManager.palette.elevatedSurface)
-                .withFullEnvironment(
-                    themeManager: themeManager,
-                    router: router,
-                    libraryService: libraryService,
-                    playlistService: playlistService,
-                    snackbar: snackbar,
-                    playback: playback,
-                    engine: engine,
-                    lyricsService: lyricsService
-                )
+            injectPresentedEnvironment(
+                sheetView(for: destination)
+                    .presentationBackground(themeManager.palette.elevatedSurface)
+            )
         }
         .onAppear {
             #if DEBUG
@@ -122,6 +106,20 @@ struct RootTabView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private func injectPresentedEnvironment<V: View>(_ content: V) -> some View {
+        content
+            .withFullEnvironment(
+                themeManager: themeManager,
+                router: router,
+                libraryService: libraryService,
+                playlistService: playlistService,
+                snackbar: snackbar,
+                playback: playback,
+                engine: engine,
+                lyricsService: lyricsService
+            )
     }
 
     // MARK: - Sheet Content

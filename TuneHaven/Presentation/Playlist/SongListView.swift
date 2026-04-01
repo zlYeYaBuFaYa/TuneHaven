@@ -57,7 +57,7 @@ struct SongListView: View {
 
     private func load() async {
         isLoading = true
-        let days = recentPlayRange == 0 ? 0 : recentPlayRange
+        let days = recentPlayRange
         switch context {
         case .favorites:
             songs = await playlistService.fetchFavorites()
@@ -73,7 +73,7 @@ struct SongListView: View {
 
     private func playContext(song: Song) async {
         let ctx: PlayContext
-        let days = recentPlayRange == 0 ? 0 : recentPlayRange
+        let days = recentPlayRange
         switch context {
         case .allSongs: ctx = .allSongs(sortBy: .title)
         case .favorites:
