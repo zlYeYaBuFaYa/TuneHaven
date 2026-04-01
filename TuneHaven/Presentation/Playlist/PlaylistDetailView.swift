@@ -15,6 +15,8 @@ struct PlaylistDetailView: View {
     @State private var showBatchAdd = false
     @State private var isDeleted = false
     @State private var searchText = ""
+    @State private var sortOption: SongSortOption = .title
+    @State private var isAscending: Bool = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,7 +28,9 @@ struct PlaylistDetailView: View {
                     PlaylistContentView(
                         detail: detail,
                         playlistId: playlistId,
-                        searchText: searchText
+                        searchText: searchText,
+                        sortOption: sortOption,
+                        isAscending: isAscending
                     )
                 }
             }
@@ -93,7 +97,49 @@ struct PlaylistDetailView: View {
     }
 
     private var playlistSearchBar: some View {
-        SearchBar(text: $searchText, placeholder: "搜索歌单内歌曲")
+        VStack(spacing: 0) {
+            SearchBar(text: $searchText, placeholder: "搜索歌单内歌曲")
+            if detail != nil {
+                sortToolbar
+            }
+        }
+    }
+
+    private var sortToolbar: some View {
+        HStack {
+            Text("\(detail?.songs.count ?? 0) 首")
+                .font(.caption)
+                .foregroundColor(palette.textTertiary)
+            Spacer()
+            Menu {
+                ForEach(SongSortOption.allCases, id: \.self) { opt in
+                    Button {
+                        if sortOption == opt {
+                            isAscending.toggle()
+                        } else {
+                            sortOption = opt
+                            isAscending = true
+                        }
+                    } label: {
+                        HStack {
+                            Text(opt.displayName)
+                            if sortOption == opt {
+                                Image(systemName: isAscending ? "chevron.up" : "chevron.down")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: isAscending ? "arrow.up" : "arrow.down")
+                    Text(sortOption.displayName)
+                }
+                .font(.caption)
+                .foregroundColor(palette.textSecondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
     }
 }
 
@@ -101,6 +147,8 @@ private struct PlaylistContentView: View {
     let detail: PlaylistDetail
     let playlistId: UUID
     let searchText: String
+    let sortOption: SongSortOption
+    let isAscending: Bool
 
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var libraryService: MusicLibraryService
@@ -113,13 +161,35 @@ private struct PlaylistContentView: View {
         !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private var filteredSongs: [Song] {
-        guard isFiltering else { return detail.songs }
-        let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return detail.songs.filter {
-            $0.title.lowercased().contains(q) ||
-            $0.artist.lowercased().contains(q) ||
-            $0.album.lowercased().contains(q)
+    private var sortedAndFilteredSongs: [Song] {
+        let base: [Song]
+        if isFiltering {
+            let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            base = detail.songs.filter {
+                $0.title.lowercased().contains(q) ||
+                $0.artist.lowercased().contains(q) ||
+                $0.album.lowercased().contains(q)
+            }
+        } else {
+            base = detail.songs
+        }
+        return base.sorted { a, b in
+            let result: Bool
+            switch sortOption {
+            case .title:
+                result = a.title.localizedStandardCompare(b.title) == .orderedAscending
+            case .fileSize:
+                result = a.fileSize < b.fileSize
+            case .importDate:
+                result = a.importDate < b.importDate
+            case .artist:
+                result = a.artist.localizedStandardCompare(b.artist) == .orderedAscending
+            case .album:
+                result = a.album.localizedStandardCompare(b.album) == .orderedAscending
+            case .duration:
+                result = a.duration < b.duration
+            }
+            return isAscending ? result : !result
         }
     }
 
@@ -137,7 +207,7 @@ private struct PlaylistContentView: View {
         }
 
         Section {
-            let songs = isFiltering ? filteredSongs : detail.songs
+            let songs = sortedAndFilteredSongs
             if songs.isEmpty {
                 if isFiltering {
                     VStack(spacing: 12) {

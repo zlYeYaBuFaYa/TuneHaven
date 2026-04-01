@@ -18,6 +18,7 @@ extension EnvironmentValues {
 @MainActor
 final class ThemeManager: ObservableObject {
     @Published private(set) var currentStyle: ThemeStyle
+    @Published private(set) var themeChangeId: UUID = UUID()
 
     @AppStorage(AppStorageKey.themeStyle) private var storedThemeStyle: String = ThemeRegistry.shared.defaultTheme.id
 
@@ -65,6 +66,7 @@ final class ThemeManager: ObservableObject {
     func setTheme(_ style: ThemeStyle) {
         currentStyle = style
         storedThemeStyle = style.id
+        themeChangeId = UUID()
         pendingFullApply = false
         scheduleWindowRefresh(delay: 0.3, fullApply: false)
     }
@@ -78,11 +80,13 @@ final class ThemeManager: ObservableObject {
         }
         let bgColor = UIColor(currentStyle.palette.background)
         let surfaceColor = UIColor(currentStyle.palette.surface)
+        let uiStyle: UIUserInterfaceStyle = currentStyle.colorScheme == .dark ? .dark : .light
 
         AppLogger.shared.debug("[ThemeManager] applyToWindows — theme=\(currentStyle.id) scheme=\(currentStyle.colorScheme)")
 
         windowScene.windows.forEach { window in
             window.backgroundColor = bgColor
+            window.overrideUserInterfaceStyle = uiStyle
             Self.updateNavigationBars(on: window.rootViewController, surfaceColor: surfaceColor)
         }
     }
@@ -94,11 +98,13 @@ final class ThemeManager: ObservableObject {
         }
         let bgColor = UIColor(currentStyle.palette.background)
         let surfaceColor = UIColor(currentStyle.palette.surface)
+        let uiStyle: UIUserInterfaceStyle = currentStyle.colorScheme == .dark ? .dark : .light
 
         AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
 
         windowScene.windows.forEach { window in
             window.backgroundColor = bgColor
+            window.overrideUserInterfaceStyle = uiStyle
         }
         AppLogger.shared.debug("[ThemeManager] refreshWindows done — theme=\(currentStyle.id)")
     }
