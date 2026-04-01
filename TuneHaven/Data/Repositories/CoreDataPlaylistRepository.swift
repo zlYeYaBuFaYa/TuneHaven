@@ -1,7 +1,7 @@
 import CoreData
 import Foundation
 
-final class CoreDataPlaylistRepository: PlaylistRepository {
+final class CoreDataPlaylistRepository: PlaylistRepository, @unchecked Sendable {
     private let stack: CoreDataStack
     private let log = AppLogger.shared
     init(stack: CoreDataStack = .shared) { self.stack = stack }

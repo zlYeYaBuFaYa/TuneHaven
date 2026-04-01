@@ -75,7 +75,7 @@ struct PlaylistGroupView: View {
                 let name = newGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !name.isEmpty else { return }
                 Task {
-                    do { try await groupService.createGroup(name: name) }
+                    do { _ = try await groupService.createGroup(name: name) }
                     catch { snackbar.show(message: "创建分组失败") }
                     newGroupName = ""
                 }

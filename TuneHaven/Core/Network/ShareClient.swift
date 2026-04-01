@@ -37,20 +37,14 @@ final class ShareClient: ShareClientProviding {
             throw AppError.fileSystemError("无效的分享链接")
         }
 
-        lock.lock()
-        storedBaseURL = baseURL
-        storedToken = tokenItem
-        lock.unlock()
+        storeCredentials(baseURL: baseURL, token: tokenItem)
 
         do {
             let info: ShareSessionInfo = try await getJSON(path: "/api/share/info")
             AppLogger.shared.info("[ShareClient] connected — device=\(info.deviceName) songs=\(info.songCount)")
             return info
         } catch {
-            lock.lock()
-            storedBaseURL = nil
-            storedToken = nil
-            lock.unlock()
+            clearCredentials()
             throw error
         }
     }
@@ -133,6 +127,20 @@ final class ShareClient: ShareClientProviding {
             tasks.forEach { $0.cancel() }
         }
         AppLogger.shared.info("[ShareClient] disconnected")
+    }
+
+    private func storeCredentials(baseURL: URL, token: String) {
+        lock.lock()
+        storedBaseURL = baseURL
+        storedToken = token
+        lock.unlock()
+    }
+
+    private func clearCredentials() {
+        lock.lock()
+        storedBaseURL = nil
+        storedToken = nil
+        lock.unlock()
     }
 
     private func credentials() throws -> (URL, String) {

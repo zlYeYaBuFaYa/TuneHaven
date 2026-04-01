@@ -200,7 +200,7 @@ final class LyricsService: ObservableObject {
 
     // MARK: - LRC Parsing
 
-    private static let lrcRegex: NSRegularExpression? = {
+    private nonisolated static let lrcRegex: NSRegularExpression? = {
         try? NSRegularExpression(pattern: #"\[(\d{1,3}):(\d{2})\.(\d{2,3})\](.*)"#)
     }()
 

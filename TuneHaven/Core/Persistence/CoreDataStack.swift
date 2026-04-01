@@ -1,7 +1,7 @@
 import CoreData
 import Foundation
 
-final class CoreDataStack {
+final class CoreDataStack: @unchecked Sendable {
     static let shared = CoreDataStack()
 
     let container: NSPersistentContainer
@@ -40,16 +40,17 @@ final class CoreDataStack {
     }
 
     func performBackground<T: Sendable>(_ block: @Sendable @escaping (NSManagedObjectContext) throws -> T) async throws -> T {
-        try await withCheckedThrowingContinuation { continuation in
-            backgroundContext.perform {
+        let ctx = backgroundContext
+        return try await withCheckedThrowingContinuation { continuation in
+            ctx.perform {
                 do {
-                    let result = try block(self.backgroundContext)
-                    if self.backgroundContext.hasChanges {
-                        try self.backgroundContext.save()
+                    let result = try block(ctx)
+                    if ctx.hasChanges {
+                        try ctx.save()
                     }
                     continuation.resume(returning: result)
                 } catch {
-                    self.backgroundContext.rollback()
+                    ctx.rollback()
                     continuation.resume(throwing: error)
                 }
             }
@@ -58,9 +59,10 @@ final class CoreDataStack {
 
     /// 强制刷新 viewContext，确保能读取到 backgroundContext 的最新写入
     func refreshViewContext() async {
+        let ctx = viewContext
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            viewContext.perform {
-                self.viewContext.refreshAllObjects()
+            ctx.perform {
+                ctx.refreshAllObjects()
                 continuation.resume()
             }
         }

@@ -206,7 +206,7 @@ struct LyricsLine: Identifiable {
     }
 }
 
-class UndoToken {
+class UndoToken: @unchecked Sendable {
     struct MovedFile {
         let tempPath: String
         let originalRelativePath: String

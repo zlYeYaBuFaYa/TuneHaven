@@ -6,7 +6,7 @@ extension Notification.Name {
     static let imageCacheDidUpdate = Notification.Name("imageCacheDidUpdate")
 }
 
-final class ImageCacheManager {
+final class ImageCacheManager: @unchecked Sendable {
     static let shared = ImageCacheManager()
 
     private let memoryCache = NSCache<NSString, UIImage>()
@@ -98,11 +98,11 @@ final class ImageCacheManager {
     func clearAll() async {
         log.info("清理图片缓存")
         memoryCache.removeAllObjects()
-        let fm = fileManager
         let coverURL = SandboxPathManager.coverImagesURL
         let plURL = SandboxPathManager.playlistCoversURL
         await withCheckedContinuation { continuation in
             fileQueue.async { [weak self] in
+                let fm = FileManager.default
                 for dir in [coverURL, plURL] {
                     if let files = try? fm.contentsOfDirectory(atPath: dir.path) {
                         for file in files {
@@ -118,6 +118,23 @@ final class ImageCacheManager {
 
     @available(*, deprecated, message: "Use cacheSizeAsync() to avoid blocking the main thread")
     func cacheSize() -> Int64 {
+        calculateCacheSize()
+    }
+
+    func cacheSizeAsync() async -> Int64 {
+        await withCheckedContinuation { continuation in
+            fileQueue.async { [weak self] in
+                guard let self else {
+                    continuation.resume(returning: 0)
+                    return
+                }
+                let size = self.calculateCacheSize()
+                continuation.resume(returning: size)
+            }
+        }
+    }
+
+    private func calculateCacheSize() -> Int64 {
         var size: Int64 = 0
         let dirs = [SandboxPathManager.coverImagesURL, SandboxPathManager.playlistCoversURL]
         for dir in dirs {
@@ -130,19 +147,6 @@ final class ImageCacheManager {
         return size
     }
 
-    func cacheSizeAsync() async -> Int64 {
-        await withCheckedContinuation { continuation in
-            fileQueue.async { [weak self] in
-                guard let self else {
-                    continuation.resume(returning: 0)
-                    return
-                }
-                let size = self.cacheSize()
-                continuation.resume(returning: size)
-            }
-        }
-    }
-
     private func cacheFileURL(key: String) -> URL {
         let sanitized = key
             .replacingOccurrences(of: "..", with: "")
@@ -153,7 +157,7 @@ final class ImageCacheManager {
 
     private func evictIfNeeded() {
         let limitBytes = Int64(cacheLimitLock.withLock { $0 }) * 1024 * 1024
-        let currentSize = trackedCacheSize >= 0 ? trackedCacheSize : cacheSize()
+        let currentSize = trackedCacheSize >= 0 ? trackedCacheSize : calculateCacheSize()
         if trackedCacheSize < 0 { trackedCacheSize = currentSize }
         guard currentSize > limitBytes else { return }
 

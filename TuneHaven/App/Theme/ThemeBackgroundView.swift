@@ -73,12 +73,6 @@ struct ThemeBackgroundView: View {
             switch pattern {
             case .cosmicParticles:
                 CosmicParticlesBackground()
-            default:
-                LinearGradient(
-                    colors: [palette.gradientStart, palette.gradientEnd],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
             }
         case .userWallpaper:
             palette.background

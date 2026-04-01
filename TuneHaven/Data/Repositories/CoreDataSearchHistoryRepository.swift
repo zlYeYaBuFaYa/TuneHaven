@@ -1,7 +1,7 @@
 import CoreData
 import Foundation
 
-final class CoreDataSearchHistoryRepository: SearchHistoryRepository {
+final class CoreDataSearchHistoryRepository: SearchHistoryRepository, @unchecked Sendable {
     private static let maxHistoryCount = 10
     private let stack: CoreDataStack
 

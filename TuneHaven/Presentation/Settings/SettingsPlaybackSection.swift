@@ -194,7 +194,7 @@ struct SettingsPlaybackSection: View {
 
     private func requestNotificationPermission() {
         Task {
-            try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
             let settings = await UNUserNotificationCenter.current().notificationSettings()
             notificationPermissionStatus = settings.authorizationStatus
         }

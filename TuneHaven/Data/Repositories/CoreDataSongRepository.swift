@@ -1,7 +1,7 @@
 import CoreData
 import Foundation
 
-final class CoreDataSongRepository: SongRepository {
+final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
     private let stack: CoreDataStack
     private let log = AppLogger.shared
 
@@ -116,12 +116,12 @@ final class CoreDataSongRepository: SongRepository {
         let now = Date()
         var movedFiles: [UndoToken.MovedFile] = []
 
-        var filesToMove: [(hash: String, relativePath: String)] = []
-        try await stack.performBackground { ctx in
+        let filesToMove: [[String]] = try await stack.performBackground { ctx in
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", ids as NSArray)
             let entities = try ctx.fetch(request)
             var seenHashes = Set<String>()
+            var result: [[String]] = []
             for entity in entities {
                 if let hash = entity.fileHash, let path = entity.fileRelativePath, !seenHashes.contains(hash) {
                     let countReq = SongEntity.fetchRequest()
@@ -129,22 +129,24 @@ final class CoreDataSongRepository: SongRepository {
                         hash, ids as NSArray)
                     let count = try ctx.count(for: countReq)
                     if count == 0 {
-                        filesToMove.append((hash: hash, relativePath: path))
+                        result.append([hash, path])
                         seenHashes.insert(hash)
                     }
                 }
                 entity.softDeleted = true
                 entity.deletedAt = now
             }
+            return result
         }
 
         for file in filesToMove {
+            let relativePath = file[1]
             do {
-                let tmpPath = try FileStorageService.shared.moveToPendingDelete(relativePath: file.relativePath)
-                movedFiles.append(UndoToken.MovedFile(tempPath: tmpPath, originalRelativePath: file.relativePath))
+                let tmpPath = try FileStorageService.shared.moveToPendingDelete(relativePath: relativePath)
+                movedFiles.append(UndoToken.MovedFile(tempPath: tmpPath, originalRelativePath: relativePath))
             } catch {
-                ErrorLogger.shared.log(.databaseError(error), context: "softDelete: 文件移动失败 \(file.relativePath)")
-                log.error("softDelete: 文件移动失败 \(file.relativePath): \(error)")
+                ErrorLogger.shared.log(.databaseError(error), context: "softDelete: 文件移动失败 \(relativePath)")
+                log.error("softDelete: 文件移动失败 \(relativePath): \(error)")
             }
         }
 

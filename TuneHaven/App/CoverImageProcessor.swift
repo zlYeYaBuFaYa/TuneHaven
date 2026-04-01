@@ -34,9 +34,13 @@ final class CoverImageProcessor: CoverImageProcessing {
     }
 
     func generatePlaylistGridCover(coverPaths: [String?], playlistId: UUID) async throws -> String {
-        let images: [UIImage?] = (0..<4).map { i -> UIImage? in
-            guard i < coverPaths.count, let path = coverPaths[i] else { return nil }
-            return imageCache.image(forKey: path)
+        var images: [UIImage?] = []
+        for i in 0..<4 {
+            if i < coverPaths.count, let path = coverPaths[i] {
+                images.append(await imageCache.imageAsync(forKey: path))
+            } else {
+                images.append(nil)
+            }
         }
         let gridImage = ThumbnailGenerator.generateGridCover(images: images)
         let url = SandboxPathManager.playlistCoverURL(playlistId: playlistId)
