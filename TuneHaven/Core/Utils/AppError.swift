@@ -40,7 +40,9 @@ enum AppError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .importUnsupportedFormat(let f): return "格式不支持：\(f)"
-        case .importFileTooLarge: return "文件过大（超过500MB），已跳过"
+        case .importFileTooLarge(let bytes):
+            let mb = bytes / (1024 * 1024)
+            return "文件过大（\(mb)MB，上限 \(FileStorageService.maxFileSizeBytes / (1024 * 1024))MB），已跳过"
         case .importFileCorrupted(let f): return "文件已损坏：\(f)"
         case .importReadFailed(let f): return "文件读取失败：\(f)"
         case .importDuplicate(let f): return "文件已存在（跳过重复文件）：\(f)"

@@ -205,20 +205,3 @@ struct LyricsLine: Identifiable, Sendable {
         self.text = text
     }
 }
-
-class UndoToken: @unchecked Sendable {
-    struct MovedFile {
-        let tempPath: String
-        let originalRelativePath: String
-    }
-    let songIds: [UUID]
-    let movedFiles: [MovedFile]
-    let expiresAt: Date
-    var timerKey: UUID?
-
-    init(songIds: [UUID], movedFiles: [MovedFile], expiresAt: Date) {
-        self.songIds = songIds
-        self.movedFiles = movedFiles
-        self.expiresAt = expiresAt
-    }
-}

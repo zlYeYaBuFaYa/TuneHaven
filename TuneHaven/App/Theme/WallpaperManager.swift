@@ -21,10 +21,20 @@ final class WallpaperManager: ObservableObject {
     }
 
     @discardableResult
-    func setWallpaper(_ image: UIImage) -> Bool {
+    func setWallpaper(_ image: UIImage) async -> Bool {
+        let maxDim = Self.maxWallpaperDimension
+        let url = wallpaperURL
+        let result: (UIImage, Data)? = await Task.detached(priority: .userInitiated) {
+            let resized = Self.constrainSize(image, maxDimension: maxDim)
+            guard let data = resized.jpegData(compressionQuality: 0.85) else { return nil }
+            return (resized, data)
+        }.value
+        guard let (resized, data) = result else {
+            ErrorLogger.shared.logGeneric(AppError.fileSystemError("无法生成 JPEG 数据"), context: "壁纸保存失败")
+            return false
+        }
         do {
-            let resized = Self.constrainSize(image, maxDimension: Self.maxWallpaperDimension)
-            try saveToDisk(resized)
+            try data.write(to: url)
             currentWallpaper = resized
             useCustomWallpaper = true
             return true
@@ -46,13 +56,6 @@ final class WallpaperManager: ObservableObject {
         SandboxPathManager.documentsURL.appendingPathComponent(wallpaperFileName)
     }
 
-    private func saveToDisk(_ image: UIImage) throws {
-        guard let data = image.jpegData(compressionQuality: 0.85) else {
-            throw AppError.fileSystemError("无法生成 JPEG 数据")
-        }
-        try data.write(to: wallpaperURL)
-    }
-
     private func loadFromDisk() -> UIImage? {
         guard let data = try? Data(contentsOf: wallpaperURL) else { return nil }
         return UIImage(data: data)
@@ -62,7 +65,7 @@ final class WallpaperManager: ObservableObject {
         try? FileManager.default.removeItem(at: wallpaperURL)
     }
 
-    private static func constrainSize(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+    private nonisolated static func constrainSize(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
         let size = image.size
         guard size.width > maxDimension || size.height > maxDimension else { return image }
 

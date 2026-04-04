@@ -24,7 +24,9 @@ struct AllSongsView: View {
         }
         .onAppear {
             recomputeDisplaySongs()
-            Task { await libraryService.loadSongs(sortBy: sortOption, ascending: isAscending) }
+            if libraryService.songs.isEmpty {
+                Task { await libraryService.loadSongs(sortBy: sortOption, ascending: isAscending) }
+            }
         }
         .onChange(of: libraryService.songs) { _ in recomputeDisplaySongs() }
         .onChange(of: formatFilter) { _ in recomputeDisplaySongs() }

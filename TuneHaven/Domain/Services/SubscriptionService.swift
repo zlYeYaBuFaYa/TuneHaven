@@ -19,6 +19,10 @@ final class SubscriptionService: ObservableObject {
         self.provider = provider
     }
 
+    deinit {
+        transactionTask?.cancel()
+    }
+
     // MARK: - Initialization
 
     func initialize() async {

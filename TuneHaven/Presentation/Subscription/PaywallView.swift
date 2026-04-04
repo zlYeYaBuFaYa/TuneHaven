@@ -34,7 +34,10 @@ struct PaywallView: View {
                         .foregroundColor(palette.primary)
                 }
             }
-            .onAppear {
+            .task {
+                if subscriptionService.products.isEmpty {
+                    await subscriptionService.loadProducts()
+                }
                 if selectedProduct == nil {
                     selectedProduct = subscriptionService.products.first { $0.type == .autoRenewable }
                 }

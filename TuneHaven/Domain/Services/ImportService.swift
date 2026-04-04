@@ -118,7 +118,8 @@ final class ImportService: ObservableObject, FileImporting {
         let fileSize = fileService.fileSize(at: url)
         log.info("[Import] fileSize=\(fileSize) bytes")
         guard fileSize <= fileService.maxFileSizeBytes else {
-            return SingleImportResult(fileName: fileName, status: .skippedOversize, song: nil, errorMessage: "文件过大（超过500MB）")
+            let limitMB = fileService.maxFileSizeBytes / (1024 * 1024)
+            return SingleImportResult(fileName: fileName, status: .skippedOversize, song: nil, errorMessage: "文件过大（上限 \(limitMB)MB）")
         }
 
         let hash: String

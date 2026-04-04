@@ -1,7 +1,7 @@
 import StoreKit
 import Foundation
 
-final class StoreKitSubscriptionProvider: SubscriptionProviding {
+final class StoreKitSubscriptionProvider: SubscriptionProviding, @unchecked Sendable {
     private let log = AppLogger.shared
 
     // MARK: - Products

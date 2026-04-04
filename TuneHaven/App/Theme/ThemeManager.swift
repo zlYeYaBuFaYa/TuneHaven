@@ -90,39 +90,34 @@ final class ThemeManager: ObservableObject {
     // MARK: - Window Management
 
     func applyToWindows() {
-        guard let windowScene = Self.foregroundWindowScene else {
-            AppLogger.shared.debug("[ThemeManager] applyToWindows — no foreground windowScene yet")
-            return
-        }
-        let bgColor = UIColor(currentStyle.palette.background)
-        let surfaceColor = UIColor(currentStyle.palette.surface)
-        let uiStyle: UIUserInterfaceStyle = currentStyle.colorScheme == .dark ? .dark : .light
-
-        AppLogger.shared.debug("[ThemeManager] applyToWindows — theme=\(currentStyle.id) scheme=\(currentStyle.colorScheme)")
-
-        windowScene.windows.forEach { window in
-            window.backgroundColor = bgColor
-            window.overrideUserInterfaceStyle = uiStyle
-            Self.updateNavigationBars(on: window.rootViewController, surfaceColor: surfaceColor)
-        }
+        applyThemeToWindows(fullApply: true)
     }
 
     func refreshWindows() {
+        applyThemeToWindows(fullApply: false)
+    }
+
+    private func applyThemeToWindows(fullApply: Bool) {
         guard let windowScene = Self.foregroundWindowScene else {
-            AppLogger.shared.debug("[ThemeManager] refreshWindows — no foreground windowScene")
+            AppLogger.shared.debug("[ThemeManager] applyThemeToWindows — no foreground windowScene")
             return
         }
         let bgColor = UIColor(currentStyle.palette.background)
         let surfaceColor = UIColor(currentStyle.palette.surface)
         let uiStyle: UIUserInterfaceStyle = currentStyle.colorScheme == .dark ? .dark : .light
 
-        AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
+        if !fullApply {
+            AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
+        }
 
         windowScene.windows.forEach { window in
             window.backgroundColor = bgColor
             window.overrideUserInterfaceStyle = uiStyle
+            if fullApply {
+                Self.updateNavigationBars(on: window.rootViewController, surfaceColor: surfaceColor)
+            }
         }
-        AppLogger.shared.debug("[ThemeManager] refreshWindows done — theme=\(currentStyle.id)")
+        AppLogger.shared.debug("[ThemeManager] applyThemeToWindows(fullApply=\(fullApply)) — theme=\(currentStyle.id)")
     }
 
     private static var foregroundWindowScene: UIWindowScene? {

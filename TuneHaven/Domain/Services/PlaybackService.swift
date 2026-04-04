@@ -28,6 +28,7 @@ final class PlaybackService: ObservableObject {
     private var currentCoverPath: String?
     private var consecutivePlayNextFailures = 0
     private var loadTask: Task<Void, Never>?
+    private var restoreTask: Task<Void, Never>?
     private static let maxConsecutiveFailures = 5
     private static let maxLosslessSkips = 50
 
@@ -66,7 +67,7 @@ final class PlaybackService: ObservableObject {
             self?.engine.pause()
             self?.isPlaying = false
         }
-        Task { await restoreLastPlayedSong() }
+        restoreTask = Task { [weak self] in await self?.restoreLastPlayedSong() }
     }
 
     private func restoreLastPlayedSong() async {
@@ -83,6 +84,9 @@ final class PlaybackService: ObservableObject {
     var duration: TimeInterval { engine.duration }
 
     func play(song: Song, in context: PlayContext) async {
+        restoreTask?.cancel()
+        restoreTask = nil
+
         if song.isLossless && !subscriptionService.canAccess(.losslessPlayback) {
             log.info("Free 用户尝试播放无损: \(song.title)")
             losslessBlockedSong = song

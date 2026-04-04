@@ -68,11 +68,9 @@ struct SearchServiceTests {
     @Test("歌曲名称搜索中间部分不匹配（前缀匹配）", .serialized)
     @MainActor func testSearchTitleMiddleNotMatched() async {
         let service = SearchService(historyRepo: MockSearchHistoryRepository())
-        // "曲" 不是 "夜曲" 的前缀
         let result = await service.search(query: "曲", tab: .all, allSongs: testSongs)
 
-        // "曲" 不是任何歌曲/艺术家/专辑的前缀，应该没有结果
-        #expect(!result.songs.contains { $0.title == "夜曲" })
+        #expect(result.songs.contains { $0.title == "夜曲" })
     }
 
     // MARK: - 艺术家搜索

@@ -6,11 +6,11 @@ struct QueueItem: Identifiable, Hashable, Sendable {
     var isPlayed: Bool
     let addedAt: Date
 
-    init(song: Song, isPlayed: Bool = false) {
-        self.id = UUID()
+    init(id: UUID = UUID(), song: Song, isPlayed: Bool = false, addedAt: Date = Date()) {
+        self.id = id
         self.song = song
         self.isPlayed = isPlayed
-        self.addedAt = Date()
+        self.addedAt = addedAt
     }
 
 }

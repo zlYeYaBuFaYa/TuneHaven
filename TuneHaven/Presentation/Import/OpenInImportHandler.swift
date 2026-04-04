@@ -59,7 +59,8 @@ final class OpenInImportHandler {
 
         let fileSize = fileStorage.fileSize(at: url)
         guard fileSize <= fileStorage.maxFileSizeBytes else {
-            snackbar.show(message: "文件超过 500MB 大小限制")
+            let limitMB = fileStorage.maxFileSizeBytes / (1024 * 1024)
+            snackbar.show(message: "文件超过 \(limitMB)MB 大小限制")
             cleanup(url: url)
             return
         }
