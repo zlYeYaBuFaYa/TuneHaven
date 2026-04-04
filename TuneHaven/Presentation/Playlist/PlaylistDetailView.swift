@@ -161,19 +161,8 @@ private struct PlaylistContentView: View {
         !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private var sortedAndFilteredSongs: [Song] {
-        let base: [Song]
-        if isFiltering {
-            let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            base = detail.songs.filter {
-                $0.title.lowercased().contains(q) ||
-                $0.artist.lowercased().contains(q) ||
-                $0.album.lowercased().contains(q)
-            }
-        } else {
-            base = detail.songs
-        }
-        return base.sorted { a, b in
+    private func applySorting(_ songs: [Song]) -> [Song] {
+        songs.sorted { a, b in
             let result: Bool
             switch sortOption {
             case .title:
@@ -193,12 +182,29 @@ private struct PlaylistContentView: View {
         }
     }
 
+    private var sortedAndFilteredSongs: [Song] {
+        if isFiltering {
+            let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return applySorting(detail.songs.filter {
+                $0.title.lowercased().contains(q) ||
+                $0.artist.lowercased().contains(q) ||
+                $0.album.lowercased().contains(q)
+            })
+        } else {
+            return applySorting(detail.songs)
+        }
+    }
+
     var body: some View {
         if !isFiltering {
             Section {
                 PlaylistHeaderSection(playlist: detail.playlist, songs: detail.songs) {
-                    if let first = detail.songs.first {
-                        Task { await playback.play(song: first, in: .playlist(id: playlistId)) }
+                    let allSorted = applySorting(detail.songs)
+                    if let first = allSorted.first {
+                        Task {
+                            playback.queue.replaceQueue(with: allSorted, startAt: 0)
+                            await playback.play(song: first, in: .queue)
+                        }
                     }
                 }
             }
@@ -233,7 +239,10 @@ private struct PlaylistContentView: View {
                         isPlaying: playback.currentSong?.id == song.id,
                         onTap: {
                             Task {
-                                await playback.play(song: song, in: .playlist(id: playlistId))
+                                let allSorted = applySorting(detail.songs)
+                                let startIndex = allSorted.firstIndex(where: { $0.id == song.id }) ?? 0
+                                playback.queue.replaceQueue(with: allSorted, startAt: startIndex)
+                                await playback.play(song: song, in: .queue)
                                 router.openPlayer()
                             }
                         },
@@ -260,6 +269,14 @@ private struct PlaylistContentView: View {
                 }
             }
         }
+
+        Section {
+            Color.clear.frame(height: 80)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets())
+        }
+        .listSectionSeparator(.hidden)
     }
 }
 

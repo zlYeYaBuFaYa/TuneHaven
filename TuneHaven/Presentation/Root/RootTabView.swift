@@ -18,7 +18,6 @@ struct RootTabView: View {
     var body: some View {
         ZStack {
             ThemeBackgroundView()
-                .id(themeManager.themeChangeId)
 
             LibraryTabView()
                 .opacity(router.selectedTab == .library ? 1 : 0)

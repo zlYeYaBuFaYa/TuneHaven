@@ -125,6 +125,14 @@ struct SearchResultView: View {
                 .padding(.vertical, 40)
                 .listRowBackground(Color.clear)
             }
+
+            Section {
+                Color.clear.frame(height: 80)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+            }
+            .listSectionSeparator(.hidden)
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)

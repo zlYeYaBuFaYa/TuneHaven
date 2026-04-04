@@ -144,6 +144,14 @@ struct AlbumDetailView: View {
                     .listRowSeparatorTint(palette.separator)
                 }
             }
+
+            Section {
+                Color.clear.frame(height: 80)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+            }
+            .listSectionSeparator(.hidden)
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)

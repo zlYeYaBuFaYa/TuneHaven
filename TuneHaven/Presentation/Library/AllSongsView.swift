@@ -117,6 +117,12 @@ struct AllSongsView: View {
                 .listRowBackground(palette.surface)
                 .listRowSeparatorTint(palette.separator)
             }
+
+            Color.clear
+                .frame(height: 80)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets())
         }
         .listStyle(.plain)
         .adaptiveBackground()

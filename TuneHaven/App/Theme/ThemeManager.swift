@@ -18,8 +18,6 @@ extension EnvironmentValues {
 @MainActor
 final class ThemeManager: ObservableObject {
     @Published private(set) var currentStyle: ThemeStyle
-    @Published private(set) var themeChangeId: UUID = UUID()
-
     @AppStorage(AppStorageKey.themeStyle) private var storedThemeStyle: String = ThemeRegistry.shared.defaultTheme.id
 
     private let registry = ThemeRegistry.shared
@@ -66,7 +64,6 @@ final class ThemeManager: ObservableObject {
     func setTheme(_ style: ThemeStyle) {
         currentStyle = style
         storedThemeStyle = style.id
-        themeChangeId = UUID()
         pendingFullApply = false
         scheduleWindowRefresh(delay: 0.3, fullApply: false)
     }

@@ -8,11 +8,14 @@ struct SongListView: View {
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playback: PlaybackService
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
     @AppStorage(AppStorageKey.recentPlayRange) private var recentPlayRange: Int = 7
 
     @State private var songs: [Song] = []
     @State private var isLoading = false
+
+    private var isFavorites: Bool { context == .favorites }
 
     var body: some View {
         Group {
@@ -36,13 +39,28 @@ struct SongListView: View {
                             isPlaying: playback.currentSong?.id == song.id,
                             onTap: {
                                 Task {
-                                    await playContext(song: song)
+                                    await playSong(song)
                                     router.openPlayer()
                                 }
-                            }
+                            },
+                            onFavorite: isFavorites ? {
+                                Task { await unfavorite(song) }
+                            } : nil,
+                            onAddToPlaylist: isFavorites ? {
+                                router.present(.addToPlaylist(songIds: [song.id]))
+                            } : nil,
+                            onInsertNext: isFavorites ? {
+                                _ = playback.queue.insertNext(song)
+                            } : nil
                         )
                         .listRowBackground(palette.surface)
                     }
+
+                    Color.clear
+                        .frame(height: 80)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets())
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
@@ -71,19 +89,33 @@ struct SongListView: View {
         isLoading = false
     }
 
-    private func playContext(song: Song) async {
-        let ctx: PlayContext
-        let days = recentPlayRange
-        switch context {
-        case .allSongs: ctx = .allSongs(sortBy: .title)
-        case .favorites:
-            let favId = playlistService.playlists.first { $0.systemType == .favorites }?.id
-            ctx = favId.map { .playlist(id: $0) } ?? .allSongs(sortBy: .title)
-        case .recentlyPlayed: ctx = .recentlyPlayed(days: days)
-        case .artist(let name): ctx = .artist(name: name)
-        case .album(let name, let artist): ctx = .album(name: name, artist: artist)
-        case .playlist(let id): ctx = .playlist(id: id)
+    private func playSong(_ song: Song) async {
+        let startIndex = songs.firstIndex(where: { $0.id == song.id }) ?? 0
+        playback.queue.replaceQueue(with: songs, startAt: startIndex)
+        await playback.play(song: song, in: .queue)
+    }
+
+    private func unfavorite(_ song: Song) async {
+        let songId = song.id
+        do {
+            try await libraryService.toggleFavorite(songId: songId)
+            songs.removeAll { $0.id == songId }
+            snackbar.show(
+                message: "已取消收藏「\(song.title)」",
+                actionTitle: "撤销",
+                action: {
+                    Task {
+                        do {
+                            try await libraryService.toggleFavorite(songId: songId)
+                            await load()
+                        } catch {
+                            snackbar.show(message: "撤销失败")
+                        }
+                    }
+                }
+            )
+        } catch {
+            snackbar.show(message: "操作失败，请重试")
         }
-        await playback.play(song: song, in: ctx)
     }
 }
