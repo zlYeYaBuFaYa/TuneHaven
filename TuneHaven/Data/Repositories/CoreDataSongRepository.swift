@@ -138,8 +138,6 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
                         seenHashes.insert(hash)
                     }
                 }
-                entity.softDeleted = true
-                entity.deletedAt = now
             }
             return result
         }
@@ -152,6 +150,16 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
             } catch {
                 ErrorLogger.shared.log(.databaseError(error), context: "softDelete: 文件移动失败 \(relativePath)")
                 log.error("softDelete: 文件移动失败 \(relativePath): \(error)")
+            }
+        }
+
+        try await stack.performBackground { ctx in
+            let request = SongEntity.fetchRequest()
+            request.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", ids as NSArray)
+            let entities = try ctx.fetch(request)
+            for entity in entities {
+                entity.softDeleted = true
+                entity.deletedAt = now
             }
         }
 
@@ -279,7 +287,7 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
                 return
             }
             entity.lyricsPath = lyricsPath
-            entity.lyricsSource = lyricsSource?.rawValue ?? SongMapper.int16Nil
+            entity.lyricsSource = lyricsSource?.rawValue ?? Int16.min
         }
     }
 
@@ -329,8 +337,9 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
     }
 
     func fetchRecentlyPlayed(days: Int, page: Int, pageSize: Int) async -> PagedResult<Song> {
-        await withCheckedContinuation { continuation in
-            stack.viewContext.perform {
+        let multiplier = recentPlayedFetchMultiplier
+        do {
+            return try await stack.performBackground { ctx in
                 var datePredicate: NSPredicate? = nil
                 if days > 0 {
                     let cutoff = Date().addingTimeInterval(-Double(days) * 86400)
@@ -342,44 +351,37 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
                 countReq.propertiesToFetch = ["songId"]
                 countReq.returnsDistinctResults = true
                 countReq.predicate = datePredicate
-                let totalCount: Int
+
+                let distinctRecords = try ctx.fetch(countReq)
+                let allSongIds = distinctRecords.compactMap { $0["songId"] as? UUID }
+                let validReq = SongEntity.fetchRequest()
+                validReq.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", allSongIds as NSArray)
+                let totalCount = try ctx.count(for: validReq)
+
+                let validSongIds: Set<UUID>
                 do {
-                    let distinctRecords = try self.stack.viewContext.fetch(countReq)
-                    let allSongIds = distinctRecords.compactMap { $0["songId"] as? UUID }
-                    let validReq = SongEntity.fetchRequest()
-                    validReq.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", allSongIds as NSArray)
-                    totalCount = try self.stack.viewContext.count(for: validReq)
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchRecentlyPlayed: count")
-                    self.log.error(error, context: "fetchRecentlyPlayed count 查询失败")
-                    continuation.resume(returning: PagedResult(items: [], totalCount: 0, currentPage: page, hasMore: false))
-                    return
+                    validReq.propertiesToFetch = ["id"]
+                    let validEntities = try ctx.fetch(validReq)
+                    validSongIds = Set(validEntities.compactMap { $0.id })
                 }
 
                 let startIndex = page * pageSize
                 guard startIndex < totalCount else {
-                    continuation.resume(returning: PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false))
-                    return
+                    return PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false)
                 }
 
                 let request = PlayRecordEntity.fetchRequest()
                 request.predicate = datePredicate
                 request.sortDescriptors = [NSSortDescriptor(key: "playedAt", ascending: false)]
-                request.fetchLimit = (startIndex + pageSize) * self.recentPlayedFetchMultiplier
+                request.fetchLimit = (startIndex + pageSize) * multiplier
 
-                let records: [PlayRecordEntity]
-                do {
-                    records = try self.stack.viewContext.fetch(request)
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchRecentlyPlayed: records")
-                    self.log.error(error, context: "fetchRecentlyPlayed records 查询失败")
-                    continuation.resume(returning: PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false))
-                    return
-                }
+                let records = try ctx.fetch(request)
                 var seen = Set<UUID>()
                 var uniqueIds: [UUID] = []
                 for record in records {
-                    guard let sid = record.songId, !seen.contains(sid) else { continue }
+                    guard let sid = record.songId,
+                          !seen.contains(sid),
+                          validSongIds.contains(sid) else { continue }
                     seen.insert(sid)
                     uniqueIds.append(sid)
                     if uniqueIds.count >= startIndex + pageSize { break }
@@ -387,22 +389,13 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
 
                 let endIndex = min(startIndex + pageSize, uniqueIds.count)
                 guard startIndex < endIndex else {
-                    continuation.resume(returning: PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false))
-                    return
+                    return PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false)
                 }
                 let pageIds = Array(uniqueIds[startIndex..<endIndex])
 
                 let songReq = SongEntity.fetchRequest()
                 songReq.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", pageIds as NSArray)
-                let songEntities: [SongEntity]
-                do {
-                    songEntities = try self.stack.viewContext.fetch(songReq)
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchRecentlyPlayed: songs")
-                    self.log.error(error, context: "fetchRecentlyPlayed songs 查询失败")
-                    continuation.resume(returning: PagedResult(items: [], totalCount: totalCount, currentPage: page, hasMore: false))
-                    return
-                }
+                let songEntities = try ctx.fetch(songReq)
 
                 let idToSong = Dictionary(uniqueKeysWithValues: songEntities.compactMap { e -> (UUID, Song)? in
                     guard let id = e.id, let song = SongMapper.toDomain(e) else { return nil }
@@ -410,97 +403,97 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
                 })
                 let songs = pageIds.compactMap { idToSong[$0] }
 
-                continuation.resume(returning: PagedResult(
+                return PagedResult(
                     items: songs,
                     totalCount: totalCount,
                     currentPage: page,
                     hasMore: startIndex + pageSize < totalCount
-                ))
+                )
             }
+        } catch {
+            ErrorLogger.shared.log(.databaseError(error), context: "fetchRecentlyPlayed")
+            log.error(error, context: "fetchRecentlyPlayed 查询失败")
+            return PagedResult(items: [], totalCount: 0, currentPage: page, hasMore: false)
         }
     }
 
     func fetchArtistGroups() async -> [ArtistGroup] {
-        await withCheckedContinuation { continuation in
-            stack.viewContext.perform {
-                do {
-                    let countReq: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "SongEntity")
-                    countReq.resultType = .dictionaryResultType
-                    countReq.predicate = NSPredicate(format: "softDeleted == NO")
-                    let countExpr = NSExpressionDescription()
-                    countExpr.name = "songCount"
-                    countExpr.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "id")])
-                    countExpr.expressionResultType = .integer64AttributeType
-                    countReq.propertiesToFetch = ["artist", countExpr]
-                    countReq.propertiesToGroupBy = ["artist"]
-                    let songCountResults = try self.stack.viewContext.fetch(countReq)
+        do {
+            return try await stack.performBackground { ctx in
+                let countReq: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "SongEntity")
+                countReq.resultType = .dictionaryResultType
+                countReq.predicate = NSPredicate(format: "softDeleted == NO")
+                let countExpr = NSExpressionDescription()
+                countExpr.name = "songCount"
+                countExpr.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "id")])
+                countExpr.expressionResultType = .integer64AttributeType
+                countReq.propertiesToFetch = ["artist", countExpr]
+                countReq.propertiesToGroupBy = ["artist"]
+                let songCountResults = try ctx.fetch(countReq)
 
-                    let albumReq: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "SongEntity")
-                    albumReq.resultType = .dictionaryResultType
-                    albumReq.predicate = NSPredicate(format: "softDeleted == NO")
-                    albumReq.propertiesToFetch = ["artist", "album"]
-                    albumReq.propertiesToGroupBy = ["artist", "album"]
-                    let albumResults = try self.stack.viewContext.fetch(albumReq)
-                    var albumCountByArtist: [String: Int] = [:]
-                    for dict in albumResults {
-                        let artist = (dict["artist"] as? String) ?? SongDefaults.unknownArtist
-                        albumCountByArtist[artist, default: 0] += 1
-                    }
-
-                    let groups = songCountResults.compactMap { dict -> ArtistGroup? in
-                        let artist = (dict["artist"] as? String) ?? SongDefaults.unknownArtist
-                        let songCount = (dict["songCount"] as? Int) ?? 0
-                        return ArtistGroup(name: artist, songCount: songCount, albumCount: albumCountByArtist[artist] ?? 1)
-                    }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-                    continuation.resume(returning: groups)
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchArtistGroups")
-                    self.log.error(error, context: "fetchArtistGroups 查询失败")
-                    continuation.resume(returning: [])
+                let albumReq: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "SongEntity")
+                albumReq.resultType = .dictionaryResultType
+                albumReq.predicate = NSPredicate(format: "softDeleted == NO")
+                albumReq.propertiesToFetch = ["artist", "album"]
+                albumReq.propertiesToGroupBy = ["artist", "album"]
+                let albumResults = try ctx.fetch(albumReq)
+                var albumCountByArtist: [String: Int] = [:]
+                for dict in albumResults {
+                    let artist = (dict["artist"] as? String) ?? SongDefaults.unknownArtist
+                    albumCountByArtist[artist, default: 0] += 1
                 }
+
+                let groups = songCountResults.compactMap { dict -> ArtistGroup? in
+                    let artist = (dict["artist"] as? String) ?? SongDefaults.unknownArtist
+                    let songCount = (dict["songCount"] as? Int) ?? 0
+                    return ArtistGroup(name: artist, songCount: songCount, albumCount: albumCountByArtist[artist] ?? 1)
+                }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                return groups
             }
+        } catch {
+            ErrorLogger.shared.log(.databaseError(error), context: "fetchArtistGroups")
+            log.error(error, context: "fetchArtistGroups 查询失败")
+            return []
         }
     }
 
     func fetchAlbumGroups() async -> [AlbumGroup] {
-        await withCheckedContinuation { continuation in
-            stack.viewContext.perform {
-                do {
-                    let request: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "SongEntity")
-                    request.resultType = .dictionaryResultType
-                    request.predicate = NSPredicate(format: "softDeleted == NO")
-                    let countExpr = NSExpressionDescription()
-                    countExpr.name = "songCount"
-                    countExpr.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "id")])
-                    countExpr.expressionResultType = .integer64AttributeType
-                    let yearExpr = NSExpressionDescription()
-                    yearExpr.name = "maxYear"
-                    yearExpr.expression = NSExpression(forFunction: "max:", arguments: [NSExpression(forKeyPath: "year")])
-                    yearExpr.expressionResultType = .integer16AttributeType
-                    let coverExpr = NSExpressionDescription()
-                    coverExpr.name = "cover"
-                    coverExpr.expression = NSExpression(forFunction: "max:", arguments: [NSExpression(forKeyPath: "coverImagePath")])
-                    coverExpr.expressionResultType = .stringAttributeType
-                    request.propertiesToFetch = ["album", "artist", countExpr, yearExpr, coverExpr]
-                    request.propertiesToGroupBy = ["album", "artist"]
-                    let results = try self.stack.viewContext.fetch(request)
+        do {
+            return try await stack.performBackground { ctx in
+                let request: NSFetchRequest<NSDictionary> = NSFetchRequest(entityName: "SongEntity")
+                request.resultType = .dictionaryResultType
+                request.predicate = NSPredicate(format: "softDeleted == NO")
+                let countExpr = NSExpressionDescription()
+                countExpr.name = "songCount"
+                countExpr.expression = NSExpression(forFunction: "count:", arguments: [NSExpression(forKeyPath: "id")])
+                countExpr.expressionResultType = .integer64AttributeType
+                let yearExpr = NSExpressionDescription()
+                yearExpr.name = "maxYear"
+                yearExpr.expression = NSExpression(forFunction: "max:", arguments: [NSExpression(forKeyPath: "year")])
+                yearExpr.expressionResultType = .integer16AttributeType
+                let coverExpr = NSExpressionDescription()
+                coverExpr.name = "cover"
+                coverExpr.expression = NSExpression(forFunction: "max:", arguments: [NSExpression(forKeyPath: "coverImagePath")])
+                coverExpr.expressionResultType = .stringAttributeType
+                request.propertiesToFetch = ["album", "artist", countExpr, yearExpr, coverExpr]
+                request.propertiesToGroupBy = ["album", "artist"]
+                let results = try ctx.fetch(request)
 
-                    let groups = results.compactMap { dict -> AlbumGroup? in
-                        let album = (dict["album"] as? String) ?? SongDefaults.unknownAlbum
-                        let artist = (dict["artist"] as? String) ?? SongDefaults.unknownArtist
-                        let songCount = (dict["songCount"] as? Int) ?? 0
-                        let yearVal = dict["maxYear"] as? Int16
-                        let year = (yearVal != nil && yearVal! > 0) ? Int(yearVal!) : nil
-                        let cover = dict["cover"] as? String
-                        return AlbumGroup(name: album, artist: artist, year: year, songCount: songCount, coverImagePath: cover)
-                    }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-                    continuation.resume(returning: groups)
-                } catch {
-                    ErrorLogger.shared.log(.databaseError(error), context: "fetchAlbumGroups")
-                    self.log.error(error, context: "fetchAlbumGroups 查询失败")
-                    continuation.resume(returning: [])
-                }
+                let groups = results.compactMap { dict -> AlbumGroup? in
+                    let album = (dict["album"] as? String) ?? SongDefaults.unknownAlbum
+                    let artist = (dict["artist"] as? String) ?? SongDefaults.unknownArtist
+                    let songCount = (dict["songCount"] as? Int) ?? 0
+                    let yearVal = dict["maxYear"] as? Int16
+                    let year = (yearVal != nil && yearVal! > 0) ? Int(yearVal!) : nil
+                    let cover = dict["cover"] as? String
+                    return AlbumGroup(name: album, artist: artist, year: year, songCount: songCount, coverImagePath: cover)
+                }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+                return groups
             }
+        } catch {
+            ErrorLogger.shared.log(.databaseError(error), context: "fetchAlbumGroups")
+            log.error(error, context: "fetchAlbumGroups 查询失败")
+            return []
         }
     }
 

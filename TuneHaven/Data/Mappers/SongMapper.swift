@@ -2,7 +2,7 @@ import CoreData
 import Foundation
 
 enum SongMapper {
-    static let int16Nil: Int16 = Int16.min
+    private static let int16Nil: Int16 = Int16.min
 
     static func toEntity(_ song: Song, context: NSManagedObjectContext) -> SongEntity {
         let entity = SongEntity(context: context)

@@ -1,7 +1,7 @@
 import Foundation
 
 /// 用户权限等级（Int rawValue 确保 Comparable 排序稳定，新增等级只需追加更大值）
-enum SubscriptionTier: Int, Codable, Comparable {
+enum SubscriptionTier: Int, Codable, Comparable, Sendable {
     case free = 0
     case premium = 1
 
@@ -11,7 +11,7 @@ enum SubscriptionTier: Int, Codable, Comparable {
 }
 
 /// 用户订阅状态（用于 UI 展示）
-enum SubscriptionStatus: Equatable {
+enum SubscriptionStatus: Equatable, Sendable {
     case trial(daysRemaining: Int)
     case subscribed(expiresDate: Date)
     case lifetime
@@ -24,7 +24,7 @@ enum SubscriptionStatus: Equatable {
 }
 
 /// 受控功能枚举 — 后期新增功能只需添加 case + 配置 requiredTier
-enum PremiumFeature: String, CaseIterable {
+enum PremiumFeature: String, CaseIterable, Sendable {
     case losslessPlayback
     case premiumTheme
     case webDAVImport

@@ -23,9 +23,10 @@ struct TuneHavenTests {
 
     // MARK: - 基础模型验证
 
-    @Test("Song 模型 Identifiable：id 相同则相等")
+    @Test("Song 模型 Equatable：属性不同则不相等，属性相同则相等")
     func testSongEquality() {
         let id = UUID()
+        let now = Date()
         let metadata = Metadata(
             format: "mp3", sampleRate: 44100, bitRate: 320,
             channels: 2, encoder: nil, trackNumber: nil, year: nil, genre: nil
@@ -34,18 +35,25 @@ struct TuneHavenTests {
             id: id, title: "夜曲", artist: "周杰伦", album: "十一月的萧邦",
             duration: 227, fileHash: "abc123", fileRelativePath: "abc123_夜曲.mp3",
             coverImagePath: nil, lyricsPath: nil, lyricsSource: nil,
-            metadata: metadata, importDate: Date(), fileSize: 8 * 1024 * 1024,
+            metadata: metadata, importDate: now, fileSize: 8 * 1024 * 1024,
             playCount: 0, isFavorite: false, favoriteDate: nil, lastPlayedDate: nil
         )
         let s2 = Song(
             id: id, title: "晴天", artist: "周杰伦", album: "叶惠美",
             duration: 269, fileHash: "def456", fileRelativePath: "def456_晴天.mp3",
             coverImagePath: nil, lyricsPath: nil, lyricsSource: nil,
-            metadata: metadata, importDate: Date(), fileSize: 7 * 1024 * 1024,
+            metadata: metadata, importDate: now, fileSize: 7 * 1024 * 1024,
             playCount: 0, isFavorite: false, favoriteDate: nil, lastPlayedDate: nil
         )
-        // 相同 id 应该相等（根据 == 实现）
-        #expect(s1 == s2)
+        let s3 = Song(
+            id: id, title: "夜曲", artist: "周杰伦", album: "十一月的萧邦",
+            duration: 227, fileHash: "abc123", fileRelativePath: "abc123_夜曲.mp3",
+            coverImagePath: nil, lyricsPath: nil, lyricsSource: nil,
+            metadata: metadata, importDate: now, fileSize: 8 * 1024 * 1024,
+            playCount: 0, isFavorite: false, favoriteDate: nil, lastPlayedDate: nil
+        )
+        #expect(s1 != s2, "仅 id 相同但属性不同，合成 Equatable 应不相等")
+        #expect(s1 == s3, "所有属性相同应相等")
     }
 
     @Test("Song 模型 Hashable：不同 id 产生不同哈希")

@@ -302,10 +302,11 @@ struct ThumbnailSizeTests {
         #expect(ThumbnailSize.original.dimension == 1024)
     }
 
-    @Test("suffix 与 rawValue 一致")
+    @Test("suffix 返回 case 名称字符串")
     func testSuffix() {
-        for size in [ThumbnailSize.small, .medium, .large, .original] {
-            #expect(size.suffix == size.rawValue)
-        }
+        #expect(ThumbnailSize.small.suffix == "small")
+        #expect(ThumbnailSize.medium.suffix == "medium")
+        #expect(ThumbnailSize.large.suffix == "large")
+        #expect(ThumbnailSize.original.suffix == "original")
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-struct ParsedMetadata {
+struct ParsedMetadata: Sendable {
     let title: String
     let artist: String
     let album: String

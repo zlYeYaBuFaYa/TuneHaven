@@ -19,13 +19,6 @@ final class AudioSessionManager: AudioSessionManaging {
             return true
         } catch {
             log.error("configure failed: \(error)")
-            do {
-                try session.setActive(true, options: [])
-                isConfigured = true
-                return true
-            } catch {
-                log.error("setActive retry failed: \(error)")
-            }
             return false
         }
     }

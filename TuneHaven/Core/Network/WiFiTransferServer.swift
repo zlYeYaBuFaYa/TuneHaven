@@ -18,6 +18,7 @@ final class WiFiTransferServer: ObservableObject {
     private var activeConnection: NWConnection?
     private var passwordEnabled = false
     private var authAttempts: [String: (attempts: Int, cooldownUntil: Date?)] = [:]
+    private var authenticatedIPs: Set<String> = []
     private var port: UInt16 = 8080
 
     // MARK: - Lifecycle
@@ -309,6 +310,10 @@ final class WiFiTransferServer: ObservableObject {
         } else if firstLine.contains("POST /auth") {
             handleAuth(data: data, connection: connection, ip: ip)
         } else if firstLine.contains("POST /upload") {
+            if passwordEnabled && !authenticatedIPs.contains(ip) {
+                sendJSON(connection: connection, status: 401, body: #"{"error":"请先验证密码"}"#)
+                return
+            }
             handleUpload(data: data, connection: connection)
         } else if firstLine.contains("GET /status") {
             sendStatus(connection: connection)
@@ -355,6 +360,7 @@ final class WiFiTransferServer: ObservableObject {
         }
 
         authAttempts[ip] = (attempts: 0, cooldownUntil: nil)
+        authenticatedIPs.insert(ip)
         sendJSON(connection: connection, status: 200, body: #"{"success":true}"#)
     }
 
@@ -406,6 +412,7 @@ final class WiFiTransferServer: ObservableObject {
             let filename = URL(fileURLWithPath: rawFilename).lastPathComponent
             let destURL = SandboxPathManager.wifiUploadURL.appendingPathComponent(filename)
             do {
+                try FileManager.default.createDirectory(at: SandboxPathManager.wifiUploadURL, withIntermediateDirectories: true)
                 try fileData.write(to: destURL)
                 savedFiles.append((name: filename, url: destURL))
             } catch {
@@ -521,9 +528,9 @@ final class WiFiTransferServer: ObservableObject {
     private func extractField(_ body: String, key: String) -> String? {
         let pairs = body.components(separatedBy: "&")
         for pair in pairs {
-            let kv = pair.components(separatedBy: "=")
+            let kv = pair.split(separator: "=", maxSplits: 1)
             if kv.count == 2 && kv[0] == key {
-                return kv[1].removingPercentEncoding
+                return String(kv[1]).removingPercentEncoding
             }
         }
         if let jsonData = body.data(using: .utf8),

@@ -10,7 +10,11 @@ actor WebDAVClient: WebDAVClientProtocol {
 
         init(baseURL: URL, username: String, password: String,
              trustSelfSignedCert: Bool = false, timeoutInterval: TimeInterval = 30) {
-            self.baseURL = baseURL
+            if !baseURL.absoluteString.hasSuffix("/") {
+                self.baseURL = baseURL.appendingPathComponent("")
+            } else {
+                self.baseURL = baseURL
+            }
             self.username = username
             self.password = password
             self.trustSelfSignedCert = trustSelfSignedCert

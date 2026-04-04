@@ -186,8 +186,9 @@ final class PlaybackService: ObservableObject {
     }
 
     func seek(to time: TimeInterval) {
-        engine.seek(to: time)
-        updateNowPlayingTime(currentTime: time)
+        let clamped = max(0, min(time, duration))
+        engine.seek(to: clamped)
+        updateNowPlayingTime(currentTime: clamped)
     }
 
     func skip(by seconds: TimeInterval) {

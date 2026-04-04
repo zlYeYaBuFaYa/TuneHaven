@@ -45,12 +45,12 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
 
     func deleteAccount(id: UUID) {
         queue.sync {
+            KeychainHelper.delete(forKey: passwordKey(for: id))
             var accounts = _loadAccounts()
             accounts.removeAll { $0.id == id }
             do {
                 let data = try JSONEncoder().encode(accounts)
                 UserDefaults.standard.set(data, forKey: accountsKey)
-                KeychainHelper.delete(forKey: passwordKey(for: id))
             } catch {
                 ErrorLogger.shared.log(.databaseError(error), context: "deleteAccount: 编码失败 id=\(id)")
             }

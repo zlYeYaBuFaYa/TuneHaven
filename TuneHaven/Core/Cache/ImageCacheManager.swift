@@ -1,5 +1,4 @@
 import UIKit
-import Foundation
 import os
 
 extension Notification.Name {
@@ -63,10 +62,8 @@ final class ImageCacheManager: @unchecked Sendable {
                     continuation.resume(returning: nil)
                     return
                 }
-                DispatchQueue.main.async {
-                    self.memoryCache.setObject(image, forKey: key as NSString, cost: data.count)
-                    continuation.resume(returning: image)
-                }
+                self.memoryCache.setObject(image, forKey: key as NSString, cost: data.count)
+                continuation.resume(returning: image)
             }
         }
     }
@@ -76,9 +73,13 @@ final class ImageCacheManager: @unchecked Sendable {
         memoryCache.setObject(image, forKey: key as NSString, cost: data.count)
         let url = cacheFileURL(key: key)
         fileQueue.async { [weak self] in
-            try? data.write(to: url)
-            if let self, self.trackedCacheSize >= 0 {
-                self.trackedCacheSize += Int64(data.count)
+            do {
+                try data.write(to: url)
+                if let self, self.trackedCacheSize >= 0 {
+                    self.trackedCacheSize += Int64(data.count)
+                }
+            } catch {
+                self?.log.info("图片缓存写入失败: \(error.localizedDescription)")
             }
             self?.evictIfNeeded()
             DispatchQueue.main.async {
@@ -91,7 +92,12 @@ final class ImageCacheManager: @unchecked Sendable {
         memoryCache.removeObject(forKey: key as NSString)
         let url = cacheFileURL(key: key)
         fileQueue.async { [weak self] in
-            try? self?.fileManager.removeItem(at: url)
+            guard let self else { return }
+            let size = (try? self.fileManager.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
+            try? self.fileManager.removeItem(at: url)
+            if self.trackedCacheSize > 0 {
+                self.trackedCacheSize = max(0, self.trackedCacheSize - size)
+            }
         }
     }
 
@@ -203,4 +209,35 @@ final class ImageCacheManager: @unchecked Sendable {
     }
 }
 
-extension ImageCacheManager: ImageCacheManaging {}
+extension ImageCacheManager: ImageCacheManaging {
+    func memoryImageData(forKey key: String) -> Data? {
+        memoryImage(forKey: key)?.jpegData(compressionQuality: 1.0)
+    }
+
+    func imageDataAsync(forKey key: String) async -> Data? {
+        if let cached = memoryCache.object(forKey: key as NSString) {
+            return cached.jpegData(compressionQuality: 1.0)
+        }
+        let url = cacheFileURL(key: key)
+        return await withCheckedContinuation { continuation in
+            fileQueue.async { [weak self] in
+                guard let self,
+                      self.fileManager.fileExists(atPath: url.path),
+                      let data = try? Data(contentsOf: url) else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                if let image = UIImage(data: data) {
+                    self.memoryCache.setObject(image, forKey: key as NSString, cost: data.count)
+                }
+                continuation.resume(returning: data)
+            }
+        }
+    }
+
+    func storeImageData(_ data: Data, forKey key: String) {
+        if let image = UIImage(data: data) {
+            store(image: image, forKey: key)
+        }
+    }
+}

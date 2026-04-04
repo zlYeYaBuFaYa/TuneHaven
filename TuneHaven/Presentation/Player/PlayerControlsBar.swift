@@ -43,6 +43,7 @@ struct PlayerControlsBar: View {
                     .font(modeFont)
                     .foregroundColor(palette.textSecondary)
             }
+            .accessibilityLabel("播放模式：\(playback.playMode.displayName)")
             .frame(maxWidth: .infinity)
 
             Button { playback.playPrevious() } label: {
@@ -50,6 +51,7 @@ struct PlayerControlsBar: View {
                     .font(navFont)
                     .foregroundColor(palette.textPrimary)
             }
+            .accessibilityLabel("上一首")
             .frame(maxWidth: .infinity)
 
             Button { playback.togglePlayPause() } label: {
@@ -74,6 +76,7 @@ struct PlayerControlsBar: View {
                 }
             }
             .buttonStyle(PressableButtonStyle(scale: playButtonSize >= PlayerControlsBarLayout.largePlayButtonThreshold ? PlayerControlsBarLayout.pressScaleWhenLarge : PlayerControlsBarLayout.pressScaleWhenSmall))
+            .accessibilityLabel(playback.isPlaying ? "暂停" : "播放")
             .frame(maxWidth: .infinity)
 
             Button { playback.playNext() } label: {
@@ -81,6 +84,7 @@ struct PlayerControlsBar: View {
                     .font(navFont)
                     .foregroundColor(palette.textPrimary)
             }
+            .accessibilityLabel("下一首")
             .frame(maxWidth: .infinity)
 
             Button(action: onQueueTap) {
@@ -88,6 +92,7 @@ struct PlayerControlsBar: View {
                     .font(modeFont)
                     .foregroundColor(palette.textSecondary)
             }
+            .accessibilityLabel("播放队列")
             .frame(maxWidth: .infinity)
         }
     }

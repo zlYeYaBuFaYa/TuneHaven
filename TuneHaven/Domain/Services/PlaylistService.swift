@@ -38,6 +38,12 @@ final class PlaylistService: ObservableObject {
     }
 
     func updatePlaylist(id: UUID, name: String?, description: String?) async throws {
+        if let name {
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { throw AppError.playlistNameEmpty }
+            let reserved = [SystemPlaylistName.favorites, SystemPlaylistName.recentlyPlayed]
+            guard !reserved.contains(trimmed) else { throw AppError.playlistNameDuplicate }
+        }
         try await repo.update(id: id, name: name, description: description)
         await loadPlaylists()
     }

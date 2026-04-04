@@ -126,7 +126,7 @@ final class AppDIContainer: ObservableObject {
             songRepo: songRepo,
             queueService: PlayQueueService(),
             libraryService: libraryService,
-            engine: AudioEngine.shared,
+            engine: audioEngine,
             audioSession: audioSession,
             nowPlaying: NowPlayingManager.shared,
             fileStorage: FileStorageService.shared,

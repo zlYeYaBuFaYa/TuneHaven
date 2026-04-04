@@ -29,8 +29,10 @@ final class WebDAVXMLParser: NSObject, XMLParserDelegate {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        f.timeZone = TimeZone(identifier: "GMT")
         return f
     }()
+    private static let rfc1123Lock = NSLock()
 
     private func parse(data: Data, requestPath: String) throws -> [WebDAVFile] {
         self.requestPath = requestPath.removingPercentEncoding ?? requestPath
@@ -90,7 +92,11 @@ final class WebDAVXMLParser: NSObject, XMLParserDelegate {
         case "getcontenttype":
             if insideProp { currentContentType = text.isEmpty ? nil : text }
         case "getlastmodified":
-            if insideProp { currentLastModified = Self.rfc1123Formatter.date(from: text) }
+            if insideProp {
+                Self.rfc1123Lock.lock()
+                currentLastModified = Self.rfc1123Formatter.date(from: text)
+                Self.rfc1123Lock.unlock()
+            }
         case "getetag":
             if insideProp { currentEtag = text.isEmpty ? nil : text }
         case "resourcetype":

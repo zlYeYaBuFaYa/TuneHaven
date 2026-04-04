@@ -1,6 +1,6 @@
 import Foundation
 
-struct WebDAVAccount: Identifiable, Codable, Hashable {
+struct WebDAVAccount: Identifiable, Codable, Hashable, Sendable {
     let id: UUID
     var displayName: String
     var serverURL: String

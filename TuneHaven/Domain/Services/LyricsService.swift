@@ -255,7 +255,10 @@ final class LyricsService: ObservableObject {
     }
 
     private func loadExternalLRC(songTitle: String) -> LyricsData? {
-        let candidates = ["\(songTitle).lrc"]
+        let safeName = songTitle
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "..", with: "_")
+        let candidates = ["\(safeName).lrc"]
         for name in candidates {
             let url = fileStorage.lyricsDirectoryURL.appendingPathComponent(name)
             guard let content = fileStorage.readStringContents(at: url) else { continue }
@@ -295,7 +298,10 @@ final class LyricsService: ObservableObject {
     }
 
     private func cleanupOldLRC(songTitle: String) {
-        let oldURL = fileStorage.lyricsDirectoryURL.appendingPathComponent("\(songTitle).lrc")
+        let safeName = songTitle
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "..", with: "_")
+        let oldURL = fileStorage.lyricsDirectoryURL.appendingPathComponent("\(safeName).lrc")
         try? fileStorage.removeItem(at: oldURL)
     }
 

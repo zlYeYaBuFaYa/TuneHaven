@@ -1,6 +1,6 @@
 import Foundation
 
-struct QueueItem: Identifiable, Hashable {
+struct QueueItem: Identifiable, Hashable, Sendable {
     let id: UUID
     let song: Song
     var isPlayed: Bool

@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - 导出数据模型
 
-struct SongExportData: Codable, Hashable {
+struct SongExportData: Codable, Hashable, Sendable {
     let title: String
     let artist: String
     let album: String
@@ -38,7 +38,7 @@ extension SongExportData {
     }
 }
 
-struct PlaylistExportData: Codable {
+struct PlaylistExportData: Codable, Sendable {
     let name: String
     let description: String?
     let groupName: String?
@@ -49,7 +49,7 @@ struct PlaylistExportData: Codable {
 
 // MARK: - 匹配
 
-enum SongMatchResult {
+enum SongMatchResult: Sendable {
     case exactMatch(Song)
     case fuzzyMatch(Song)
     case noMatch
@@ -57,7 +57,7 @@ enum SongMatchResult {
 
 // MARK: - 分享会话
 
-struct ShareSessionInfo: Codable {
+struct ShareSessionInfo: Codable, Sendable {
     let deviceName: String
     let sessionToken: String
     let songCount: Int
@@ -65,7 +65,7 @@ struct ShareSessionInfo: Codable {
     let totalSize: Int64
 }
 
-struct ShareSongSummary: Codable, Identifiable {
+struct ShareSongSummary: Codable, Identifiable, Sendable {
     let index: Int
     let title: String
     let artist: String
@@ -78,7 +78,7 @@ struct ShareSongSummary: Codable, Identifiable {
     var id: Int { index }
 }
 
-struct SharePlaylistSummary: Codable, Identifiable {
+struct SharePlaylistSummary: Codable, Identifiable, Sendable {
     let index: Int
     let name: String
     let description: String?
@@ -90,7 +90,7 @@ struct SharePlaylistSummary: Codable, Identifiable {
 
 // MARK: - 分享分析与结果
 
-struct ShareAnalysis {
+struct ShareAnalysis: Sendable {
     let sessionInfo: ShareSessionInfo
     let songs: [ShareSongSummary]
     let playlists: [SharePlaylistSummary]
@@ -104,7 +104,7 @@ struct ShareAnalysis {
     var skippedSongs: [ShareSongSummary] { exactMatchSongs + fuzzyMatchSongs }
 }
 
-struct ShareTransferResult: Codable {
+struct ShareTransferResult: Codable, Sendable {
     let songsReceived: Int
     let songsSkipped: Int
     let playlistsCreated: Int
@@ -114,7 +114,7 @@ struct ShareTransferResult: Codable {
 
 // MARK: - 分享进度
 
-struct ShareProgress {
+struct ShareProgress: Sendable {
     let phase: SharePhase
     let current: Int
     let total: Int
@@ -126,7 +126,7 @@ struct ShareProgress {
     }
 }
 
-enum SharePhase {
+enum SharePhase: Sendable {
     case preparing
     case transferring
     case importing

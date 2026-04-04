@@ -75,5 +75,8 @@ struct PlayerProgressBar: View {
                     .foregroundColor(resolvedTimeColor)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("播放进度")
+        .accessibilityValue("\(displayTime.formattedTime)，共\(engine.duration.formattedTime)")
     }
 }

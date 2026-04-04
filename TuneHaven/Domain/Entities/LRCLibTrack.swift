@@ -1,6 +1,6 @@
 import Foundation
 
-struct LRCLibTrack: Codable, Identifiable {
+struct LRCLibTrack: Codable, Identifiable, Sendable {
     let id: Int
     let trackName: String
     let artistName: String

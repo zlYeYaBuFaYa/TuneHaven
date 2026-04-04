@@ -1,6 +1,6 @@
 import Foundation
 
-struct ArtistGroup: Identifiable, Hashable {
+struct ArtistGroup: Identifiable, Hashable, Sendable {
     let name: String
     let songCount: Int
     let albumCount: Int
@@ -8,12 +8,12 @@ struct ArtistGroup: Identifiable, Hashable {
     var id: String { name }
 }
 
-struct AlbumKey: Hashable {
+struct AlbumKey: Hashable, Sendable {
     let artist: String
     let album: String
 }
 
-struct AlbumGroup: Identifiable, Hashable {
+struct AlbumGroup: Identifiable, Hashable, Sendable {
     let name: String
     let artist: String
     let year: Int?
@@ -23,13 +23,13 @@ struct AlbumGroup: Identifiable, Hashable {
     var id: String { "\(artist)\0\(name)" }
 }
 
-struct ArtistDetail {
+struct ArtistDetail: Sendable {
     let name: String
     let albums: [AlbumGroup]
     let allSongs: [Song]
 }
 
-struct AlbumDetail {
+struct AlbumDetail: Sendable {
     let name: String
     let artist: String
     let year: Int?
@@ -37,7 +37,7 @@ struct AlbumDetail {
     let coverImagePath: String?
 }
 
-enum SongSortOption: Int, CaseIterable {
+enum SongSortOption: Int, CaseIterable, Sendable {
     case title = 0
     case fileSize
     case importDate
@@ -46,7 +46,7 @@ enum SongSortOption: Int, CaseIterable {
     case duration
 }
 
-enum AudioFormat: String, CaseIterable {
+enum AudioFormat: String, CaseIterable, Sendable {
     case all = "all"
     case mp3 = "mp3"
     case m4a = "m4a"
@@ -65,25 +65,25 @@ enum AudioFormat: String, CaseIterable {
     }
 }
 
-enum LibraryTab: String, CaseIterable {
+enum LibraryTab: String, CaseIterable, Sendable {
     case all = "all"
     case artist = "artist"
     case album = "album"
 }
 
-enum PlayMode: Int, CaseIterable {
+enum PlayMode: Int, CaseIterable, Sendable {
     case sequential = 0
     case repeatOne
     case repeatAll
     case shuffle
 }
 
-enum SpeedMemoryMode: Int, CaseIterable {
+enum SpeedMemoryMode: Int, CaseIterable, Sendable {
     case global = 0
     case perSong = 1
 }
 
-enum RecentPlayRange: Int, CaseIterable, Identifiable {
+enum RecentPlayRange: Int, CaseIterable, Identifiable, Sendable {
     case three  = 3
     case seven  = 7
     case fourteen = 14
@@ -108,7 +108,7 @@ enum RecentPlayRange: Int, CaseIterable, Identifiable {
     }
 }
 
-enum PlayContext {
+enum PlayContext: Sendable {
     case allSongs(sortBy: SongSortOption)
     case album(name: String, artist: String)
     case artist(name: String)
@@ -117,7 +117,7 @@ enum PlayContext {
     case queue
 }
 
-enum ImportFileStatus: Equatable {
+enum ImportFileStatus: Equatable, Sendable {
     case success
     case successIncompleteMetadata
     case skippedDuplicate
@@ -126,7 +126,7 @@ enum ImportFileStatus: Equatable {
     case failed
 }
 
-struct ImportOverrides {
+struct ImportOverrides: Sendable {
     let title: String?
     let artist: String?
     let album: String?
@@ -140,7 +140,7 @@ struct ImportOverrides {
     }
 }
 
-struct ImportProgress {
+struct ImportProgress: Sendable {
     let currentFileName: String
     let completedCount: Int
     let totalCount: Int
@@ -148,7 +148,7 @@ struct ImportProgress {
     let estimatedRemainingSeconds: TimeInterval?
 }
 
-struct ImportResult {
+struct ImportResult: Sendable {
     let successCount: Int
     let skippedDuplicateCount: Int
     let skippedFormatCount: Int
@@ -158,14 +158,14 @@ struct ImportResult {
     let details: [SingleImportResult]
 }
 
-struct SingleImportResult {
+struct SingleImportResult: Sendable {
     let fileName: String
     let status: ImportFileStatus
     let song: Song?
     let errorMessage: String?
 }
 
-struct SearchResult {
+struct SearchResult: Sendable {
     /// 按当前 tab 过滤后的歌曲列表
     let songs: [Song]
     let artists: [ArtistGroup]
@@ -180,19 +180,19 @@ struct SearchResult {
                                     totalMatchCount: 0, totalArtistCount: 0, totalAlbumCount: 0)
 }
 
-struct SearchHistoryItem: Identifiable {
+struct SearchHistoryItem: Identifiable, Sendable {
     let id: UUID
     let keyword: String
     let searchedAt: Date
 }
 
-struct LyricsData {
+struct LyricsData: Sendable {
     let source: LyricsSource
     let lines: [LyricsLine]
     let rawText: String
 }
 
-struct LyricsLine: Identifiable {
+struct LyricsLine: Identifiable, Sendable {
     /// 使用 UUID 作为 SwiftUI List/ForEach 的稳定标识符。
     /// 每次解析 LRC 都会生成新实例，UUID 确保 diff 正确触发视图更新。
     let id: UUID

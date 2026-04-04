@@ -16,7 +16,9 @@ final class CoverImageProcessor: CoverImageProcessing {
         }
         try jpegData.write(to: cacheURL)
         let key = "\(songId.uuidString)_medium.jpg"
-        await MainActor.run { imageCache.store(image: thumb, forKey: key) }
+        if let thumbData = thumb.jpegData(compressionQuality: 0.85) {
+            await MainActor.run { imageCache.storeImageData(thumbData, forKey: key) }
+        }
         return key
     }
 
@@ -37,7 +39,11 @@ final class CoverImageProcessor: CoverImageProcessing {
         var images: [UIImage?] = []
         for i in 0..<4 {
             if i < coverPaths.count, let path = coverPaths[i] {
-                images.append(await imageCache.imageAsync(forKey: path))
+                if let data = await imageCache.imageDataAsync(forKey: path) {
+                    images.append(UIImage(data: data))
+                } else {
+                    images.append(nil)
+                }
             } else {
                 images.append(nil)
             }
@@ -48,7 +54,9 @@ final class CoverImageProcessor: CoverImageProcessing {
             throw AppError.imageProcessingFailed("无法生成拼接封面")
         }
         try data.write(to: url)
-        await MainActor.run { imageCache.store(image: gridImage, forKey: url.lastPathComponent) }
+        if let gridData = gridImage.jpegData(compressionQuality: 0.85) {
+            await MainActor.run { imageCache.storeImageData(gridData, forKey: url.lastPathComponent) }
+        }
         return url.lastPathComponent
     }
 }

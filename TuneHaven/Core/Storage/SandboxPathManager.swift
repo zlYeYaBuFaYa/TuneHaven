@@ -55,12 +55,10 @@ enum SandboxPathManager {
                     pendingDeleteURL, wifiUploadURL, importTempURL,
                     exportTempURL, syncExtractURL]
         for dir in dirs {
-            if !fm.fileExists(atPath: dir.path) {
-                do {
-                    try fm.createDirectory(at: dir, withIntermediateDirectories: true)
-                } catch {
-                    ErrorLogger.shared.logGeneric(error, context: "目录创建失败: \(dir.lastPathComponent)")
-                }
+            do {
+                try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            } catch {
+                ErrorLogger.shared.logGeneric(error, context: "目录创建失败: \(dir.lastPathComponent)")
             }
         }
     }

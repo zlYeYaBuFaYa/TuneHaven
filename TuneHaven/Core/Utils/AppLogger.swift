@@ -6,7 +6,7 @@ enum LogLevel: String {
     case error = "ERROR"
 }
 
-final class AppLogger {
+final class AppLogger: @unchecked Sendable {
     static let shared = AppLogger()
 
     private let writer = FileLogWriter(

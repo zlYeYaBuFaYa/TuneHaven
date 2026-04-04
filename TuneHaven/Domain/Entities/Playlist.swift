@@ -1,6 +1,6 @@
 import Foundation
 
-struct Playlist: Identifiable, Hashable {
+struct Playlist: Identifiable, Hashable, Sendable {
     let id: UUID
     var name: String
     var description: String?
@@ -28,7 +28,7 @@ enum SystemPlaylistName {
     static let recentlyPlayed = "最近播放"
 }
 
-struct PlaylistDetail: Identifiable {
+struct PlaylistDetail: Identifiable, Sendable {
     let playlist: Playlist
     let songs: [Song]
 

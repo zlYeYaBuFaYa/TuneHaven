@@ -25,9 +25,9 @@ final class MockImageCacheManaging: ImageCacheManaging {
     func setCacheLimit(_ megabytes: Int) { cacheLimitMB = megabytes }
     func clearAll() async { cacheCleared = true }
     func cacheSizeAsync() async -> Int64 { mockCacheSize }
-    func memoryImage(forKey key: String) -> UIImage? { nil }
-    func imageAsync(forKey key: String) async -> UIImage? { nil }
-    func store(image: UIImage, forKey key: String) {}
+    func memoryImageData(forKey key: String) -> Data? { nil }
+    func imageDataAsync(forKey key: String) async -> Data? { nil }
+    func storeImageData(_ data: Data, forKey key: String) {}
 }
 
 final class MockCoverImageProcessing: CoverImageProcessing {
@@ -75,6 +75,9 @@ final class MockFileStorageProviding: FileStorageProviding {
     }
     var lyricsDirectoryURL: URL {
         URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("Lyrics")
+    }
+    var coverImagesDirectoryURL: URL {
+        URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("CoverImages")
     }
     func fileExists(at url: URL) -> Bool { fileExistsResult }
     func isReadableFile(at url: URL) -> Bool { fileExistsResult }
@@ -246,11 +249,12 @@ final class MockSongRepository: SongRepository {
     func toggleFavorite(id: UUID) async throws {}
     func recordPlay(id: UUID) async throws {}
     func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws {}
+    func updateCoverPath(songId: UUID, coverImagePath: String?) async throws {}
     func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws {}
     func countReferences(toFileHash hash: String) async -> Int { 0 }
     func cleanupPendingDeletes() async {}
     func fetchRecentlyPlayed(days: Int, page: Int, pageSize: Int) async -> PagedResult<Song> {
-        PagedResult(items: [], totalCount: 0, hasMore: false)
+        PagedResult(items: [], totalCount: 0, currentPage: 0, hasMore: false)
     }
     func fetchArtistGroups() async -> [ArtistGroup] { [] }
     func fetchAlbumGroups() async -> [AlbumGroup] { [] }

@@ -348,6 +348,7 @@ final class ShareServer: ObservableObject, ShareServerProviding {
 
     private func streamFile(url: URL, size: UInt64, connection: NWConnection, onComplete: (() -> Void)? = nil) {
         guard let handle = try? FileHandle(forReadingFrom: url) else {
+            log.error("streamFile: 无法打开文件 \(url.lastPathComponent)")
             connection.cancel()
             return
         }
@@ -448,11 +449,14 @@ final class ShareServer: ObservableObject, ShareServerProviding {
     }
 
     private func contentDisposition(for filename: String) -> String {
-        let ascii = filename.unicodeScalars.allSatisfy { $0.isASCII }
+        let sanitized = filename.replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\0", with: "")
+        let ascii = sanitized.unicodeScalars.allSatisfy { $0.isASCII }
         if ascii {
-            return "Content-Disposition: attachment; filename=\"\(filename)\""
+            return "Content-Disposition: attachment; filename=\"\(sanitized)\""
         }
-        let encoded = filename.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? filename
+        let encoded = sanitized.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? sanitized
         return "Content-Disposition: attachment; filename*=utf-8''\(encoded)"
     }
 

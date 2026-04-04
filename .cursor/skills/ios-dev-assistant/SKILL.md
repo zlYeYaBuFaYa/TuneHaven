@@ -413,11 +413,13 @@ Domain 层（Entity / Protocol）→ Data 层（Repository / Mapper）
 
 测试通过后**自动执行**多维度代码 Review。
 
-**大任务拆分**：改动文件较多时，按架构分层或功能模块将文件分组，每组作为一个 Review 子任务（如「Domain + Data 层 Review」「Presentation 层 Review」「测试代码 Review」）。每个子任务对该文件组执行全部 10 项 Review 维度，发现问题即修复。所有子任务完成后，再做一次**跨模块集成 Review**（关注模块间接口一致性、依赖方向、数据流完整性）。
+> **全项目/模块级 Review**：若用户要求的不是功能级 Review（而是全项目审查、模块级审查等），请使用 **代码 Review 助手**（`.cursor/skills/code-review/SKILL.md`），该 Skill 提供完整的独立 Review 流程。
 
-**拆分后的轮次计数**：跨模块集成 Review 计为第 1 轮；若通过，第 2 轮可采用**增量确认**（仅复查子任务 Review 中修复过的代码 + 跨模块接口），无需完整重走全部 10 项维度。若增量确认发现新问题，则回退到全量 Review。
+**大任务拆分**：改动文件较多时，按架构分层或功能模块将文件分组，每组作为一个 Review 子任务（如「Domain + Data 层 Review」「Presentation 层 Review」「测试代码 Review」）。每个子任务对该文件组执行全部 11 项 Review 维度，发现问题即修复。所有子任务完成后，再做一次**跨模块集成 Review**（关注模块间接口一致性、依赖方向、数据流完整性）。
 
-**Review 维度**（10 项）：
+**拆分后的轮次计数**：跨模块集成 Review 计为第 1 轮；若通过，第 2 轮可采用**增量确认**（仅复查子任务 Review 中修复过的代码 + 跨模块接口），无需完整重走全部 11 项维度。若增量确认发现新问题，则回退到全量 Review。
+
+**Review 维度**（11 项）：
 
 **A. 正确性与安全**
 
@@ -435,6 +437,7 @@ Domain 层（Entity / Protocol）→ Data 层（Repository / Mapper）
 | 架构合规 | Clean Architecture 分层、依赖单向、Repository 隔离、Service 即 ViewModel |
 | 代码风格 | 驼峰命名、Swift 6.0 惯用法、格式一致、访问控制合理、无冗余代码 |
 | API 设计 | 接口语义清晰、参数合理、async throws 一致、与现有风格统一 |
+| 代码整洁 | 无死代码、无未使用 import、无废弃函数/类型、无注释代码块、无冗余文件 |
 
 **C. 性能与可维护**
 
@@ -445,8 +448,8 @@ Domain 层（Entity / Protocol）→ Data 层（Repository / Mapper）
 | 可维护性 | SOLID、DRY、低耦合高内聚、职责单一、可扩展 |
 
 **问题分级**：
-- 🔴 **阻塞**：逻辑错误、崩溃、安全漏洞
-- 🟡 **重要**：性能隐患、可维护性问题
+- 🔴 **阻塞**：逻辑错误、崩溃、安全漏洞、数据损坏
+- 🟡 **重要**：性能隐患、可维护性问题、架构违规
 - 🟢 **轻微**：风格微调、命名优化、性能小优化
 
 > 三个级别的问题**全部必须修复**，修复后进入下一轮 Review。

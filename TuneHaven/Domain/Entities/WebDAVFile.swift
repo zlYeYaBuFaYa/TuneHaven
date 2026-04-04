@@ -1,6 +1,6 @@
 import Foundation
 
-struct WebDAVFile: Identifiable, Hashable {
+struct WebDAVFile: Identifiable, Hashable, Sendable {
     let href: String
     let displayName: String
     let contentLength: Int64
@@ -28,7 +28,7 @@ struct WebDAVFile: Identifiable, Hashable {
     }
 }
 
-struct WebDAVDownloadTask: Identifiable {
+struct WebDAVDownloadTask: Identifiable, Sendable {
     let id: UUID
     let file: WebDAVFile
     var status: DownloadStatus
@@ -50,7 +50,7 @@ struct WebDAVDownloadTask: Identifiable {
     }
 }
 
-struct WebDAVImportResult {
+struct WebDAVImportResult: Sendable {
     let downloadedCount: Int
     let downloadFailedCount: Int
     let skippedOversizeCount: Int

@@ -62,6 +62,7 @@ struct MiniPlayerBar: View {
                                     .foregroundColor(song.isFavorite ? palette.accent : palette.iconSecondary)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(song.isFavorite ? "取消收藏" : "收藏")
 
                             Button {
                                 playback.togglePlayPause()
@@ -71,6 +72,7 @@ struct MiniPlayerBar: View {
                                     .foregroundColor(palette.primary)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel(playback.isPlaying ? "暂停" : "播放")
 
                             Button {
                                 playback.playNext()
@@ -80,6 +82,7 @@ struct MiniPlayerBar: View {
                                     .foregroundColor(palette.iconSecondary)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("下一首")
                         }
                     }
                     .padding(.horizontal, 16)

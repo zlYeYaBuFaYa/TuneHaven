@@ -10,9 +10,10 @@ enum ThumbnailSize: Int {
     var dimension: CGFloat { CGFloat(rawValue) }
 }
 
-final class ThumbnailGenerator {
+enum ThumbnailGenerator {
     static func resize(_ image: UIImage, to size: ThumbnailSize) -> UIImage {
         let dim = size.dimension
+        guard image.size.width > 0, image.size.height > 0 else { return image }
         let targetSize = CGSize(width: dim, height: dim)
         if image.size.width <= dim && image.size.height <= dim { return image }
         let renderer = UIGraphicsImageRenderer(size: targetSize)

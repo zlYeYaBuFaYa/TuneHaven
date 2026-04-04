@@ -25,13 +25,15 @@ struct CoverImageView: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .task(id: CoverLoadToken(path: path, refresh: refreshToken)) {
             guard let path else { cachedImage = nil; return }
-            if let memImg = imageCache.memoryImage(forKey: path) {
-                cachedImage = memImg
+            if let memData = imageCache.memoryImageData(forKey: path),
+               let img = UIImage(data: memData) {
+                cachedImage = img
                 return
             }
             let cache = imageCache
-            let loaded = await Task.detached {
-                await cache.imageAsync(forKey: path)
+            let loaded: UIImage? = await Task.detached {
+                guard let data = await cache.imageDataAsync(forKey: path) else { return nil }
+                return UIImage(data: data)
             }.value
             cachedImage = loaded
         }

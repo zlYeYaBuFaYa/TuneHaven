@@ -6,6 +6,7 @@ import SwiftUI
 // MARK: - ThemeRegistry Tests
 
 @Suite("ThemeRegistry Tests")
+@MainActor
 struct ThemeRegistryTests {
 
     init() {
@@ -204,8 +205,14 @@ struct ThemeColorPaletteTests {
 struct ColorHexTests {
 
     private func rgb(_ color: Color) -> (r: Double, g: Double, b: Double, a: Double) {
-        let resolved = color.resolve(in: EnvironmentValues())
-        return (Double(resolved.red), Double(resolved.green), Double(resolved.blue), Double(resolved.opacity))
+        if #available(iOS 17.0, *) {
+            let resolved = color.resolve(in: EnvironmentValues())
+            return (Double(resolved.red), Double(resolved.green), Double(resolved.blue), Double(resolved.opacity))
+        } else {
+            var r: CGFloat = 0; var g: CGFloat = 0; var b: CGFloat = 0; var a: CGFloat = 0
+            UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &a)
+            return (Double(r), Double(g), Double(b), Double(a))
+        }
     }
 
     @Test("6 位 HEX #FF0000 解析为纯红")

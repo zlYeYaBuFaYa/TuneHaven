@@ -2,11 +2,8 @@ import SwiftUI
 
 struct PlayerView: View {
     @EnvironmentObject private var router: AppRouter
-    @EnvironmentObject private var themeManager: ThemeManager
-    @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var playlistService: PlaylistService
     @EnvironmentObject private var playback: PlaybackService
-    @EnvironmentObject private var engine: AudioEngine
     @EnvironmentObject private var lyricsService: LyricsService
     @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
@@ -251,6 +248,7 @@ struct PlayerView: View {
                     .font(.title3)
                     .foregroundColor(palette.textPrimary)
             }
+            .accessibilityLabel("关闭播放器")
             Spacer()
             if let song = playback.currentSong {
                 Text(song.album.isEmpty || song.album == SongDefaults.unknownAlbum ? "正在播放" : song.album)
@@ -265,6 +263,7 @@ struct PlayerView: View {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
+            .accessibilityLabel("更多操作")
         }
         .padding(.horizontal, 4)
     }
@@ -359,10 +358,7 @@ struct PlayerView: View {
                     }
                 } label: {
                     HStack(spacing: 6) {
-                        Text(currentLyricsText(from: data) ?? " ")
-                            .font(.subheadline)
-                            .foregroundColor(palette.textSecondary)
-                            .lineLimit(1)
+                        CurrentLyricsText(lyricsData: data, preferSimplified: lyricsPreferSimplified)
                         Image(systemName: "chevron.right")
                             .font(.caption2)
                             .foregroundColor(palette.textTertiary)
@@ -389,23 +385,6 @@ struct PlayerView: View {
                 .padding(.top, 8)
             }
         }
-    }
-
-    private func currentLyricsText(from data: LyricsData) -> String? {
-        let lines = data.lines
-        guard !lines.isEmpty else { return nil }
-        let time = engine.currentTime
-        if time < lines[0].timestamp { return LyricsTextTransform.displayText(lines[0].text, preferSimplified: lyricsPreferSimplified) }
-        var lo = 0, hi = lines.count - 1
-        while lo < hi {
-            let mid = lo + (hi - lo + 1) / 2
-            if lines[mid].timestamp <= time {
-                lo = mid
-            } else {
-                hi = mid - 1
-            }
-        }
-        return LyricsTextTransform.displayText(lines[lo].text, preferSimplified: lyricsPreferSimplified)
     }
 
     private var progressBar: some View {
@@ -446,5 +425,38 @@ struct PlayerView: View {
             guard !Task.isCancelled else { return }
             action()
         }
+    }
+}
+
+private struct CurrentLyricsText: View {
+    let lyricsData: LyricsData
+    let preferSimplified: Bool
+    @EnvironmentObject private var engine: AudioEngine
+    @Environment(\.themePalette) private var palette
+
+    var body: some View {
+        Text(currentText)
+            .font(.subheadline)
+            .foregroundColor(palette.textSecondary)
+            .lineLimit(1)
+    }
+
+    private var currentText: String {
+        let lines = lyricsData.lines
+        guard !lines.isEmpty else { return " " }
+        let time = engine.currentTime
+        if time < lines[0].timestamp {
+            return LyricsTextTransform.displayText(lines[0].text, preferSimplified: preferSimplified)
+        }
+        var lo = 0, hi = lines.count - 1
+        while lo < hi {
+            let mid = lo + (hi - lo + 1) / 2
+            if lines[mid].timestamp <= time {
+                lo = mid
+            } else {
+                hi = mid - 1
+            }
+        }
+        return LyricsTextTransform.displayText(lines[lo].text, preferSimplified: preferSimplified)
     }
 }

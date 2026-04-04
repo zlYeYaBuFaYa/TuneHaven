@@ -1,6 +1,6 @@
 import Foundation
 
-struct PlaylistGroup: Identifiable, Hashable {
+struct PlaylistGroup: Identifiable, Hashable, Sendable {
     let id: UUID
     var name: String
     let createdAt: Date
@@ -8,7 +8,7 @@ struct PlaylistGroup: Identifiable, Hashable {
 
 }
 
-struct PlaylistGroupDetail: Identifiable {
+struct PlaylistGroupDetail: Identifiable, Sendable {
     let id: UUID
     let name: String
     let playlists: [Playlist]

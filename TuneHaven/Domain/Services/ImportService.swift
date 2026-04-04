@@ -201,6 +201,7 @@ final class ImportService: ObservableObject, FileImporting {
             return SingleImportResult(fileName: fileName, status: (isIncomplete || coverFailed) ? .successIncompleteMetadata : .success, song: song, errorMessage: nil)
         } catch {
             log.error(error, context: "[Import] 歌曲入库失败: \(fileName)")
+            try? fileService.removeItem(at: fileService.musicFileURL(relativePath: relPath))
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: error.localizedDescription)
         }
     }

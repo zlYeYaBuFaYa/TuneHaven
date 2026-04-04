@@ -16,7 +16,8 @@ final class NowPlayingManager: NowPlayingManaging {
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyPlaybackRate] = speed
         info[MPNowPlayingInfoPropertyDefaultPlaybackRate] = Float(1.0)
-        if let coverPath, let cover = await imageCache.imageAsync(forKey: coverPath) {
+        if let coverPath, let coverData = await imageCache.imageDataAsync(forKey: coverPath),
+           let cover = UIImage(data: coverData) {
             info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: cover.size) { _ in cover }
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info

@@ -19,7 +19,7 @@ final class AudioEngine: ObservableObject, AudioEngineProtocol {
     private var itemObservation: NSKeyValueObservation?
     private var statusObservation: NSKeyValueObservation?
 
-    var isPlaying: Bool {
+    private var isPlaying: Bool {
         if case .playing = state { return true }
         return false
     }
@@ -97,6 +97,10 @@ final class AudioEngine: ObservableObject, AudioEngineProtocol {
                 switch status {
                 case .readyToPlay:
                     self?.isBuffering = false
+                    let itemDur = item.duration
+                    if self?.duration == 0, itemDur.isNumeric, !itemDur.seconds.isNaN {
+                        self?.duration = itemDur.seconds
+                    }
                 case .failed:
                     if let err = error {
                         self?.state = .error(AppError.playbackUnsupportedFormat("加载失败：\(err.localizedDescription)"))
@@ -179,13 +183,11 @@ final class AudioEngine: ObservableObject, AudioEngineProtocol {
 
     private let _playbackEndedSubject = PassthroughSubject<Void, Never>()
     private let _timeUpdateSubject = PassthroughSubject<(currentTime: TimeInterval, duration: TimeInterval), Never>()
-    var playbackEndedSubject: AnyPublisher<Void, Never> { _playbackEndedSubject.eraseToAnyPublisher() }
-    var timeUpdateSubject: AnyPublisher<(currentTime: TimeInterval, duration: TimeInterval), Never> { _timeUpdateSubject.eraseToAnyPublisher() }
 
     // MARK: - AudioEngineProtocol
     var statePublisher: AnyPublisher<PlaybackState, Never> { $state.eraseToAnyPublisher() }
-    var playbackEndedPublisher: AnyPublisher<Void, Never> { playbackEndedSubject }
-    var timeUpdatePublisher: AnyPublisher<(currentTime: TimeInterval, duration: TimeInterval), Never> { timeUpdateSubject }
+    var playbackEndedPublisher: AnyPublisher<Void, Never> { _playbackEndedSubject.eraseToAnyPublisher() }
+    var timeUpdatePublisher: AnyPublisher<(currentTime: TimeInterval, duration: TimeInterval), Never> { _timeUpdateSubject.eraseToAnyPublisher() }
 
     private func addTimeObserver() {
         removeTimeObserver()

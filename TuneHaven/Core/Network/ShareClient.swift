@@ -7,7 +7,7 @@ final class ShareClient: ShareClientProviding {
 
     private let jsonDecoder = JSONDecoder()
 
-    private lazy var urlSession: URLSession = {
+    private let urlSession: URLSession = {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 300
@@ -110,12 +110,8 @@ final class ShareClient: ShareClientProviding {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(result)
-        do {
-            let (_, response) = try await urlSession.data(for: request)
-            try validateHTTP(response: response, path: "/api/share/complete")
-        } catch {
-            AppLogger.shared.error(error, context: "[ShareClient] notifyComplete")
-        }
+        let (_, response) = try await urlSession.data(for: request)
+        try validateHTTP(response: response, path: "/api/share/complete")
     }
 
     func disconnect() {

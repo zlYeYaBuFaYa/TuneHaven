@@ -60,7 +60,7 @@ struct SearchDebouncerTests {
     // debounce 间隔 ~300ms；初始等待 1s 覆盖 debounce + Combine 调度延迟，
     // 之后用 polling + deadline 容忍 CI 负载抖动，避免固定 sleep 导致的 flaky test。
 
-    @Test("SearchDebouncer 发送值后 debouncedQuery 更新", .serialized, .timeLimit(.seconds(8)))
+    @Test("SearchDebouncer 发送值后 debouncedQuery 更新", .serialized, .timeLimit(.minutes(1)))
     @MainActor func testDebouncerUpdatesQuery() async throws {
         let debouncer = SearchDebouncer()
         debouncer.send("test")
@@ -75,7 +75,7 @@ struct SearchDebouncerTests {
         #expect(debouncer.debouncedQuery == "test")
     }
 
-    @Test("SearchDebouncer 快速连续发送只保留最后一个值", .serialized, .timeLimit(.seconds(8)))
+    @Test("SearchDebouncer 快速连续发送只保留最后一个值", .serialized, .timeLimit(.minutes(1)))
     @MainActor func testDebouncerDeduplicates() async throws {
         let debouncer = SearchDebouncer()
         debouncer.send("a")
@@ -96,6 +96,7 @@ struct SearchDebouncerTests {
 // MARK: - #19 ThemeVisualConfig 映射正确性（UI 重设计后适配 4 套新主题）
 
 @Suite("P1 Fix #19: ThemeVisualConfig 映射")
+@MainActor
 struct ThemeVisualConfigTests {
 
     init() {

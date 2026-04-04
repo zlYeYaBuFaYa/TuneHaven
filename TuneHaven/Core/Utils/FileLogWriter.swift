@@ -1,6 +1,6 @@
 import Foundation
 
-final class FileLogWriter {
+final class FileLogWriter: @unchecked Sendable {
     private let writeQueue: DispatchQueue
     private let fileURL: () -> URL
     private let maxFileSize: Int64
