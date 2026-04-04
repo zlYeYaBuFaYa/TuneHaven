@@ -14,12 +14,16 @@ struct SongListView: View {
 
     @State private var songs: [Song] = []
     @State private var isLoading = false
+    @State private var currentPage = 0
+    @State private var hasMorePages = true
+    private static let pageSize = 100
 
     private var isFavorites: Bool { context == .favorites }
+    private var isPaginated: Bool { context == .recentlyPlayed }
 
     var body: some View {
         Group {
-            if isLoading {
+            if isLoading && songs.isEmpty {
                 ProgressView()
             } else if songs.isEmpty {
                 VStack(spacing: 12) {
@@ -54,6 +58,20 @@ struct SongListView: View {
                             } : nil
                         )
                         .listRowBackground(palette.surface)
+                        .onAppear {
+                            if isPaginated && hasMorePages && song.id == songs.last?.id {
+                                Task { await loadMore() }
+                            }
+                        }
+                    }
+
+                    if isPaginated && hasMorePages {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
+                        }
+                        .listRowBackground(Color.clear)
                     }
 
                     Color.clear
@@ -75,17 +93,31 @@ struct SongListView: View {
 
     private func load() async {
         isLoading = true
+        currentPage = 0
         let days = recentPlayRange
         switch context {
         case .favorites:
             songs = await playlistService.fetchFavorites()
         case .recentlyPlayed:
-            songs = await libraryService.fetchRecentlyPlayed(days: days, page: 0, pageSize: 1000).items
+            let result = await libraryService.fetchRecentlyPlayed(days: days, page: 0, pageSize: Self.pageSize)
+            songs = result.items
+            hasMorePages = result.items.count >= Self.pageSize
         case .allSongs:
             songs = await libraryService.fetchAllSongs(sortBy: .title, ascending: true)
         default:
             songs = []
         }
+        isLoading = false
+    }
+
+    private func loadMore() async {
+        guard isPaginated, hasMorePages, !isLoading else { return }
+        isLoading = true
+        currentPage += 1
+        let days = recentPlayRange
+        let result = await libraryService.fetchRecentlyPlayed(days: days, page: currentPage, pageSize: Self.pageSize)
+        songs.append(contentsOf: result.items)
+        hasMorePages = result.items.count >= Self.pageSize
         isLoading = false
     }
 

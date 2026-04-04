@@ -18,6 +18,7 @@ struct LyricsSearchView: View {
     @State private var searchError: String?
     @State private var saveError: String?
     @State private var hasSearched = false
+    @State private var searchTask: Task<Void, Never>?
     @State private var showManualInput = false
     @State private var manualLyricsText = ""
 
@@ -53,6 +54,7 @@ struct LyricsSearchView: View {
             } message: {
                 Text(saveError ?? "")
             }
+            .onDisappear { searchTask?.cancel() }
             .sheet(isPresented: $showManualInput) {
                 manualInputView
                     .environment(\.themePalette, palette)
@@ -389,11 +391,12 @@ struct LyricsSearchView: View {
     private func performSearch() {
         let query = trackName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
+        searchTask?.cancel()
         isSearching = true
         searchError = nil
         hasSearched = false
 
-        Task {
+        searchTask = Task {
             do {
                 let artist = artistName.trimmingCharacters(in: .whitespacesAndNewlines)
                 let found = try await lyricsService.searchOnline(

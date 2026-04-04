@@ -35,6 +35,7 @@ struct CoverImageView: View {
                 guard let data = await cache.imageDataAsync(forKey: path) else { return nil }
                 return UIImage(data: data)
             }.value
+            guard !Task.isCancelled else { return }
             cachedImage = loaded
         }
         .onReceive(

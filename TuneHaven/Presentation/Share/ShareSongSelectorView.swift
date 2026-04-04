@@ -9,6 +9,7 @@ struct ShareSongSelectorView: View {
     @State private var selectedIds: Set<UUID> = []
     @State private var searchText = ""
     @State private var filteredSongs: [Song] = []
+    @State private var filterTask: Task<Void, Never>?
     @State private var errorMessage: String?
     @State private var showErrorAlert = false
 
@@ -89,10 +90,12 @@ struct ShareSongSelectorView: View {
             await updateFilteredSongsAsync()
         }
         .onChange(of: searchText) { _ in
-            Task { await updateFilteredSongsAsync() }
+            filterTask?.cancel()
+            filterTask = Task { await updateFilteredSongsAsync() }
         }
         .onChange(of: libraryService.songs) { _ in
-            Task { await updateFilteredSongsAsync() }
+            filterTask?.cancel()
+            filterTask = Task { await updateFilteredSongsAsync() }
         }
     }
 
@@ -105,7 +108,8 @@ struct ShareSongSelectorView: View {
                 $0.title.lowercased().contains(q) || $0.artist.lowercased().contains(q)
             }
         }.value
-        await MainActor.run { filteredSongs = result }
+        guard !Task.isCancelled else { return }
+        filteredSongs = result
     }
 
     private var bottomBar: some View {

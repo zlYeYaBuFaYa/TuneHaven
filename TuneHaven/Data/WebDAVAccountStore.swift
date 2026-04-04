@@ -7,6 +7,7 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
 
     private let queue = DispatchQueue(label: "com.tunehaven.webdav-account-store")
     private let accountsKey = "webdav_accounts"
+    private var cachedAccounts: [WebDAVAccount]?
     private func passwordKey(for id: UUID) -> String { "webdav_pwd_\(id.uuidString)" }
 
     func loadAccounts() -> [WebDAVAccount] {
@@ -14,16 +15,27 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
     }
 
     private func _loadAccounts() -> [WebDAVAccount] {
+        if let cached = cachedAccounts { return cached }
         guard let data = UserDefaults.standard.data(forKey: accountsKey) else {
+            cachedAccounts = []
             return []
         }
         do {
             let accounts = try JSONDecoder().decode([WebDAVAccount].self, from: data)
-            return accounts.sorted { ($0.lastConnectedAt ?? .distantPast) > ($1.lastConnectedAt ?? .distantPast) }
+                .sorted { ($0.lastConnectedAt ?? .distantPast) > ($1.lastConnectedAt ?? .distantPast) }
+            cachedAccounts = accounts
+            return accounts
         } catch {
             ErrorLogger.shared.logGeneric(error, context: "_loadAccounts: 解码失败，账户数据可能损坏")
+            cachedAccounts = []
             return []
         }
+    }
+
+    private func _persist(_ accounts: [WebDAVAccount]) throws {
+        let data = try JSONEncoder().encode(accounts)
+        UserDefaults.standard.set(data, forKey: accountsKey)
+        cachedAccounts = accounts
     }
 
     func saveAccount(_ account: WebDAVAccount, password: String?) throws {
@@ -34,9 +46,7 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
             } else {
                 accounts.append(account)
             }
-            let data = try JSONEncoder().encode(accounts)
-            UserDefaults.standard.set(data, forKey: accountsKey)
-
+            try _persist(accounts)
             if let password {
                 try KeychainHelper.saveString(password, forKey: passwordKey(for: account.id))
             }
@@ -49,8 +59,7 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
             var accounts = _loadAccounts()
             accounts.removeAll { $0.id == id }
             do {
-                let data = try JSONEncoder().encode(accounts)
-                UserDefaults.standard.set(data, forKey: accountsKey)
+                try _persist(accounts)
             } catch {
                 ErrorLogger.shared.log(.databaseError(error), context: "deleteAccount: 编码失败 id=\(id)")
             }
@@ -69,8 +78,7 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
             if let index = accounts.firstIndex(where: { $0.id == accountId }) {
                 accounts[index].lastConnectedAt = Date()
                 do {
-                    let data = try JSONEncoder().encode(accounts)
-                    UserDefaults.standard.set(data, forKey: accountsKey)
+                    try _persist(accounts)
                 } catch {
                     ErrorLogger.shared.log(.databaseError(error), context: "updateLastConnected: 编码失败 id=\(accountId)")
                 }

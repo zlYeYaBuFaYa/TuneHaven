@@ -17,6 +17,7 @@ final class ShareService: ObservableObject, ShareDataSource {
     @Published private(set) var receiveProgress: ShareProgress?
     @Published private(set) var analysis: ShareAnalysis?
     @Published private(set) var transferResult: ShareTransferResult?
+    private var isReceiveCancelled = false
 
     private let songRepo: SongRepository
     private let playlistService: PlaylistService
@@ -139,15 +140,27 @@ final class ShareService: ObservableObject, ShareDataSource {
         }
 
         var playlistLocalSongs: [String: Int] = [:]
-        for playlist in playlists {
-            let playlistSongList = try await client.fetchPlaylistSongs(at: playlist.index)
+        let fetchedPlaylists: [(String, [ShareSongSummary])] = try await withThrowingTaskGroup(
+            of: (String, [ShareSongSummary]).self
+        ) { group in
+            for playlist in playlists {
+                group.addTask {
+                    let songs = try await client.fetchPlaylistSongs(at: playlist.index)
+                    return (playlist.name, songs)
+                }
+            }
+            var results: [(String, [ShareSongSummary])] = []
+            for try await item in group { results.append(item) }
+            return results
+        }
+        for (name, playlistSongs) in fetchedPlaylists {
             var localCount = 0
-            for ps in playlistSongList {
+            for ps in playlistSongs {
                 let match = matchSong(title: ps.title, artist: ps.artist, album: ps.album, duration: ps.duration)
                 if case .noMatch = match { } else { localCount += 1 }
             }
             if localCount > 0 {
-                playlistLocalSongs[playlist.name] = localCount
+                playlistLocalSongs[name] = localCount
             }
         }
 
@@ -185,6 +198,7 @@ final class ShareService: ObservableObject, ShareDataSource {
         defer { endBackgroundTask() }
 
         isReceiving = true
+        isReceiveCancelled = false
         var songsReceived = 0
         var songsSkipped = 0
         var playlistsCreated = 0
@@ -201,6 +215,7 @@ final class ShareService: ObservableObject, ShareDataSource {
         var importedSongMap: [Int: UUID] = [:]
 
         for (i, song) in newSongs.enumerated() {
+            guard !isReceiveCancelled else { break }
             receiveProgress = ShareProgress(
                 phase: .transferring,
                 current: i + 1,
@@ -245,6 +260,7 @@ final class ShareService: ObservableObject, ShareDataSource {
 
         let playlists = analysis.playlists
         for (i, playlist) in playlists.enumerated() {
+            guard !isReceiveCancelled else { break }
             receiveProgress = ShareProgress(
                 phase: .importing,
                 current: i + 1,
@@ -309,6 +325,7 @@ final class ShareService: ObservableObject, ShareDataSource {
 
     func cancelReceive() {
         log.info("[Share] 取消接收")
+        isReceiveCancelled = true
         client?.disconnect()
         client = nil
         isReceiving = false

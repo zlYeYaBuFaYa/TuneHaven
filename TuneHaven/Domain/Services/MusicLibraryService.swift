@@ -73,11 +73,9 @@ final class MusicLibraryService: ObservableObject {
     func toggleFavorite(songId: UUID) async throws {
         log.info("切换收藏状态: \(songId)")
         try await songRepo.toggleFavorite(id: songId)
-        if let index = songs.firstIndex(where: { $0.id == songId }) {
-            var updated = songs[index]
-            updated.isFavorite.toggle()
-            updated.favoriteDate = updated.isFavorite ? Date() : nil
-            songs[index] = updated
+        if let index = songs.firstIndex(where: { $0.id == songId }),
+           let refreshed = await songRepo.fetchSong(id: songId) {
+            songs[index] = refreshed
         }
     }
 

@@ -157,11 +157,14 @@ private struct PlaylistContentView: View {
     @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
 
+    @State private var cachedAllSorted: [Song] = []
+    @State private var cachedDisplaySongs: [Song] = []
+
     private var isFiltering: Bool {
         !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private func applySorting(_ songs: [Song]) -> [Song] {
+    private static func applySorting(_ songs: [Song], by sortOption: SongSortOption, ascending: Bool) -> [Song] {
         songs.sorted { a, b in
             let result: Bool
             switch sortOption {
@@ -178,23 +181,35 @@ private struct PlaylistContentView: View {
             case .duration:
                 result = a.duration < b.duration
             }
-            return isAscending ? result : !result
+            return ascending ? result : !result
+        }
+    }
+
+    private func recomputeSorted() {
+        let sorted = Self.applySorting(detail.songs, by: sortOption, ascending: isAscending)
+        cachedAllSorted = sorted
+        recomputeDisplay(allSorted: sorted)
+    }
+
+    private func recomputeDisplay(allSorted: [Song]) {
+        if isFiltering {
+            let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            cachedDisplaySongs = Self.applySorting(
+                detail.songs.filter {
+                    $0.title.lowercased().contains(q) ||
+                    $0.artist.lowercased().contains(q) ||
+                    $0.album.lowercased().contains(q)
+                },
+                by: sortOption, ascending: isAscending
+            )
+        } else {
+            cachedDisplaySongs = allSorted
         }
     }
 
     var body: some View {
-        let allSorted = applySorting(detail.songs)
-        let displaySongs: [Song] = {
-            if isFiltering {
-                let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                return applySorting(detail.songs.filter {
-                    $0.title.lowercased().contains(q) ||
-                    $0.artist.lowercased().contains(q) ||
-                    $0.album.lowercased().contains(q)
-                })
-            }
-            return allSorted
-        }()
+        let allSorted = cachedAllSorted
+        let displaySongs = cachedDisplaySongs
 
         if !isFiltering {
             Section {
@@ -274,6 +289,11 @@ private struct PlaylistContentView: View {
                 .listRowInsets(EdgeInsets())
         }
         .listSectionSeparator(.hidden)
+        .onAppear { recomputeSorted() }
+        .onChange(of: detail.songs.count) { _ in recomputeSorted() }
+        .onChange(of: sortOption) { _ in recomputeSorted() }
+        .onChange(of: isAscending) { _ in recomputeSorted() }
+        .onChange(of: searchText) { _ in recomputeDisplay(allSorted: cachedAllSorted) }
     }
 }
 

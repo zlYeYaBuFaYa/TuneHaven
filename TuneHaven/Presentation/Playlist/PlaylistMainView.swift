@@ -9,10 +9,15 @@ struct PlaylistMainView: View {
     @Environment(\.themePalette) private var palette
 
     @State private var showGroupManage = false
+    @State private var systemPlaylists: [Playlist] = []
+    @State private var userPlaylists: [Playlist] = []
+
+    private func recomputePlaylists() {
+        systemPlaylists = playlistService.playlists.filter { $0.isSystem }.sorted { $0.systemType.rawValue < $1.systemType.rawValue }
+        userPlaylists = playlistService.playlists.filter { !$0.isSystem }.sorted { $0.sortOrder < $1.sortOrder }
+    }
 
     var body: some View {
-        let systemPlaylists = playlistService.playlists.filter { $0.isSystem }.sorted { $0.systemType.rawValue < $1.systemType.rawValue }
-        let userPlaylists = playlistService.playlists.filter { !$0.isSystem }.sorted { $0.sortOrder < $1.sortOrder }
         List {
             Section {
                 ForEach(systemPlaylists) { playlist in
@@ -102,7 +107,11 @@ struct PlaylistMainView: View {
                 }
             }
         }
-        .task { await playlistService.loadPlaylists() }
+        .task {
+            await playlistService.loadPlaylists()
+            recomputePlaylists()
+        }
+        .onChange(of: playlistService.playlists) { _ in recomputePlaylists() }
         .onReceive(libraryService.$songs.dropFirst().debounce(for: .milliseconds(500), scheduler: RunLoop.main)) { _ in
             Task { await playlistService.loadPlaylists() }
         }

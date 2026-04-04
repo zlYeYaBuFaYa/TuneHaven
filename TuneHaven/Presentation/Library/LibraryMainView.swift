@@ -162,18 +162,18 @@ struct LibraryMainView: View {
 
     @ViewBuilder
     private var libraryContent: some View {
-        Group {
-            switch selectedTab {
-            case .all:
-                AllSongsView(sortOption: sortOptionBinding, isAscending: $isAscending, formatFilter: $formatFilter)
-            case .artist:
-                ArtistListView()
-            case .album:
-                AlbumGridView()
-            }
+        ZStack {
+            AllSongsView(sortOption: sortOptionBinding, isAscending: $isAscending, formatFilter: $formatFilter)
+                .opacity(selectedTab == .all ? 1 : 0)
+                .allowsHitTesting(selectedTab == .all)
+            ArtistListView()
+                .opacity(selectedTab == .artist ? 1 : 0)
+                .allowsHitTesting(selectedTab == .artist)
+            AlbumGridView()
+                .opacity(selectedTab == .album ? 1 : 0)
+                .allowsHitTesting(selectedTab == .album)
         }
-        .id(selectedTab)
-        .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+        .animation(.easeInOut(duration: 0.2), value: selectedTab)
     }
 
     private var searchHistoryView: some View {

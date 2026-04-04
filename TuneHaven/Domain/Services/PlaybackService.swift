@@ -180,11 +180,14 @@ final class PlaybackService: ObservableObject {
             engine.seek(to: 0)
             return
         }
-        guard let prevItem = queueService.previousSong() else { return }
-        if prevItem.song.isLossless && !subscriptionService.canAccess(.losslessPlayback) {
-            losslessBlockedSong = prevItem.song
-            return
+        let canLossless = subscriptionService.canAccess(.losslessPlayback)
+        let prevItem: QueueItem?
+        if canLossless {
+            prevItem = queueService.previousSong()
+        } else {
+            prevItem = queueService.previousSong(skipping: { $0.song.isLossless })
         }
+        guard let prevItem else { return }
         queueService.advanceToCurrent(prevItem)
         startLoadAndPlay(song: prevItem.song)
     }

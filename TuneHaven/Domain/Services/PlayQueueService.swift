@@ -106,6 +106,16 @@ final class PlayQueueService: ObservableObject {
         return queue[idx - 1]
     }
 
+    func previousSong(skipping predicate: (QueueItem) -> Bool) -> QueueItem? {
+        guard let idx = currentIndex else { return nil }
+        var i = idx - 1
+        while i >= 0 {
+            if !predicate(queue[i]) { return queue[i] }
+            i -= 1
+        }
+        return nil
+    }
+
     func markCurrentAsPlayed() {
         guard let idx = currentIndex else { return }
         queue[idx].isPlayed = true

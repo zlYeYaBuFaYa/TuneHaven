@@ -298,37 +298,41 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
                 let request = SongEntity.fetchRequest()
                 request.predicate = NSPredicate(format: "softDeleted == YES AND deletedAt < %@", cutoff as CVarArg)
                 let entities = try ctx.fetch(request)
+                guard !entities.isEmpty else { return }
+
+                let uniqueHashes = Set(entities.compactMap { $0.fileHash })
+
+                var activeHashes = Set<String>()
+                if !uniqueHashes.isEmpty {
+                    let activeReq = SongEntity.fetchRequest()
+                    activeReq.predicate = NSPredicate(format: "fileHash IN %@ AND softDeleted == NO", uniqueHashes)
+                    activeReq.propertiesToFetch = ["fileHash"]
+                    let activeEntities = try ctx.fetch(activeReq)
+                    activeHashes = Set(activeEntities.compactMap { $0.fileHash })
+                }
+
+                let allSongIds = entities.compactMap { $0.id }
+                var linksToDelete: [PlaylistSongEntity] = []
+                if !allSongIds.isEmpty {
+                    let psReq = PlaylistSongEntity.fetchRequest()
+                    psReq.predicate = NSPredicate(format: "songId IN %@", allSongIds)
+                    linksToDelete = try ctx.fetch(psReq)
+                }
+
                 for entity in entities {
                     if let hash = entity.fileHash, let path = entity.fileRelativePath {
-                        let refReq = SongEntity.fetchRequest()
-                        refReq.predicate = NSPredicate(format: "fileHash == %@ AND softDeleted == NO", hash)
-                        let count: Int
-                        do {
-                            count = try ctx.count(for: refReq)
-                        } catch {
-                            ErrorLogger.shared.log(.databaseError(error), context: "cleanupPendingDeletes: 引用计数查询失败 hash=\(hash)")
-                            AppLogger.shared.debug("cleanupPendingDeletes: 引用计数查询失败 hash=\(hash) error=\(error)")
-                            continue
-                        }
-                        if count == 0 {
-                            let fm = FileManager.default
+                        if !activeHashes.contains(hash) {
                             let url = SandboxPathManager.musicFileURL(relativePath: path)
                             do {
-                                try fm.removeItem(at: url)
+                                try FileManager.default.removeItem(at: url)
                             } catch {
                                 ErrorLogger.shared.log(.databaseError(error), context: "cleanupPendingDeletes: 文件删除失败 \(path)")
-                                AppLogger.shared.debug("cleanupPendingDeletes: 文件删除失败 path=\(path) error=\(error)")
                             }
                         }
                     }
-                    if let songId = entity.id {
-                        let psReq = PlaylistSongEntity.fetchRequest()
-                        psReq.predicate = NSPredicate(format: "songId == %@", songId as CVarArg)
-                        let links = try ctx.fetch(psReq)
-                        links.forEach { ctx.delete($0) }
-                    }
                     ctx.delete(entity)
                 }
+                linksToDelete.forEach { ctx.delete($0) }
             }
         } catch {
             ErrorLogger.shared.log(.databaseError(error), context: "cleanupPendingDeletes: DB清理失败")
