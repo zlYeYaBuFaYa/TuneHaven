@@ -28,6 +28,7 @@ enum SheetDestination: Identifiable {
     case playbackSpeedPicker
     case importFromFiles
     case batchAddSongs(playlistId: UUID)
+    case paywall(feature: PremiumFeature? = nil)
 
     var id: String {
         switch self {
@@ -39,6 +40,7 @@ enum SheetDestination: Identifiable {
         case .playbackSpeedPicker: return "speedPicker"
         case .importFromFiles: return "importFromFiles"
         case .batchAddSongs(let id): return "batchAddSongs_\(id)"
+        case .paywall(let feature): return "paywall_\(feature?.rawValue ?? "general")"
         }
     }
 }

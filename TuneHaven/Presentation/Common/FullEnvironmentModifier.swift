@@ -10,6 +10,7 @@ private struct FullEnvironmentModifier: ViewModifier {
     let playback: PlaybackService
     let engine: AudioEngine
     let lyricsService: LyricsService
+    let subscriptionService: SubscriptionService
 
     func body(content: Content) -> some View {
         content
@@ -22,6 +23,7 @@ private struct FullEnvironmentModifier: ViewModifier {
             .environmentObject(playback)
             .environmentObject(engine)
             .environmentObject(lyricsService)
+            .environmentObject(subscriptionService)
     }
 }
 
@@ -34,7 +36,8 @@ extension View {
         snackbar: SnackbarState,
         playback: PlaybackService,
         engine: AudioEngine,
-        lyricsService: LyricsService
+        lyricsService: LyricsService,
+        subscriptionService: SubscriptionService
     ) -> some View {
         modifier(FullEnvironmentModifier(
             themeManager: themeManager,
@@ -44,7 +47,8 @@ extension View {
             snackbar: snackbar,
             playback: playback,
             engine: engine,
-            lyricsService: lyricsService
+            lyricsService: lyricsService,
+            subscriptionService: subscriptionService
         ))
     }
 }

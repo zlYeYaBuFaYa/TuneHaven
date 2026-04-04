@@ -25,6 +25,24 @@ struct Song: Identifiable, Hashable, Sendable {
     var favoriteDate: Date?
     var lastPlayedDate: Date?
 
+    /// 判断歌曲是否为无损格式
+    var isLossless: Bool {
+        let fmt = metadata.format.lowercased()
+        switch fmt {
+        case "flac", "wav", "aiff", "aif", "caf":
+            return true
+        case "m4a", "alac":
+            if let encoder = metadata.encoder?.lowercased() {
+                return encoder.contains("alac") || encoder.contains("apple lossless")
+            }
+            if let bitRate = metadata.bitRate, bitRate > 600 {
+                return true
+            }
+            return fmt == "alac"
+        default:
+            return false
+        }
+    }
 }
 
 enum LyricsSource: Int16, Codable {

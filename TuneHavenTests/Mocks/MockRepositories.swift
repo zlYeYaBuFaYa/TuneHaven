@@ -179,6 +179,24 @@ final class MockEmbeddedLyricsReader: EmbeddedLyricsReading {
     func readEmbeddedLyrics(from fileURL: URL) async -> String? { result }
 }
 
+// MARK: - Mock Subscription
+
+final class MockSubscriptionProvider: SubscriptionProviding {
+    var products: [SubscriptionProduct] = []
+    var purchaseResult: PurchaseResult = .success
+    var entitlementState = EntitlementState(hasLifetime: false, hasActiveSubscription: false, subscriptionExpirationDate: nil)
+    var originalPurchaseDate: Date?
+
+    func fetchProducts() async throws -> [SubscriptionProduct] { products }
+    func purchase(_ productID: String) async throws -> PurchaseResult { purchaseResult }
+    func restorePurchases() async throws {}
+    func resolveEntitlements() async -> EntitlementState { entitlementState }
+    func appOriginalPurchaseDate() async -> Date? { originalPurchaseDate }
+    func transactionUpdates() -> AsyncStream<TransactionUpdate> {
+        AsyncStream { $0.finish() }
+    }
+}
+
 // MARK: - Mock Repositories
 
 final class MockSearchHistoryRepository: SearchHistoryRepository {

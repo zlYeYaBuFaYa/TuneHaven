@@ -34,6 +34,8 @@ enum AppError: LocalizedError {
     case lyricsDeleteFailed(String)
     case fileSystemError(String)
     case imageProcessingFailed(String)
+    case purchaseFailed(String)
+    case featureRequiresPremium(String)
 
     var errorDescription: String? {
         switch self {
@@ -70,6 +72,8 @@ enum AppError: LocalizedError {
         case .lyricsDeleteFailed: return "歌词删除失败"
         case .fileSystemError(let msg): return "文件系统错误：\(msg)"
         case .imageProcessingFailed(let msg): return "图片处理失败：\(msg)"
+        case .purchaseFailed(let msg): return "购买失败：\(msg)"
+        case .featureRequiresPremium(let f): return "此功能需要 Premium 订阅：\(f)"
         }
     }
 
@@ -108,6 +112,8 @@ enum AppError: LocalizedError {
         case .lyricsDeleteFailed: return "LYR004"
         case .fileSystemError: return "FS001"
         case .imageProcessingFailed: return "IMG001"
+        case .purchaseFailed: return "SUB001"
+        case .featureRequiresPremium: return "SUB002"
         }
     }
 }
@@ -150,6 +156,8 @@ extension AppError: Equatable {
         case (.lyricsDeleteFailed(let a), .lyricsDeleteFailed(let b)): return a == b
         case (.fileSystemError(let a), .fileSystemError(let b)): return a == b
         case (.imageProcessingFailed(let a), .imageProcessingFailed(let b)): return a == b
+        case (.purchaseFailed(let a), .purchaseFailed(let b)): return a == b
+        case (.featureRequiresPremium(let a), .featureRequiresPremium(let b)): return a == b
         default: return false
         }
     }
@@ -159,7 +167,7 @@ extension AppError: Equatable {
 extension AppError: CaseIterable {
     /// 含关联值的枚举无法由编译器合成 CaseIterable；此处为测试与完整性检查提供代表性实例。
     /// `expectedCaseCount` 与此列表长度在单元测试中交叉验证，新增 case 时两处须同步更新。
-    static let expectedCaseCount = 33
+    static let expectedCaseCount = 35
 
     static var allCases: [AppError] {
         let id = UUID()
@@ -197,6 +205,8 @@ extension AppError: CaseIterable {
             .lyricsDeleteFailed("test"),
             .fileSystemError("test"),
             .imageProcessingFailed("test"),
+            .purchaseFailed("test"),
+            .featureRequiresPremium("losslessPlayback"),
         ]
     }
 }

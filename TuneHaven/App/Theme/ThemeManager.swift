@@ -55,6 +55,25 @@ final class ThemeManager: ObservableObject {
         currentStyle = registry.resolveCurrentStyle()
     }
 
+    private static let freeThemeIDs: Set<String> = ["cloud_white", "azure_sky"]
+
+    private var tierInitialized = false
+    var currentTier: SubscriptionTier = .free {
+        didSet {
+            guard tierInitialized, oldValue != currentTier else {
+                tierInitialized = true
+                return
+            }
+            if currentTier == .free && !Self.freeThemeIDs.contains(currentStyle.id) {
+                setTheme(.cloudWhite)
+            }
+        }
+    }
+
+    func isPremiumTheme(_ style: ThemeStyle) -> Bool {
+        !Self.freeThemeIDs.contains(style.id)
+    }
+
     var palette: ThemeColorPalette { currentStyle.palette }
 
     var colorScheme: ColorScheme { currentStyle.colorScheme }

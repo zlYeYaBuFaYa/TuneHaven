@@ -5,6 +5,7 @@ struct LyricsSearchView: View {
     var onSaved: (() -> Void)?
 
     @EnvironmentObject private var lyricsService: LyricsService
+    @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -403,6 +404,15 @@ struct LyricsSearchView: View {
                     results = found
                     hasSearched = true
                     isSearching = false
+                }
+            } catch let error as AppError where error == .featureRequiresPremium(PremiumFeature.onlineLyricsSearch.rawValue) {
+                await MainActor.run {
+                    isSearching = false
+                    dismiss()
+                }
+                try? await Task.sleep(for: .seconds(0.35))
+                await MainActor.run {
+                    router.present(.paywall(feature: .onlineLyricsSearch))
                 }
             } catch {
                 await MainActor.run {

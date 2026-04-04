@@ -8,6 +8,7 @@ final class LyricsService: ObservableObject {
     private let preferences: UserPreferencesProviding
     private let fileStorage: FileStorageProviding
     private let embeddedReader: EmbeddedLyricsReading
+    private let subscriptionService: SubscriptionService
 
     private static let cooldownDuration: TimeInterval = 7 * 24 * 3600
 
@@ -15,12 +16,14 @@ final class LyricsService: ObservableObject {
          api: any LyricsAPIProviding,
          preferences: UserPreferencesProviding,
          fileStorage: FileStorageProviding,
-         embeddedReader: EmbeddedLyricsReading) {
+         embeddedReader: EmbeddedLyricsReading,
+         subscriptionService: SubscriptionService) {
         self.repo = repo
         self.api = api
         self.preferences = preferences
         self.fileStorage = fileStorage
         self.embeddedReader = embeddedReader
+        self.subscriptionService = subscriptionService
     }
 
     // MARK: - Load Lyrics (fallthrough chain)
@@ -57,6 +60,10 @@ final class LyricsService: ObservableObject {
     // MARK: - Online Auto Match (degraded search chain)
 
     func autoMatchOnline(for song: Song) async -> LyricsData? {
+        guard subscriptionService.canAccess(.onlineLyricsSearch) else {
+            log.debug("Free 用户，跳过在线歌词匹配")
+            return nil
+        }
         guard !isCooldownActive(for: song.id) else { return nil }
 
         if let data = try? await exactMatch(song: song) { return data }
@@ -131,7 +138,10 @@ final class LyricsService: ObservableObject {
     // MARK: - Online Search (manual)
 
     func searchOnline(title: String, artist: String?) async throws -> [LRCLibTrack] {
-        try await api.search(trackName: title, artistName: artist)
+        guard subscriptionService.canAccess(.onlineLyricsSearch) else {
+            throw AppError.featureRequiresPremium(PremiumFeature.onlineLyricsSearch.rawValue)
+        }
+        return try await api.search(trackName: title, artistName: artist)
     }
 
     // MARK: - Save Lyrics

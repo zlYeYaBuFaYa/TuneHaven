@@ -8,7 +8,14 @@ import Foundation
 @MainActor
 struct LyricsServiceTests {
 
-    private let service = LyricsService(repo: MockSongRepository(), api: MockLRCLibAPIClient(), preferences: MockUserPreferences())
+    private let service = LyricsService(
+        repo: MockSongRepository(),
+        api: MockLRCLibAPIClient(),
+        preferences: MockUserPreferences(),
+        fileStorage: MockFileStorageProviding(),
+        embeddedReader: MockEmbeddedLyricsReader(),
+        subscriptionService: SubscriptionService(provider: MockSubscriptionProvider())
+    )
 
     // MARK: - 基础 LRC 解析
 

@@ -23,11 +23,19 @@ final class PlaybackService: ObservableObject {
     private let nowPlaying: NowPlayingManaging
     private let fileStorage: FileStorageProviding
     private let preferences: UserPreferencesProviding
+    private let subscriptionService: SubscriptionService
     private var cancellables = Set<AnyCancellable>()
     private var currentCoverPath: String?
     private var consecutivePlayNextFailures = 0
     private var loadTask: Task<Void, Never>?
     private static let maxConsecutiveFailures = 5
+    private static let maxLosslessSkips = 50
+
+    @Published private(set) var losslessBlockedSong: Song?
+
+    func clearLosslessBlock() {
+        losslessBlockedSong = nil
+    }
 
     init(playlistRepo: PlaylistRepository,
          songRepo: SongRepository,
@@ -38,7 +46,8 @@ final class PlaybackService: ObservableObject {
          nowPlaying: NowPlayingManaging,
          fileStorage: FileStorageProviding,
          preferences: UserPreferencesProviding,
-         sleepTimer: SleepTimerService) {
+         sleepTimer: SleepTimerService,
+         subscriptionService: SubscriptionService) {
         self.queueService = queueService
         self.libraryService = libraryService
         self.playlistRepo = playlistRepo
@@ -49,6 +58,7 @@ final class PlaybackService: ObservableObject {
         self.fileStorage = fileStorage
         self.preferences = preferences
         self.sleepTimer = sleepTimer
+        self.subscriptionService = subscriptionService
         self.playMode = preferences.playMode
         self.playbackSpeed = preferences.playbackSpeed
         setupBindings()
@@ -73,6 +83,11 @@ final class PlaybackService: ObservableObject {
     var duration: TimeInterval { engine.duration }
 
     func play(song: Song, in context: PlayContext) async {
+        if song.isLossless && !subscriptionService.canAccess(.losslessPlayback) {
+            log.info("Free 用户尝试播放无损: \(song.title)")
+            losslessBlockedSong = song
+            return
+        }
         log.info("播放: \(song.title) - \(song.artist)")
         if song.id == currentSong?.id {
             if case .playing = engine.state { return }
@@ -97,6 +112,11 @@ final class PlaybackService: ObservableObject {
     }
 
     func prepare(song: Song, in context: PlayContext) async {
+        if song.isLossless && !subscriptionService.canAccess(.losslessPlayback) {
+            log.info("Free 用户预加载无损被拦截: \(song.title)")
+            losslessBlockedSong = song
+            return
+        }
         if song.id == currentSong?.id { return }
 
         loadTask?.cancel()
@@ -111,6 +131,11 @@ final class PlaybackService: ObservableObject {
     }
 
     func togglePlayPause() {
+        if let song = currentSong, song.isLossless,
+           !subscriptionService.canAccess(.losslessPlayback) {
+            losslessBlockedSong = song
+            return
+        }
         if let song = currentSong, case .idle = engine.state {
             startLoadAndPlay(song: song)
             return
@@ -120,14 +145,28 @@ final class PlaybackService: ObservableObject {
 
     func playNext() {
         queueService.markCurrentAsPlayed()
-        guard let nextItem = queueService.nextSong(for: playMode, dislikes: preferences.songDislikes) else {
-            log.info("队列播放结束，无下一首")
-            stop()
+
+        var skipCount = 0
+        while let nextItem = queueService.nextSong(for: playMode, dislikes: preferences.songDislikes) {
+            if nextItem.song.isLossless && !subscriptionService.canAccess(.losslessPlayback) {
+                skipCount += 1
+                if skipCount >= Self.maxLosslessSkips {
+                    log.info("连续跳过 \(skipCount) 首无损歌曲，停止播放")
+                    stop()
+                    return
+                }
+                log.debug("跳过无损歌曲: \(nextItem.song.title)")
+                queueService.advanceToCurrent(nextItem)
+                queueService.markCurrentAsPlayed()
+                continue
+            }
+            log.debug("播放下一首: \(nextItem.song.title)")
+            queueService.advanceToCurrent(nextItem)
+            startLoadAndPlay(song: nextItem.song)
             return
         }
-        log.debug("播放下一首: \(nextItem.song.title)")
-        queueService.advanceToCurrent(nextItem)
-        startLoadAndPlay(song: nextItem.song)
+        log.info("队列播放结束，无下一首")
+        stop()
     }
 
     func playPrevious() {
@@ -138,6 +177,10 @@ final class PlaybackService: ObservableObject {
             return
         }
         guard let prevItem = queueService.previousSong() else { return }
+        if prevItem.song.isLossless && !subscriptionService.canAccess(.losslessPlayback) {
+            losslessBlockedSong = prevItem.song
+            return
+        }
         queueService.advanceToCurrent(prevItem)
         startLoadAndPlay(song: prevItem.song)
     }

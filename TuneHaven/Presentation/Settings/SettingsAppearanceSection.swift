@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SettingsAppearanceSection: View {
     @EnvironmentObject private var themeManager: ThemeManager
+    @EnvironmentObject private var subscriptionService: SubscriptionService
+    @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
     @Environment(\.settingsListRowBg) private var listRowBg
 
@@ -36,10 +38,16 @@ struct SettingsAppearanceSection: View {
                 GridItem(.flexible(), spacing: 10)
             ], spacing: 10) {
                 ForEach(themeManager.allAvailableThemes) { style in
+                    let isLocked = themeManager.isPremiumTheme(style)
+                        && !subscriptionService.canAccess(.premiumTheme)
                     Button {
-                        themeManager.setTheme(style)
+                        if isLocked {
+                            router.present(.paywall(feature: .premiumTheme))
+                        } else {
+                            themeManager.setTheme(style)
+                        }
                     } label: {
-                        themeCard(style: style)
+                        themeCard(style: style, isLocked: isLocked)
                     }
                     .buttonStyle(.borderless)
                 }
@@ -49,7 +57,7 @@ struct SettingsAppearanceSection: View {
         .listRowBackground(listRowBg)
     }
 
-    private func themeCard(style: ThemeStyle) -> some View {
+    private func themeCard(style: ThemeStyle, isLocked: Bool = false) -> some View {
         let isSelected = themeManager.currentStyle.id == style.id
         return VStack(spacing: 6) {
             ZStack {
@@ -62,7 +70,13 @@ struct SettingsAppearanceSection: View {
                         )
                     )
                     .frame(height: 44)
-                if isSelected {
+                if isLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.caption2)
+                        .foregroundColor(style.palette.onPrimary.opacity(0.8))
+                        .padding(4)
+                        .background(Circle().fill(Color.black.opacity(0.3)))
+                } else if isSelected {
                     Image(systemName: "checkmark")
                         .font(.caption.bold())
                         .foregroundColor(style.palette.onPrimary)

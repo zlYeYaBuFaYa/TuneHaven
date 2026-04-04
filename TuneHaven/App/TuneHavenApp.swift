@@ -33,6 +33,7 @@ struct TuneHavenApp: App {
                         .environmentObject(container.webDAVService)
                         .environmentObject(container.lyricsService)
                         .environmentObject(container.shareService)
+                        .environmentObject(container.subscriptionService)
                         .environment(\.imageCache, ImageCacheManager.shared)
                         .injectThemePalette(from: container.themeManager)
                         .snackbar(container.snackbar)
@@ -69,6 +70,7 @@ struct TuneHavenApp: App {
                 switch phase {
                 case .active:
                     container.playbackService.checkSleepTimerOnForeground()
+                    Task { await container.subscriptionService.refreshStatus() }
                 case .background:
                     container.audioSessionManager.ensureActive()
                 default:
@@ -99,6 +101,13 @@ struct TuneHavenApp: App {
         return handler
     }
 
+    private func recordFirstLaunchDateIfNeeded() {
+        let key = AppStorageKey.appFirstLaunchDate
+        if UserDefaults.standard.object(forKey: key) == nil {
+            UserDefaults.standard.set(Date(), forKey: key)
+        }
+    }
+
     private func initialize() async {
         guard !isReady && !isInitializing else { return }
         isInitializing = true
@@ -111,6 +120,9 @@ struct TuneHavenApp: App {
             await container.libraryService.loadSongs()
             await container.libraryService.cleanupOnLaunch()
             container.playbackService.checkSleepTimerOnForeground()
+            recordFirstLaunchDateIfNeeded()
+            await container.subscriptionService.initialize()
+            container.setupSubscriptionBindings()
             isReady = true
             AppLogger.shared.info("[App] initialize done — isReady=true")
 

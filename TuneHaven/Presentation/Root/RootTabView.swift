@@ -9,6 +9,7 @@ struct RootTabView: View {
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
     @EnvironmentObject private var lyricsService: LyricsService
+    @EnvironmentObject private var subscriptionService: SubscriptionService
     @Environment(\.themePalette) private var palette
 
     private var hasCustomBg: Bool {
@@ -59,6 +60,12 @@ struct RootTabView: View {
                 sheetView(for: destination)
                     .presentationBackground(themeManager.palette.elevatedSurface)
             )
+        }
+        .onChange(of: playback.losslessBlockedSong) { blocked in
+            if blocked != nil {
+                router.present(.paywall(feature: .losslessPlayback))
+                playback.clearLosslessBlock()
+            }
         }
         .onAppear {
             #if DEBUG
@@ -117,7 +124,8 @@ struct RootTabView: View {
                 snackbar: snackbar,
                 playback: playback,
                 engine: engine,
-                lyricsService: lyricsService
+                lyricsService: lyricsService,
+                subscriptionService: subscriptionService
             )
     }
 
@@ -142,6 +150,8 @@ struct RootTabView: View {
             PlaylistCoverPickerSheet(playlistId: id)
         case .batchAddSongs(let id):
             BatchAddSongsView(playlistId: id)
+        case .paywall(let feature):
+            PaywallView(triggerFeature: feature)
         }
     }
 }

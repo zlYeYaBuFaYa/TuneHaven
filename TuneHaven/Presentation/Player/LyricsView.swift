@@ -8,6 +8,8 @@ struct LyricsPageView: View {
 
     @EnvironmentObject private var playback: PlaybackService
     @EnvironmentObject private var engine: AudioEngine
+    @EnvironmentObject private var subscriptionService: SubscriptionService
+    @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
 
     @AppStorage(AppStorageKey.lyricsPreferSimplified) private var preferSimplified: Bool = true
@@ -367,6 +369,17 @@ struct LyricsPageView: View {
             Text("暂无歌词")
                 .font(.body)
                 .foregroundColor(palette.textTertiary)
+
+            if !subscriptionService.canAccess(.onlineLyricsSearch) {
+                Button {
+                    router.present(.paywall(feature: .onlineLyricsSearch))
+                } label: {
+                    Text("升级 Premium 解锁在线歌词自动匹配")
+                        .font(.caption)
+                        .foregroundColor(palette.primary)
+                }
+            }
+
             Button(action: onSearchLyrics) {
                 HStack(spacing: 6) {
                     Image(systemName: "magnifyingglass")

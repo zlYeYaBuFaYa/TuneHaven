@@ -20,4 +20,6 @@ enum AppStorageKey {
     static let songSortOption = "song_sort_option"
     static let songSortAscending = "song_sort_ascending"
     static let lyricsCooldown = "lyrics_match_cooldown"
+    /// App 首次启动日期（AppTransaction 获取失败时的兜底）
+    static let appFirstLaunchDate = "app_first_launch_date"
 }

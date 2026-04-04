@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsImportSection: View {
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
+    @EnvironmentObject private var subscriptionService: SubscriptionService
+    @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
     @Environment(\.settingsListRowBg) private var listRowBg
 
@@ -29,8 +31,19 @@ struct SettingsImportSection: View {
                     activeSheet = .wifiTransfer
                 }
 
-                importRow(icon: "server.rack", title: "WebDAV 导入", subtitle: "从坚果云、NAS 等 WebDAV 服务器导入") {
-                    activeSheet = .webDAVImport
+                importRow(
+                    icon: "server.rack",
+                    title: "WebDAV 导入",
+                    subtitle: subscriptionService.canAccess(.webDAVImport)
+                        ? "从坚果云、NAS 等 WebDAV 服务器导入"
+                        : "Premium 专属功能",
+                    isLocked: !subscriptionService.canAccess(.webDAVImport)
+                ) {
+                    if subscriptionService.canAccess(.webDAVImport) {
+                        activeSheet = .webDAVImport
+                    } else {
+                        router.present(.paywall(feature: .webDAVImport))
+                    }
                 }
             } label: {
                 Label {
@@ -45,20 +58,27 @@ struct SettingsImportSection: View {
         }
     }
 
-    private func importRow(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+    private func importRow(icon: String, title: String, subtitle: String, isLocked: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Label {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.subheadline)
-                        .foregroundColor(palette.textPrimary)
+                    HStack(spacing: 4) {
+                        Text(title)
+                            .font(.subheadline)
+                            .foregroundColor(palette.textPrimary)
+                        if isLocked {
+                            Image(systemName: "lock.fill")
+                                .font(.caption2)
+                                .foregroundColor(palette.textTertiary)
+                        }
+                    }
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundColor(palette.textSecondary)
+                        .foregroundColor(isLocked ? palette.textTertiary : palette.textSecondary)
                 }
             } icon: {
                 Image(systemName: icon)
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(isLocked ? palette.textTertiary : palette.primary)
             }
         }
         .listRowBackground(listRowBg)

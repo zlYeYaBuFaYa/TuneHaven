@@ -21,6 +21,7 @@ struct SettingsView: View {
     @State private var showClearHistoryConfirm = false
     @State private var notificationPermissionStatus: UNAuthorizationStatus = .notDetermined
 
+    @State private var expandedSubscription = false
     @State private var expandedImport = false
     @State private var expandedShare = false
     @State private var expandedAppearance = false
@@ -46,6 +47,8 @@ struct SettingsView: View {
 
     var body: some View {
         List {
+            SettingsSubscriptionSection(isExpanded: $expandedSubscription)
+
             SettingsImportSection(
                 isExpanded: $expandedImport,
                 showDocumentPicker: $showDocumentPicker,
