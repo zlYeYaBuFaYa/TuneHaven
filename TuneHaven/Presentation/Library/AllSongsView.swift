@@ -119,7 +119,7 @@ struct AllSongsView: View {
             }
 
             Color.clear
-                .frame(height: 80)
+                .frame(height: MiniPlayerLayout.listBottomPadding)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets())

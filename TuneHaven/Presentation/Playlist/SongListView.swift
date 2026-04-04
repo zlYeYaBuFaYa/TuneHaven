@@ -57,7 +57,7 @@ struct SongListView: View {
                     }
 
                     Color.clear
-                        .frame(height: 80)
+                        .frame(height: MiniPlayerLayout.listBottomPadding)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets())
@@ -80,7 +80,7 @@ struct SongListView: View {
         case .favorites:
             songs = await playlistService.fetchFavorites()
         case .recentlyPlayed:
-            songs = await libraryService.fetchRecentlyPlayed(days: days, page: 0).items
+            songs = await libraryService.fetchRecentlyPlayed(days: days, page: 0, pageSize: 1000).items
         case .allSongs:
             songs = await libraryService.fetchAllSongs(sortBy: .title, ascending: true)
         default:

@@ -127,7 +127,7 @@ struct SearchResultView: View {
             }
 
             Section {
-                Color.clear.frame(height: 80)
+                Color.clear.frame(height: MiniPlayerLayout.listBottomPadding)
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets())

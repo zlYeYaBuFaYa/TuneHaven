@@ -1,5 +1,9 @@
 import SwiftUI
 
+enum MiniPlayerLayout {
+    static let listBottomPadding: CGFloat = 80
+}
+
 private struct MiniPlayerProgressBar: View {
     @EnvironmentObject private var engine: AudioEngine
     let gradientColors: [Color]
