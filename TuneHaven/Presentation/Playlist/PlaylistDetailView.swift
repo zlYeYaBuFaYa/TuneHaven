@@ -194,14 +194,11 @@ private struct PlaylistContentView: View {
     private func recomputeDisplay(allSorted: [Song]) {
         if isFiltering {
             let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            cachedDisplaySongs = Self.applySorting(
-                detail.songs.filter {
-                    $0.title.lowercased().contains(q) ||
-                    $0.artist.lowercased().contains(q) ||
-                    $0.album.lowercased().contains(q)
-                },
-                by: sortOption, ascending: isAscending
-            )
+            cachedDisplaySongs = allSorted.filter {
+                $0.title.lowercased().contains(q) ||
+                $0.artist.lowercased().contains(q) ||
+                $0.album.lowercased().contains(q)
+            }
         } else {
             cachedDisplaySongs = allSorted
         }
@@ -290,7 +287,7 @@ private struct PlaylistContentView: View {
         }
         .listSectionSeparator(.hidden)
         .onAppear { recomputeSorted() }
-        .onChange(of: detail.songs.count) { _ in recomputeSorted() }
+        .onChange(of: detail.songs) { _ in recomputeSorted() }
         .onChange(of: sortOption) { _ in recomputeSorted() }
         .onChange(of: isAscending) { _ in recomputeSorted() }
         .onChange(of: searchText) { _ in recomputeDisplay(allSorted: cachedAllSorted) }

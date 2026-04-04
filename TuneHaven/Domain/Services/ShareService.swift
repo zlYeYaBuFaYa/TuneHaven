@@ -307,6 +307,11 @@ final class ShareService: ObservableObject, ShareDataSource {
             }
         }
 
+        if isReceiveCancelled {
+            log.info("[Share] 接收已取消，跳过结果构造")
+            throw AppError.fileSystemError("接收已取消")
+        }
+
         let result = ShareTransferResult(
             songsReceived: songsReceived,
             songsSkipped: songsSkipped + analysis.skippedSongs.count,
