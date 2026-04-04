@@ -74,7 +74,10 @@ struct LyricsPageView: View {
         .offset(x: dragOffsetX, y: dragOffset)
         .onAppear { dragOffset = 0; dragOffsetX = 0 }
         .onChange(of: engine.currentTime) { _ in
-            currentLineIndex = computeCurrentLineIndex()
+            let newIndex = computeCurrentLineIndex()
+            if newIndex != currentLineIndex {
+                currentLineIndex = newIndex
+            }
         }
         .onChange(of: playback.currentSong?.id) { _ in
             isUserScrolling = false

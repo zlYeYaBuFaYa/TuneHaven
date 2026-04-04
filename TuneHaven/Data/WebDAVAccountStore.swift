@@ -14,11 +14,16 @@ final class WebDAVAccountStore: WebDAVAccountStoring {
     }
 
     private func _loadAccounts() -> [WebDAVAccount] {
-        guard let data = UserDefaults.standard.data(forKey: accountsKey),
-              let accounts = try? JSONDecoder().decode([WebDAVAccount].self, from: data) else {
+        guard let data = UserDefaults.standard.data(forKey: accountsKey) else {
             return []
         }
-        return accounts.sorted { ($0.lastConnectedAt ?? .distantPast) > ($1.lastConnectedAt ?? .distantPast) }
+        do {
+            let accounts = try JSONDecoder().decode([WebDAVAccount].self, from: data)
+            return accounts.sorted { ($0.lastConnectedAt ?? .distantPast) > ($1.lastConnectedAt ?? .distantPast) }
+        } catch {
+            ErrorLogger.shared.logGeneric(error, context: "_loadAccounts: 解码失败，账户数据可能损坏")
+            return []
+        }
     }
 
     func saveAccount(_ account: WebDAVAccount, password: String?) throws {

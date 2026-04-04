@@ -472,43 +472,51 @@ final class ShareService: ObservableObject, ShareDataSource {
         let totalSongs = sharedSongs.count
 
         server.onAudioFileServed = { [weak self] _ in
-            guard let self else { return }
-            let served = (self.sendProgress?.current ?? 0) + 1
-            self.sendProgress = ShareProgress(
-                phase: .transferring,
-                current: served,
-                total: totalSongs,
-                currentFileName: "已传输 \(served)/\(totalSongs)"
-            )
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let served = (self.sendProgress?.current ?? 0) + 1
+                self.sendProgress = ShareProgress(
+                    phase: .transferring,
+                    current: served,
+                    total: totalSongs,
+                    currentFileName: "已传输 \(served)/\(totalSongs)"
+                )
+            }
         }
 
         server.onDeviceConnected = { [weak self] device in
-            guard let self else { return }
-            self.connectedReceiver = device
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.connectedReceiver = device
+            }
         }
 
         server.onTransferCompleted = { [weak self] result in
-            guard let self else { return }
-            let totalTransferred = result.songsReceived + result.songsSkipped
-            self.sendProgress = ShareProgress(
-                phase: .completed,
-                current: totalTransferred,
-                total: totalTransferred,
-                currentFileName: "传输完成"
-            )
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let totalTransferred = result.songsReceived + result.songsSkipped
+                self.sendProgress = ShareProgress(
+                    phase: .completed,
+                    current: totalTransferred,
+                    total: totalTransferred,
+                    currentFileName: "传输完成"
+                )
+            }
         }
 
         server.onReceiverDisconnected = { [weak self] in
-            guard let self else { return }
-            if case .completed = self.sendProgress?.phase { return }
-            self.log.info("[Share] 接收端断开连接")
-            let served = self.sendProgress?.current ?? 0
-            self.sendProgress = ShareProgress(
-                phase: .failed("接收端已断开"),
-                current: served,
-                total: served,
-                currentFileName: nil
-            )
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if case .completed = self.sendProgress?.phase { return }
+                self.log.info("[Share] 接收端断开连接")
+                let served = self.sendProgress?.current ?? 0
+                self.sendProgress = ShareProgress(
+                    phase: .failed("接收端已断开"),
+                    current: served,
+                    total: served,
+                    currentFileName: nil
+                )
+            }
         }
 
         try await server.start()

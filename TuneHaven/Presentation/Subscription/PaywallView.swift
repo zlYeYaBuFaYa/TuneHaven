@@ -276,9 +276,17 @@ struct PaywallView: View {
             }
 
             HStack(spacing: 16) {
-                Link("使用条款", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
-                Text("·").foregroundColor(palette.textTertiary)
-                Link("隐私政策", destination: URL(string: "https://tunehaven.app/privacy")!)
+                let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
+                let privacyURL = URL(string: "https://tunehaven.app/privacy")
+                if let termsURL {
+                    Link("使用条款", destination: termsURL)
+                }
+                if termsURL != nil && privacyURL != nil {
+                    Text("·").foregroundColor(palette.textTertiary)
+                }
+                if let privacyURL {
+                    Link("隐私政策", destination: privacyURL)
+                }
             }
             .font(.caption)
             .foregroundColor(palette.textSecondary)

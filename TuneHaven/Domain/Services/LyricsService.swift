@@ -125,10 +125,9 @@ final class LyricsService: ObservableObject {
         for pattern in patterns {
             result = result.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
         }
-        let lower = result.lowercased()
         let suffixes = ["feat.", "ft.", "remix", "live", "acoustic", "version", "remastered"]
         for suffix in suffixes {
-            if let range = lower.range(of: suffix) {
+            if let range = result.range(of: suffix, options: .caseInsensitive) {
                 result = String(result[result.startIndex..<range.lowerBound])
             }
         }

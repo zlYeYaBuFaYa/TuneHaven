@@ -232,32 +232,13 @@ final class ShareClient: ShareClientProviding {
         fallbackFilename: String,
         progressHandler: @escaping @Sendable (Double) -> Void
     ) async throws -> URL {
-        let url = try absoluteURL(path: path, baseURL: baseURL)
-        let request = authorizedRequest(url: url, token: token)
-        let tempURL: URL
-        let response: URLResponse
-        do {
-            (tempURL, response) = try await urlSession.download(for: request)
-        } catch {
-            AppLogger.shared.error(error, context: "[ShareClient] download \(path)")
-            throw mapURLError(error)
+        guard let destURL = try await downloadToDestination(
+            path: path, baseURL: baseURL, token: token,
+            destinationDirectory: destinationDirectory,
+            fallbackFilename: fallbackFilename, allow404: false
+        ) else {
+            throw AppError.fileSystemError("下载失败：未获取到文件")
         }
-        guard let http = response as? HTTPURLResponse else {
-            try? FileManager.default.removeItem(at: tempURL)
-            throw AppError.fileSystemError("无效的响应")
-        }
-        guard (200...299).contains(http.statusCode) else {
-            try? FileManager.default.removeItem(at: tempURL)
-            AppLogger.shared.error("[ShareClient] download HTTP \(http.statusCode) for \(path)")
-            throw AppError.fileSystemError("下载失败 (\(http.statusCode))")
-        }
-        let filename = suggestedFilename(from: http, fallback: fallbackFilename)
-        try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
-        let destURL = destinationDirectory.appendingPathComponent(filename)
-        if FileManager.default.fileExists(atPath: destURL.path) {
-            try FileManager.default.removeItem(at: destURL)
-        }
-        try FileManager.default.moveItem(at: tempURL, to: destURL)
         progressHandler(1.0)
         return destURL
     }
@@ -268,6 +249,21 @@ final class ShareClient: ShareClientProviding {
         token: String,
         destinationDirectory: URL,
         fallbackFilename: String
+    ) async throws -> URL? {
+        try await downloadToDestination(
+            path: path, baseURL: baseURL, token: token,
+            destinationDirectory: destinationDirectory,
+            fallbackFilename: fallbackFilename, allow404: true
+        )
+    }
+
+    private func downloadToDestination(
+        path: String,
+        baseURL: URL,
+        token: String,
+        destinationDirectory: URL,
+        fallbackFilename: String,
+        allow404: Bool
     ) async throws -> URL? {
         let url = try absoluteURL(path: path, baseURL: baseURL)
         let request = authorizedRequest(url: url, token: token)
@@ -283,7 +279,7 @@ final class ShareClient: ShareClientProviding {
             try? FileManager.default.removeItem(at: tempURL)
             throw AppError.fileSystemError("无效的响应")
         }
-        if http.statusCode == 404 {
+        if allow404 && http.statusCode == 404 {
             try? FileManager.default.removeItem(at: tempURL)
             return nil
         }

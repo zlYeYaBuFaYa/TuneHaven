@@ -7,8 +7,8 @@ final class PlaybackService: ObservableObject {
 
     @Published private(set) var currentSong: Song?
     @Published private(set) var isPlaying = false
-    @Published var playMode: PlayMode
-    @Published var playbackSpeed: Float
+    @Published private(set) var playMode: PlayMode
+    @Published private(set) var playbackSpeed: Float
     let sleepTimer: SleepTimerService
 
     var sleepTimerRemaining: TimeInterval? { sleepTimer.remaining }

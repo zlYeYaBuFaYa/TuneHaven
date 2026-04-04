@@ -106,6 +106,11 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
             request.fetchLimit = 1
             if let existing = try ctx.fetch(request).first {
                 SongMapper.updateEntity(existing, from: song)
+                if existing.softDeleted {
+                    existing.softDeleted = false
+                    existing.deletedAt = nil
+                }
+                existing.fileRelativePath = song.fileRelativePath
             } else {
                 _ = SongMapper.toEntity(song, context: ctx)
             }

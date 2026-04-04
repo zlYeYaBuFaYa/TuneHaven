@@ -150,7 +150,7 @@ final class WebDAVService: ObservableObject {
         }
 
         for i in downloadableIndices {
-            downloadTasks[i].status = .downloading
+            downloadTasks[i].status = .waiting
             onTaskUpdate(downloadTasks[i])
         }
 
@@ -184,6 +184,10 @@ final class WebDAVService: ObservableObject {
             }
 
             for await result in group {
+                if isCancelRequested {
+                    group.cancelAll()
+                    break
+                }
                 downloadResults.append(result)
                 if nextPos < downloadableIndices.count {
                     let ni = downloadableIndices[nextPos]
