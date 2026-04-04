@@ -320,3 +320,15 @@ app日志是如何存储? 如果轮转的. 日志会一直记录么? 是否会�
 3. 歌单歌曲没有排序功能。
 
 ```
+
+## 第三轮测试bug:（已修复 - 2026-04-04）
+```
+1. [已修复] 所有的歌曲列表页， 由于迷你播放器遮挡， 最后一首歌无法点击播放。比如音乐库， 自定义，系统歌单。
+   → 6 个列表页（AllSongsView/SongListView/PlaylistDetailView/ArtistDetailView/AlbumDetailView/SearchResultView）底部添加 80pt 透明占位
+2. [已修复] iphone14 系统ios16.7， 长时间主题星际穹顶， 切换到暮光玫瑰， 屏幕会变成纯色背景。此时屏幕可盲点切换主题， 但是屏幕仍然是对应主题颜色的纯色背景。
+   → 移除 ThemeBackgroundView 的 .id(themeChangeId) 强制重建，避免 iOS 16 Canvas 动画视图析构重建时 UI 丢失
+3. [已修复] 歌单-歌曲列表-播放页 播放队列内的歌曲 是有序的么？ 如果是无序的，优化为有序。
+   → 修复 SongListView 收藏列表通过 PlaylistSongEntity 查询返回空队列 Bug；PlaylistDetailView 队列从 UI 排序后的歌曲列表构建
+4. [已修复] 系统歌单-我喜欢 歌曲列表 提供一个优化方案， 要求歌曲能够取消收藏。 
+   → SongListView favorites 上下文支持左滑取消收藏 + 长按菜单，取消后 Snackbar 提示并支持撤销
+```
