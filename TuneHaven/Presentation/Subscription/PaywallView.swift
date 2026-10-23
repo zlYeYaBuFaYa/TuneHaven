@@ -6,6 +6,7 @@ struct PaywallView: View {
     @EnvironmentObject private var subscriptionService: SubscriptionService
     @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedProduct: SubscriptionProduct?
@@ -180,7 +181,7 @@ struct PaywallView: View {
                         if product.type == .nonConsumable {
                             Text("推荐")
                                 .font(.caption2.weight(.semibold))
-                                .foregroundColor(.white)
+                                .foregroundColor(palette.onPrimary)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(palette.primary)
@@ -228,12 +229,12 @@ struct PaywallView: View {
                 HStack {
                     if subscriptionService.isPurchasing {
                         ProgressView()
-                            .tint(.white)
+                            .tint(palette.onPrimary)
                     }
                     Text(subscriptionService.isPurchasing ? "处理中..." : buttonTitle)
                 }
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(palette.onPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
@@ -248,7 +249,7 @@ struct PaywallView: View {
             if let error = purchaseError {
                 Text(error)
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundColor(SemanticColor.danger(for: colorScheme))
                     .multilineTextAlignment(.center)
             }
         }
@@ -272,13 +273,15 @@ struct PaywallView: View {
             if let error = subscriptionService.restoreError {
                 Text(error)
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundColor(SemanticColor.danger(for: colorScheme))
             }
 
             HStack(spacing: 16) {
                 Link("使用条款", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
                 Text("·").foregroundColor(palette.textTertiary)
-                Link("隐私政策", destination: URL(string: "https://tunehaven.app/privacy")!)
+                Link("隐私政策", destination: AppURLs.privacyPolicy)
+                Text("·").foregroundColor(palette.textTertiary)
+                Link("管理订阅", destination: AppURLs.manageSubscriptions)
             }
             .font(.caption)
             .foregroundColor(palette.textSecondary)

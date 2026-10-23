@@ -123,6 +123,7 @@ struct TuneHavenApp: App {
             recordFirstLaunchDateIfNeeded()
             await container.subscriptionService.initialize()
             container.setupSubscriptionBindings()
+            await container.playbackService.restoreLastPlayedSong()
             isReady = true
             AppLogger.shared.info("[App] initialize done — isReady=true")
 

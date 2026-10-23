@@ -29,7 +29,6 @@ final class PlaybackService: ObservableObject {
     private var consecutivePlayNextFailures = 0
     private var loadTask: Task<Void, Never>?
     private static let maxConsecutiveFailures = 5
-    private static let maxLosslessSkips = 50
 
     @Published private(set) var losslessBlockedSong: Song?
 
@@ -66,15 +65,34 @@ final class PlaybackService: ObservableObject {
             self?.engine.pause()
             self?.isPlaying = false
         }
-        Task { await restoreLastPlayedSong() }
     }
 
-    private func restoreLastPlayedSong() async {
+    /// 须在订阅状态解析之后调用。Free 不把无损歌曲恢复成可播放的 `currentSong`，
+    /// 也不预置付费墙信号，避免冷启动硬挡进库。
+    func restoreLastPlayedSong() async {
         guard let idString = preferences.lastPlayedSongId,
               let songId = UUID(uuidString: idString) else { return }
         guard let song = await songRepo.fetchSong(id: songId) else { return }
+        guard !deniesLossless(song) else {
+            log.info("Free 用户不恢复无损为当前歌曲: \(song.title)")
+            currentSong = nil
+            return
+        }
         currentSong = song
         queueService.replaceQueue(with: [song], startAt: 0)
+    }
+
+    /// 无损播放统一门禁。无权限时写入 `losslessBlockedSong` 并返回 false。
+    @discardableResult
+    func ensureCanPlay(_ song: Song) -> Bool {
+        guard deniesLossless(song) else { return true }
+        log.info("Free 用户无法播放无损: \(song.title)")
+        losslessBlockedSong = song
+        return false
+    }
+
+    private func deniesLossless(_ song: Song) -> Bool {
+        song.isLossless && !subscriptionService.canAccess(.losslessPlayback)
     }
 
     var queue: PlayQueueService { queueService }
@@ -83,11 +101,7 @@ final class PlaybackService: ObservableObject {
     var duration: TimeInterval { engine.duration }
 
     func play(song: Song, in context: PlayContext) async {
-        if song.isLossless && !subscriptionService.canAccess(.losslessPlayback) {
-            log.info("Free 用户尝试播放无损: \(song.title)")
-            losslessBlockedSong = song
-            return
-        }
+        guard ensureCanPlay(song) else { return }
         log.info("播放: \(song.title) - \(song.artist)")
         if song.id == currentSong?.id {
             if case .playing = engine.state { return }
@@ -112,11 +126,7 @@ final class PlaybackService: ObservableObject {
     }
 
     func prepare(song: Song, in context: PlayContext) async {
-        if song.isLossless && !subscriptionService.canAccess(.losslessPlayback) {
-            log.info("Free 用户预加载无损被拦截: \(song.title)")
-            losslessBlockedSong = song
-            return
-        }
+        guard ensureCanPlay(song) else { return }
         if song.id == currentSong?.id { return }
 
         loadTask?.cancel()
@@ -131,11 +141,7 @@ final class PlaybackService: ObservableObject {
     }
 
     func togglePlayPause() {
-        if let song = currentSong, song.isLossless,
-           !subscriptionService.canAccess(.losslessPlayback) {
-            losslessBlockedSong = song
-            return
-        }
+        if let song = currentSong, !ensureCanPlay(song) { return }
         if let song = currentSong, case .idle = engine.state {
             startLoadAndPlay(song: song)
             return
@@ -145,43 +151,37 @@ final class PlaybackService: ObservableObject {
 
     func playNext() {
         queueService.markCurrentAsPlayed()
-
-        var skipCount = 0
-        while let nextItem = queueService.nextSong(for: playMode, dislikes: preferences.songDislikes) {
-            if nextItem.song.isLossless && !subscriptionService.canAccess(.losslessPlayback) {
-                skipCount += 1
-                if skipCount >= Self.maxLosslessSkips {
-                    log.info("连续跳过 \(skipCount) 首无损歌曲，停止播放")
-                    stop()
-                    return
-                }
-                log.debug("跳过无损歌曲: \(nextItem.song.title)")
-                queueService.advanceToCurrent(nextItem)
-                queueService.markCurrentAsPlayed()
-                continue
-            }
-            log.debug("播放下一首: \(nextItem.song.title)")
-            queueService.advanceToCurrent(nextItem)
-            startLoadAndPlay(song: nextItem.song)
+        guard let nextItem = queueService.nextSong(for: playMode, dislikes: preferences.songDislikes) else {
+            log.info("队列播放结束，无下一首")
+            stop()
             return
         }
-        log.info("队列播放结束，无下一首")
-        stop()
+        queueService.advanceToCurrent(nextItem)
+        guard ensureCanPlay(nextItem.song) else {
+            parkOnBlockedSong(nextItem.song)
+            return
+        }
+        log.debug("播放下一首: \(nextItem.song.title)")
+        startLoadAndPlay(song: nextItem.song)
     }
 
     func playPrevious() {
         let threshold: TimeInterval = 3
         if engine.currentTime > threshold {
+            if let song = currentSong, !ensureCanPlay(song) {
+                parkOnBlockedSong(song)
+                return
+            }
             log.debug("播放进度 > 3s，回到歌曲开头")
             engine.seek(to: 0)
             return
         }
         guard let prevItem = queueService.previousSong() else { return }
-        if prevItem.song.isLossless && !subscriptionService.canAccess(.losslessPlayback) {
-            losslessBlockedSong = prevItem.song
+        queueService.advanceToCurrent(prevItem)
+        guard ensureCanPlay(prevItem.song) else {
+            parkOnBlockedSong(prevItem.song)
             return
         }
-        queueService.advanceToCurrent(prevItem)
         startLoadAndPlay(song: prevItem.song)
     }
 
@@ -334,6 +334,7 @@ final class PlaybackService: ObservableObject {
     }
 
     private func loadAndPlay(song: Song, autoPlay: Bool = true) async {
+        guard ensureCanPlay(song) else { return }
         let fileURL = fileStorage.musicFileURL(relativePath: song.fileRelativePath)
         guard fileStorage.fileExists(relativePath: song.fileRelativePath) else {
             log.error(AppError.playbackFileNotFound(song.id), context: "PlaybackService.loadAndPlay")
@@ -431,11 +432,18 @@ final class PlaybackService: ObservableObject {
             }
             .store(in: &cancellables)
 
+        subscriptionService.$tier
+            .sink { [weak self] tier in
+                Task { @MainActor [weak self] in
+                    self?.handleTierChange(tier)
+                }
+            }
+            .store(in: &cancellables)
+
         nowPlaying.setupRemoteCommands(
             onPlay: { [weak self] in
                 Task { @MainActor in
-                    self?.audioSession.ensureActive()
-                    self?.engine.play()
+                    self?.handleRemotePlay()
                 }
             },
             onPause: { [weak self] in
@@ -454,6 +462,57 @@ final class PlaybackService: ObservableObject {
                 Task { @MainActor in self?.engine.seek(to: time) }
             }
         )
+    }
+
+    /// 锁屏/控制中心的 Play 不得裸调 `engine.play()`。无当前歌曲时保持原引擎行为。
+    private func handleRemotePlay() {
+        if let song = currentSong {
+            guard ensureCanPlay(song) else { return }
+            if case .playing = engine.state { return }
+            if case .paused = engine.state {
+                audioSession.ensureActive()
+                engine.play()
+                isPlaying = true
+                return
+            }
+            startLoadAndPlay(song: song)
+            return
+        }
+        audioSession.ensureActive()
+        engine.play()
+    }
+
+    /// 停在被拦截的目标歌曲上并保持软付费墙信号，不静默跳过、也不继续出声。
+    private func parkOnBlockedSong(_ song: Song) {
+        engine.stop()
+        isPlaying = false
+        currentSong = song
+        currentCoverPath = song.coverImagePath
+        Task {
+            await nowPlaying.update(
+                song: song,
+                currentTime: 0,
+                duration: song.duration,
+                speed: 0,
+                coverPath: song.coverImagePath
+            )
+        }
+    }
+
+    /// 到期降为 Free 时，只暂停正在播放的无损，不打断有损会话。
+    private func handleTierChange(_ tier: SubscriptionTier) {
+        guard tier == .free, let song = currentSong, song.isLossless else { return }
+        let enginePlaying: Bool
+        if case .playing = engine.state {
+            enginePlaying = true
+        } else {
+            enginePlaying = false
+        }
+        guard isPlaying || enginePlaying else { return }
+        log.info("订阅降为 Free，暂停正在播放的无损: \(song.title)")
+        engine.pause()
+        isPlaying = false
+        losslessBlockedSong = song
     }
 
 }

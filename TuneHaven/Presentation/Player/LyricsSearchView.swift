@@ -157,12 +157,12 @@ struct LyricsSearchView: View {
                     HStack {
                         if isSearching {
                             ProgressView()
-                                .tint(palette.textPrimary)
+                                .tint(searchDisabled ? palette.textPrimary : palette.onPrimary)
                         }
                         Text("搜索")
                     }
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(palette.textPrimary)
+                    .foregroundColor(searchDisabled ? palette.textPrimary : palette.onPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(
@@ -341,11 +341,12 @@ struct LyricsSearchView: View {
                             if isSaving {
                                 ProgressView()
                                     .scaleEffect(0.7)
+                                    .tint(palette.onPrimary)
                             }
                             Text("使用此歌词")
                                 .font(.caption.weight(.medium))
                         }
-                        .foregroundColor(palette.textPrimary)
+                        .foregroundColor(palette.onPrimary)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 6)
                         .background(palette.primary)

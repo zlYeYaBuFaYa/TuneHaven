@@ -106,6 +106,8 @@ final class MockNowPlayingManaging: NowPlayingManaging {
     var lastUpdatedSong: Song?
     var lastCoverPath: String?
     var setupCalled = false
+    var onPlayHandler: (@Sendable () -> Void)?
+    var onToggleHandler: (@Sendable () -> Void)?
 
     func update(song: Song, currentTime: TimeInterval, duration: TimeInterval, speed: Float, coverPath: String?) {
         lastUpdatedSong = song
@@ -122,6 +124,8 @@ final class MockNowPlayingManaging: NowPlayingManaging {
         onSeek: @escaping @Sendable (TimeInterval) -> Void
     ) {
         setupCalled = true
+        onPlayHandler = onPlay
+        onToggleHandler = onTogglePlayPause
     }
 }
 

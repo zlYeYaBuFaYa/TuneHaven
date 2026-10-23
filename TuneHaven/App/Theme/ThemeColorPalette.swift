@@ -56,4 +56,8 @@ enum SemanticColor {
     static let warningDark = Color(hex: "#FBBF24")
     static let successDark = Color(hex: "#34D399")
     static let infoDark    = Color(hex: "#60A5FA")
+
+    static func danger(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? dangerDark : danger
+    }
 }

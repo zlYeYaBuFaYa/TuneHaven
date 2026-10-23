@@ -103,7 +103,7 @@ struct RootTabView: View {
             VStack(spacing: 4) {
                 Text(label)
                     .font(.system(size: 11, weight: router.selectedTab == tab ? .semibold : .regular))
-                    .foregroundColor(router.selectedTab == tab ? palette.primary : palette.textTertiary)
+                    .foregroundColor(router.selectedTab == tab ? palette.primary : palette.textSecondary)
                 Circle()
                     .fill(router.selectedTab == tab ? palette.primary : Color.clear)
                     .frame(width: 5, height: 5)
