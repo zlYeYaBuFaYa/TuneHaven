@@ -9,7 +9,7 @@ struct StepGuideRow: View {
         HStack(alignment: .top, spacing: 10) {
             Text(step)
                 .font(.caption.weight(.bold))
-                .foregroundColor(palette.textPrimary)
+                .foregroundColor(palette.onPrimary)
                 .frame(width: 20, height: 20)
                 .background(Circle().fill(palette.primary))
             Text(text)

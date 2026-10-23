@@ -51,7 +51,8 @@ final class AppDIContainer: ObservableObject {
             accountStore: WebDAVAccountStore.shared,
             clientFactory: DefaultWebDAVClientFactory(),
             importService: self.importService,
-            fileStorage: FileStorageService.shared
+            fileStorage: FileStorageService.shared,
+            subscriptionService: self.subscriptionService
         )
     }()
     lazy var lyricsService: LyricsService = {
@@ -139,7 +140,7 @@ final class AppDIContainer: ObservableObject {
     func setupSubscriptionBindings() {
         subscriptionService.$tier
             .sink { [weak self] tier in
-                self?.themeManager.currentTier = tier
+                self?.themeManager.applyTier(tier)
             }
             .store(in: &cancellables)
     }

@@ -98,11 +98,7 @@ struct WebDAVAccountListView: View {
             navigateToAccount = account
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "server.rack")
-                    .font(.title3)
-                    .foregroundColor(palette.textPrimary)
-                    .frame(width: 36, height: 36)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(palette.primary))
+                PrimaryIconChip(systemName: "server.rack")
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(account.effectiveDisplayName)

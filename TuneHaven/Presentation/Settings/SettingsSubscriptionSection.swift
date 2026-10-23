@@ -6,6 +6,7 @@ struct SettingsSubscriptionSection: View {
     @EnvironmentObject private var subscriptionService: SubscriptionService
     @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.settingsListRowBg) private var listRowBg
 
     var body: some View {
@@ -43,12 +44,34 @@ struct SettingsSubscriptionSection: View {
                 }
                 .listRowBackground(listRowBg)
 
+                Link(destination: AppURLs.manageSubscriptions) {
+                    Label {
+                        Text("管理订阅")
+                            .font(.subheadline)
+                            .foregroundColor(palette.textPrimary)
+                    } icon: {
+                        Image(systemName: "arrow.up.right.square")
+                            .foregroundColor(palette.primary)
+                    }
+                }
+                .listRowBackground(listRowBg)
+
                 if let error = subscriptionService.restoreError {
                     Text(error)
                         .font(.caption)
-                        .foregroundColor(.red)
+                        .foregroundColor(SemanticColor.danger(for: colorScheme))
                         .listRowBackground(listRowBg)
                 }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("曲库本地优先，基础播放无需订阅。Premium 解锁无损播放、高级主题、WebDAV 与在线歌词。")
+                        .font(.caption)
+                        .foregroundColor(palette.textSecondary)
+                    Text("提审前须确认隐私政策 \(AppURLs.privacyPolicy.absoluteString) 可公开访问。本仓库不托管该页面。")
+                        .font(.caption2)
+                        .foregroundColor(palette.textTertiary)
+                }
+                .listRowBackground(listRowBg)
             } label: {
                 Label {
                     Text("订阅管理")

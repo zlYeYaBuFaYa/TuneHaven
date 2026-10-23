@@ -60,14 +60,27 @@ final class ThemeManager: ObservableObject {
     private var tierInitialized = false
     var currentTier: SubscriptionTier = .free {
         didSet {
-            guard tierInitialized, oldValue != currentTier else {
-                tierInitialized = true
-                return
-            }
-            if currentTier == .free && !Self.freeThemeIDs.contains(currentStyle.id) {
-                setTheme(.cloudWhite)
-            }
+            let firstAssignment = !tierInitialized
+            tierInitialized = true
+            // 首次赋值为默认 .free 时 oldValue 相同，didSet 不能单独完成降级。
+            if firstAssignment && oldValue == currentTier { return }
+            guard oldValue != currentTier else { return }
+            enforceThemeAccess()
         }
+    }
+
+    /// 订阅状态已知后调用。即使档位仍是默认 `.free`，也会执行免费主题降级。
+    func applyTier(_ tier: SubscriptionTier) {
+        currentTier = tier
+        enforceThemeAccess()
+    }
+
+    /// Free 且当前不是免费主题时，强制回到素云白简并写回偏好。
+    func enforceThemeAccess() {
+        tierInitialized = true
+        guard currentTier == .free else { return }
+        guard !Self.freeThemeIDs.contains(currentStyle.id) else { return }
+        setTheme(.cloudWhite)
     }
 
     func isPremiumTheme(_ style: ThemeStyle) -> Bool {

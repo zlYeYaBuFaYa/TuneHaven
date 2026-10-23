@@ -15,17 +15,20 @@ final class WebDAVService: ObservableObject {
     private let clientFactory: WebDAVClientFactory
     private let importService: FileImporting
     private let fileStorage: FileStorageProviding
+    private let subscriptionService: SubscriptionService
     private var activeClient: (any WebDAVClientProtocol)?
     private var isCancelRequested = false
 
     init(accountStore: WebDAVAccountStoring,
          clientFactory: WebDAVClientFactory,
          importService: FileImporting,
-         fileStorage: FileStorageProviding) {
+         fileStorage: FileStorageProviding,
+         subscriptionService: SubscriptionService) {
         self.accountStore = accountStore
         self.clientFactory = clientFactory
         self.importService = importService
         self.fileStorage = fileStorage
+        self.subscriptionService = subscriptionService
     }
 
     // MARK: - Account Management
@@ -69,6 +72,9 @@ final class WebDAVService: ObservableObject {
     // MARK: - Browse
 
     func connect(to account: WebDAVAccount) async throws {
+        guard subscriptionService.canAccess(.webDAVImport) else {
+            throw AppError.featureRequiresPremium(PremiumFeature.webDAVImport.rawValue)
+        }
         guard let baseURL = URL(string: account.serverURL) else {
             throw AppError.webdavConnectionFailed("无效的服务器地址")
         }
@@ -116,6 +122,16 @@ final class WebDAVService: ObservableObject {
         files: [WebDAVFile],
         onTaskUpdate: @escaping @MainActor (WebDAVDownloadTask) -> Void
     ) async -> WebDAVImportResult {
+        guard subscriptionService.canAccess(.webDAVImport) else {
+            let message = AppError.featureRequiresPremium(PremiumFeature.webDAVImport.rawValue).localizedDescription
+            return WebDAVImportResult(
+                downloadedCount: 0,
+                downloadFailedCount: files.count,
+                skippedOversizeCount: 0,
+                importResult: nil,
+                errors: [message]
+            )
+        }
         guard let client = activeClient else {
             return WebDAVImportResult(downloadedCount: 0, downloadFailedCount: files.count,
                                      skippedOversizeCount: 0, importResult: nil,

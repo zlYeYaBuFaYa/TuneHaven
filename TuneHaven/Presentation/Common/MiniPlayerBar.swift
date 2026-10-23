@@ -59,7 +59,7 @@ struct MiniPlayerBar: View {
                             } label: {
                                 Image(systemName: song.isFavorite ? "heart.fill" : "heart")
                                     .font(.body)
-                                    .foregroundColor(song.isFavorite ? palette.accent : palette.iconSecondary)
+                                    .foregroundColor(song.isFavorite ? palette.accent : palette.textSecondary)
                             }
                             .buttonStyle(.plain)
 
@@ -77,7 +77,7 @@ struct MiniPlayerBar: View {
                             } label: {
                                 Image(systemName: "forward.fill")
                                     .font(.title3)
-                                    .foregroundColor(palette.iconSecondary)
+                                    .foregroundColor(palette.textSecondary)
                             }
                             .buttonStyle(.plain)
                         }
