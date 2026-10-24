@@ -62,7 +62,15 @@ struct BackupTempDirectory: Equatable, Sendable {
         return removed
     }
 
-    private static func sameFile(_ lhs: URL, _ rhs: URL) -> Bool {
+    /// `url` 是否是 `directory` 里面的文件或子目录，而不是目录本身。
+    static func containsFile(_ url: URL, in directory: URL) -> Bool {
+        let root = directory.standardizedFileURL.resolvingSymlinksInPath().path
+        let path = url.standardizedFileURL.resolvingSymlinksInPath().path
+        let prefix = root.hasSuffix("/") ? root : root + "/"
+        return path.hasPrefix(prefix)
+    }
+
+    static func sameFile(_ lhs: URL, _ rhs: URL) -> Bool {
         lhs.standardizedFileURL.resolvingSymlinksInPath().path
             == rhs.standardizedFileURL.resolvingSymlinksInPath().path
     }

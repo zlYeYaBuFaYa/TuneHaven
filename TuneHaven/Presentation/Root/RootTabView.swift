@@ -69,13 +69,7 @@ struct RootTabView: View {
         .sheet(item: Binding(
             get: { backupService.presentation },
             set: { newValue in
-                if newValue == nil {
-                    backupService.cancel()
-                    if !backupService.isBusy {
-                        backupService.discardPreparedPackage()
-                    }
-                }
-                backupService.presentation = newValue
+                backupService.handlePresentationChange(to: newValue)
             }
         )) { presentation in
             BackupCenterView(presentation: presentation)
