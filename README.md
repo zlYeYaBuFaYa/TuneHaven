@@ -3,7 +3,7 @@
 > 一款专注于 iOS 平台的本地音乐播放器应用，以「完全本地、简洁优雅」为设计理念
 
 [![Swift](https://img.shields.io/badge/Swift-5.0-orange.svg)](https://swift.org)
-[![iOS](https://img.shields.io/badge/iOS-18.5+-blue.svg)](https://apple.com/ios)
+[![iOS](https://img.shields.io/badge/iOS-18.0+-blue.svg)](https://apple.com/ios)
 [![Xcode](https://img.shields.io/badge/Xcode-16.0+-brightgreen.svg)](https://developer.apple.com/xcode)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
@@ -37,7 +37,7 @@ TuneHaven 是一款功能完整的 iOS 本地音乐播放器，支持多种方�
 | 类别 | 技术选型 | 说明 |
 |------|---------|------|
 | 开发语言 | Swift 5.0 | 主工程 SWIFT_VERSION |
-| UI 框架 | SwiftUI | 声明式 UI，iOS 18.5+ |
+| UI 框架 | SwiftUI | 声明式 UI，iOS 18.0+ |
 | 数据持久化 | Core Data | 本地数据库，双上下文架构 |
 | 音频播放 | AVFoundation (AVPlayer) | 支持 9 种音频格式 |
 | 响应式编程 | Combine | 状态绑定与事件流 |
@@ -186,8 +186,18 @@ TuneHaven/
 | 项目 | 要求 |
 |------|------|
 | Xcode | 16.0 或更高版本 |
-| iOS 部署目标 | iOS 18.5 |
+| iOS 部署目标 | iOS 18.0 |
 | Swift 版本 | 5.0 |
+
+### iOS 26 过渡（A）
+
+最低部署目标是 **iOS 18.0**（工程里项目与各 Target 的 `IPHONEOS_DEPLOYMENT_TARGET` 均为 18.0）。链接 iOS 26 SDK 时，根目录 `Info.plist` 的 `UIDesignRequiresCompatibility` = YES，用来保留现有外观。
+
+这是**应急/过渡**：换 iOS 27 SDK 打包前必须拿掉该键，并做 Liquid Glass。本期不做 Liquid Glass、系统 Tab、NavigationSplitView。
+
+### 隐私清单
+
+`TuneHaven/PrivacyInfo.xcprivacy` 放在主 Target 的同步目录里，随包进入 app bundle，避免提审 ITMS-91053。应用不追踪，也不申报收集数据类型。Required Reason API 按代码实调声明：UserDefaults `CA92.1`；文件时间戳 `C617.1`（沙盒内）和 `3B52.1`（用户授权的导入文件）；磁盘空间 `E174.1`（接收分享前读 `systemFreeSize`）。未使用 Active Keyboard 与 System Boot Time。
 
 ---
 
@@ -206,7 +216,7 @@ cd TuneHaven
 
 ### 3. 选择目标设备
 
-选择 iOS 模拟器或真机（需 iOS 18.5 或更高版本）
+选择 iOS 模拟器或真机（需 iOS 18.0 或更高版本）
 
 ### 4. 构建运行
 

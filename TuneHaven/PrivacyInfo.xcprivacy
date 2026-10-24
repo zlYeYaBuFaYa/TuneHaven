@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		不追踪。在线歌词仅在用户主动搜索时把歌名/歌手发给歌词服务以完成当次请求，
+		应用不保存、不关联用户身份，故不申报收集数据类型。
+		主 Target 使用 PBXFileSystemSynchronizedRootGroup，本文件位于 TuneHaven/ 根目录，
+		会作为资源进入 app bundle 根目录。
+	-->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<!--
+				UserDefaults / @AppStorage：只读写本 App 的 UserDefaults.standard
+				（主题、播放、排序、WiFi、歌词字形、WebDAV 账户元数据等）。
+				无 App Group、无 suiteName、无 App Extension，故只用 CA92.1。
+			-->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+		<dict>
+			<!--
+				文件时间戳 / attributesOfItem。两条都是主 Target 里的实际路径，不是并列猜测：
+				C617.1 沙盒内文件。ImageCacheManager 读封面缓存的 modificationDate 做 LRU，
+				并读 size；ShareServer、FileLogWriter、以及 FileStorageService.fileSize
+				在 WiFi/导入临时目录上的调用，对象都在 App 容器内。
+				3B52.1 用户授权的文件。ImportService.processFile 对文件选择器给出的
+				安全作用域 URL 调用 FileStorageService.fileSize（attributesOfItem 的 size），
+				发生在复制进沙盒之前。
+				不把时间戳展示给用户，不用 DDA9.1。
+			-->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+				<string>3B52.1</string>
+			</array>
+		</dict>
+		<dict>
+			<!--
+				磁盘空间：ShareService.availableDiskSpace 读 systemFreeSize
+				（attributesOfFileSystem），在接收分享写入前比较剩余空间。
+				不用 85F4.1：界面不展示剩余容量数值。
+				未使用 Active Keyboard、System Boot Time。
+			-->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>E174.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
