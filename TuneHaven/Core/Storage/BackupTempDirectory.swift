@@ -26,6 +26,15 @@ struct BackupTempDirectory: Equatable, Sendable {
             + removeContents(of: directory.extract, fileManager: fileManager)
     }
 
+    /// 在后台删完再返回。`bootstrap` 会 await 它，返回前不会进入可导出、可分享的状态。
+    static func cleanupOnLaunchBeforeUse(_ directory: BackupTempDirectory = .live) async -> Int {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                continuation.resume(returning: cleanupOnLaunch(directory))
+            }
+        }
+    }
+
     /// 删除目录中的直接子项。目录不存在时什么也不做。`keeping` 指向的文件会留下。
     @discardableResult
     static func removeContents(

@@ -128,17 +128,19 @@ final class BackupRestoreService: ObservableObject {
             throw AppError.backupInvalidPackage("备份超过 4GB，请关闭「包含音频」后重试")
         }
         // 确认这次导出会继续之后，再清掉旧包。isBusy 已挡住另一次导出。
-        // 只动 export。快照失败或超过 4GB 时保留上一份包。
-        BackupTempDirectory.removeContents(of: directories.export)
-        let destination = directories.export
+        // 删除和打包都在后台，但 export() 返回前完成。只动 export。
+        // 快照失败或超过 4GB 时保留上一份包。
+        let exportDirectory = directories.export
+        let destination = exportDirectory
             .appendingPathComponent("TuneHaven-\(Self.fileStamp()).\(BackupPackageFormat.fileExtension)")
         progress = BackupProgress(phase: "正在打包", completed: 0, total: max(draft.files.count, 1))
         let cancelled = cancelFlag
         try await runOffMain {
+            BackupTempDirectory.removeContents(of: exportDirectory)
             try BackupPackageCodec.write(
                 draft: draft,
                 to: destination,
-                stagingParent: directories.export,
+                stagingParent: exportDirectory,
                 isCancelled: { cancelled.isCancelled() }
             )
         }
