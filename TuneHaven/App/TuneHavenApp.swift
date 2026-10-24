@@ -178,6 +178,7 @@ struct TuneHavenApp: App {
 }
 
 /// 从「文件」打开备份后的弹出。收起动画期间若又被别的模态占住，本次不弹。
+/// 恢复页自己的 `onAppear` 才算已经弹出。没出现的打开由超时兜底放开，副本留在 incoming。
 @MainActor
 enum ExternalBackupOpen {
     static let modalOccupiedNotice = "备份已暂存。请关闭当前页面后，再从「文件」打开"
@@ -195,7 +196,12 @@ enum ExternalBackupOpen {
     ) -> Task<Void, Never> {
         let timeoutTask = router.scheduleExternalBackupPresentationTimeout(
             token: handoff.token,
-            timeout: presentationTimeout
+            timeout: presentationTimeout,
+            onReleased: {
+                AppLogger.shared.info("[Backup] 恢复页没有出现，放弃本次并放开模态层")
+                backupService.retractUnconfirmedExternalRestore(token: handoff.token)
+                snackbar.show(message: modalOccupiedNotice)
+            }
         )
         let show = {
             attemptShow(
@@ -232,13 +238,23 @@ enum ExternalBackupOpen {
     ) {
         switch router.resolveExternalBackupShow(token: token) {
         case .present:
-            router.markExternalBackupPresented(token: token)
-            backupService.presentRestore(url: url)
+            backupService.presentRestore(url: url, externalBackupToken: token)
         case .abandonModalOccupied:
             AppLogger.shared.info("[Backup] 交接结束时已有其它页面，放弃本次恢复页")
             snackbar.show(message: modalOccupiedNotice)
         case .superseded:
             break
         }
+    }
+
+    /// 恢复页 `onAppear` 调用。只确认这份 presentation 自己的 token。
+    static func noteRestoreAppeared(
+        presentation: BackupPresentation,
+        router: AppRouter,
+        backupService: BackupRestoreService
+    ) {
+        guard presentation.kind == .restore, let token = presentation.externalBackupToken else { return }
+        router.confirmExternalBackupAppeared(token: token)
+        backupService.acknowledgeExternalRestoreAppeared(token: token)
     }
 }

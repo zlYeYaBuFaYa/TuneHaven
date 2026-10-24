@@ -77,6 +77,7 @@ struct RootTabView: View {
         )) { presentation in
             BackupCenterView(presentation: presentation)
                 .environmentObject(backupService)
+                .environmentObject(router)
                 .environment(\.themePalette, themeManager.palette)
         }
         .onChange(of: playback.losslessBlockedSong) { blocked in

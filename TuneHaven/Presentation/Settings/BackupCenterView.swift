@@ -5,6 +5,7 @@ struct BackupCenterView: View {
     let presentation: BackupPresentation
 
     @EnvironmentObject private var backupService: BackupRestoreService
+    @EnvironmentObject private var router: AppRouter
     @Environment(\.dismiss) private var dismiss
     @Environment(\.themePalette) private var palette
 
@@ -71,6 +72,13 @@ struct BackupCenterView: View {
                 packageURL = url
                 await loadPreview(url)
             }
+        }
+        .onAppear {
+            ExternalBackupOpen.noteRestoreAppeared(
+                presentation: presentation,
+                router: router,
+                backupService: backupService
+            )
         }
         .fileImporter(
             isPresented: $showImporter,
