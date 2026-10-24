@@ -87,26 +87,16 @@ struct TuneHavenApp: App {
         _ url: URL,
         handoff: ExternalBackupHandoff,
         router: AppRouter,
-        backupService: BackupRestoreService
+        backupService: BackupRestoreService,
+        snackbar: SnackbarState
     ) {
-        let show = {
-            guard router.isCurrentExternalBackup(handoff.token) else { return }
-            backupService.presentRestore(url: url)
-        }
-        guard handoff.needsDelay else {
-            show()
-            return
-        }
-        Task { @MainActor in
-            try? await Task.sleep(for: AppRouter.externalBackupDismissSettle)
-            guard router.isCurrentExternalBackup(handoff.token) else { return }
-            if handoff.playerWasPresented {
-                router.closePlayer()
-                try? await Task.sleep(for: AppRouter.externalBackupDismissSettle)
-                guard router.isCurrentExternalBackup(handoff.token) else { return }
-            }
-            show()
-        }
+        ExternalBackupOpen.begin(
+            url: url,
+            handoff: handoff,
+            router: router,
+            backupService: backupService,
+            snackbar: snackbar
+        )
     }
 
     private func handleIncomingURL(_ url: URL) {
@@ -122,6 +112,7 @@ struct TuneHavenApp: App {
         if let handler = openInHandler { return handler }
         let backupService = container.backupService
         let router = container.router
+        let snackbar = container.snackbar
         let handler = OpenInImportHandler(
             importService: container.importService,
             libraryService: container.libraryService,
@@ -131,7 +122,13 @@ struct TuneHavenApp: App {
                 guard let staged = backupService.stageExternalPackage(url) else { return false }
                 let handoff = router.relinquishModalsForExternalBackup()
                 router.selectedTab = .settings
-                Self.presentStagedBackup(staged, handoff: handoff, router: router, backupService: backupService)
+                Self.presentStagedBackup(
+                    staged,
+                    handoff: handoff,
+                    router: router,
+                    backupService: backupService,
+                    snackbar: snackbar
+                )
                 return true
             }
         )
@@ -176,6 +173,72 @@ struct TuneHavenApp: App {
         } catch {
             initError = error.localizedDescription
             AppLogger.shared.error("[App] initialize FAILED: \(error)")
+        }
+    }
+}
+
+/// 从「文件」打开备份后的弹出。收起动画期间若又被别的模态占住，本次不弹。
+@MainActor
+enum ExternalBackupOpen {
+    static let modalOccupiedNotice = "备份已暂存。请关闭当前页面后，再从「文件」打开"
+
+    /// `settle` 和 `presentationTimeout` 仅供测试缩短等待。正式路径用默认值。
+    @discardableResult
+    static func begin(
+        url: URL,
+        handoff: ExternalBackupHandoff,
+        router: AppRouter,
+        backupService: BackupRestoreService,
+        snackbar: SnackbarState,
+        settle: Duration = AppRouter.externalBackupDismissSettle,
+        presentationTimeout: Duration = AppRouter.externalBackupPresentationTimeout
+    ) -> Task<Void, Never> {
+        let timeoutTask = router.scheduleExternalBackupPresentationTimeout(
+            token: handoff.token,
+            timeout: presentationTimeout
+        )
+        let show = {
+            attemptShow(
+                url: url,
+                token: handoff.token,
+                router: router,
+                backupService: backupService,
+                snackbar: snackbar
+            )
+        }
+        guard handoff.needsDelay else {
+            show()
+            return timeoutTask
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: settle)
+            guard router.isCurrentExternalBackup(handoff.token) else { return }
+            if handoff.playerWasPresented {
+                router.closePlayer()
+                try? await Task.sleep(for: settle)
+                guard router.isCurrentExternalBackup(handoff.token) else { return }
+            }
+            show()
+        }
+        return timeoutTask
+    }
+
+    static func attemptShow(
+        url: URL,
+        token: Int,
+        router: AppRouter,
+        backupService: BackupRestoreService,
+        snackbar: SnackbarState
+    ) {
+        switch router.resolveExternalBackupShow(token: token) {
+        case .present:
+            router.markExternalBackupPresented(token: token)
+            backupService.presentRestore(url: url)
+        case .abandonModalOccupied:
+            AppLogger.shared.info("[Backup] 交接结束时已有其它页面，放弃本次恢复页")
+            snackbar.show(message: modalOccupiedNotice)
+        case .superseded:
+            break
         }
     }
 }
