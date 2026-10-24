@@ -227,6 +227,8 @@ struct BackupCenterView: View {
 
     private func runExport() async {
         errorText = nil
+        // 服务会删掉 export 目录里的旧包。先摘掉上一份分享链接，避免分享还指着被删的文件。
+        shareURL = nil
         do {
             shareURL = try await backupService.export(includeAudio: includeAudio)
         } catch {

@@ -21,6 +21,7 @@ final class BackupRestoreService: ObservableObject {
     private let library: BackupLibraryApplying
     private let activityGate: BackupActivityGate
     private let layout: BackupFileLayout
+    private let directories: BackupTempDirectory
     private let cancelFlag = BackupCancelFlag()
     private var preparedDirectory: URL?
     private var preparedSource: URL?
@@ -34,6 +35,7 @@ final class BackupRestoreService: ObservableObject {
         library: BackupLibraryApplying,
         activityGate: BackupActivityGate,
         layout: BackupFileLayout,
+        directories: BackupTempDirectory = .live,
         onLibraryWillChange: (@MainActor (BackupRestoreMode) async -> Void)? = nil,
         onPreferencesApplied: (@MainActor (BackupPreferences) -> Void)? = nil,
         onLibraryChanged: (@MainActor (BackupRestoreMode) async -> Void)? = nil
@@ -41,6 +43,7 @@ final class BackupRestoreService: ObservableObject {
         self.library = library
         self.activityGate = activityGate
         self.layout = layout
+        self.directories = directories
         self.onLibraryWillChange = onLibraryWillChange
         self.onPreferencesApplied = onPreferencesApplied
         self.onLibraryChanged = onLibraryChanged
@@ -89,7 +92,10 @@ final class BackupRestoreService: ObservableObject {
             exportedAt: Date(),
             layout: layout
         )
-        let destination = SandboxPathManager.backupExportURL
+        // 新包落盘前先清掉旧包。isBusy 已挡住另一次导出，不会和正在写的文件并发。
+        // 只动 export。快照读取失败时保留上一份包。
+        BackupTempDirectory.removeContents(of: directories.export)
+        let destination = directories.export
             .appendingPathComponent("TuneHaven-\(Self.fileStamp()).\(BackupPackageFormat.fileExtension)")
         progress = BackupProgress(phase: "正在打包", completed: 0, total: max(draft.files.count, 1))
         let cancelled = cancelFlag
@@ -97,7 +103,7 @@ final class BackupRestoreService: ObservableObject {
             try BackupPackageCodec.write(
                 draft: draft,
                 to: destination,
-                stagingParent: SandboxPathManager.backupExportURL,
+                stagingParent: directories.export,
                 isCancelled: { cancelled.isCancelled() }
             )
         }
@@ -157,7 +163,7 @@ final class BackupRestoreService: ObservableObject {
     func receiveExternalPackage(_ url: URL) -> Bool {
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-        let directory = SandboxPathManager.backupIncomingURL
+        let directory = directories.incoming
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let destination = directory.appendingPathComponent("\(UUID().uuidString).\(BackupPackageFormat.fileExtension)")
@@ -195,7 +201,7 @@ final class BackupRestoreService: ObservableObject {
             return preparedCatalog
         }
         discardPreparedPackage()
-        let directory = SandboxPathManager.backupExtractURL.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let directory = directories.extract.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let cancelled = cancelFlag
         let catalog = try await runOffMain {
             if cancelled.isCancelled() { throw AppError.backupCancelled }

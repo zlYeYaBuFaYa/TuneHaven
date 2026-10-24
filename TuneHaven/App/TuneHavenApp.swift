@@ -137,6 +137,7 @@ struct TuneHavenApp: App {
             isReady = true
             AppLogger.shared.info("[App] initialize done — isReady=true")
 
+            // bootstrap 里的备份临时目录清理已经结束。这之后才处理冷启动积压的打开请求。
             if !pendingImportURLs.isEmpty {
                 let urls = pendingImportURLs
                 pendingImportURLs.removeAll()
