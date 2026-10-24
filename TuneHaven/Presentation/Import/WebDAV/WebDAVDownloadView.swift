@@ -29,7 +29,7 @@ struct WebDAVDownloadView: View {
             .adaptiveBackground()
             .navigationTitle("下载与导入")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.surface, for: .navigationBar)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     if isProcessing {

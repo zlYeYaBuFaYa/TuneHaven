@@ -62,7 +62,7 @@ struct WebDAVAccountEditView: View {
             .adaptiveBackground()
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.surface, for: .navigationBar)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }

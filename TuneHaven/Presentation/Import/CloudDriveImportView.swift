@@ -34,7 +34,7 @@ struct CloudDriveImportView: View {
             .adaptiveBackground()
             .navigationTitle("云盘导入")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.surface, for: .navigationBar)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { dismiss() }

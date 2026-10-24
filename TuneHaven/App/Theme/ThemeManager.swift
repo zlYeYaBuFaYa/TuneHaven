@@ -183,14 +183,15 @@ final class ThemeManager: ObservableObject {
 
     private static func updateNavigationBars(on vc: UIViewController?, surfaceColor: UIColor) {
         guard let vc = vc else { return }
+        let surface = LiquidGlassPolicy.navigationBarSurface(
+            osIs26OrNewer: LiquidGlassPolicy.osIs26OrNewer,
+            compatibilityMode: LiquidGlassPolicy.compatibilityModeEnabled,
+            customMaterial: false
+        )
+        guard surface == .opaqueSurface else { return }
         if let nav = vc as? UINavigationController {
-            let appearance = UINavigationBarAppearance()
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = surfaceColor
-            appearance.shadowColor = .clear
-            nav.navigationBar.standardAppearance = appearance
-            nav.navigationBar.compactAppearance = appearance
-            nav.navigationBar.scrollEdgeAppearance = appearance
+            let appearance = LiquidGlassPolicy.opaqueNavigationBarAppearance(surfaceColor: surfaceColor)
+            LiquidGlassPolicy.apply(appearance, to: nav.navigationBar)
         }
         for child in vc.children {
             updateNavigationBars(on: child, surfaceColor: surfaceColor)

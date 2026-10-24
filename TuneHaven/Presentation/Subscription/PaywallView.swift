@@ -28,7 +28,7 @@ struct PaywallView: View {
             .adaptiveBackground()
             .navigationTitle("TuneHaven Premium")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.surface, for: .navigationBar)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { dismiss() }

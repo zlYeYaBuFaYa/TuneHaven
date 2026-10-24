@@ -25,7 +25,7 @@ struct ArtistDetailView: View {
         .adaptiveBackground()
         .navigationTitle(artistName)
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(palette.surface, for: .navigationBar)
+        .themeNavigationBarSurface()
         .task { await load() }
         .onChange(of: libraryService.songs.count) { _ in
             Task { await load() }

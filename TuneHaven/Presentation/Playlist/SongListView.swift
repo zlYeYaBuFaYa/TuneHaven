@@ -69,7 +69,7 @@ struct SongListView: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(palette.surface, for: .navigationBar)
+        .themeNavigationBarSurface()
         .task { await load() }
     }
 

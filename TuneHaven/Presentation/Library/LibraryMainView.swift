@@ -74,7 +74,7 @@ struct LibraryMainView: View {
         .adaptiveBackground()
         .navigationTitle("音乐库")
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(hasCustomBg ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(palette.surface), for: .navigationBar)
+        .themeNavigationBarSurface(customMaterial: hasCustomBg)
         .onChange(of: searchDebouncer.debouncedQuery) { query in
             performSearch(query: query)
         }
