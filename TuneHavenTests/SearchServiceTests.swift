@@ -65,14 +65,14 @@ struct SearchServiceTests {
         #expect(result.songs.contains { $0.title == "Perfect" })
     }
 
-    @Test("歌曲名称搜索中间部分不匹配（前缀匹配）", .serialized)
-    @MainActor func testSearchTitleMiddleNotMatched() async {
+    @Test("汉字子串包含匹配，不要求是前缀", .serialized)
+    @MainActor func testSearchTitleSubstringContains() async {
         let service = SearchService(historyRepo: MockSearchHistoryRepository())
-        // "曲" 不是 "夜曲" 的前缀
-        let result = await service.search(query: "曲", tab: .all, allSongs: testSongs)
+        let middleOfTitle = await service.search(query: "曲", tab: .all, allSongs: testSongs)
+        let middleOfAlbumTitle = await service.search(query: "里香", tab: .all, allSongs: testSongs)
 
-        // "曲" 不是任何歌曲/艺术家/专辑的前缀，应该没有结果
-        #expect(!result.songs.contains { $0.title == "夜曲" })
+        #expect(middleOfTitle.songs.contains { $0.title == "夜曲" })
+        #expect(middleOfAlbumTitle.songs.contains { $0.title == "七里香" })
     }
 
     // MARK: - 艺术家搜索
@@ -259,5 +259,98 @@ struct SearchServiceTests {
 
         #expect(resultAll.totalMatchCount == resultArtist.totalMatchCount)
         #expect(resultAll.totalMatchCount == resultAlbum.totalMatchCount)
+    }
+
+    // MARK: - 拼音与模糊
+
+    @Test("首字母 qlx 命中七里香", .serialized)
+    @MainActor func testSearchPinyinInitialsQiLiXiang() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let result = await service.search(query: "qlx", tab: .all, allSongs: testSongs)
+
+        #expect(result.totalMatchCount == 1)
+        #expect(result.songs.first?.title == "七里香")
+    }
+
+    @Test("首字母 zjl 命中周杰伦的全部歌曲", .serialized)
+    @MainActor func testSearchPinyinInitialsZhouJieLun() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let result = await service.search(query: "zjl", tab: .all, allSongs: testSongs)
+
+        #expect(result.totalMatchCount == 6)
+        #expect(result.songs.allSatisfy { $0.artist == "周杰伦" })
+        #expect(result.artists.contains { $0.name == "周杰伦" })
+    }
+
+    @Test("全拼前缀 zhou 命中周杰伦", .serialized)
+    @MainActor func testSearchFullPinyinPrefix() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let result = await service.search(query: "zhou", tab: .all, allSongs: testSongs)
+
+        #expect(result.totalMatchCount == 6)
+        #expect(result.songs.allSatisfy { $0.artist == "周杰伦" })
+    }
+
+    @Test("全拼编辑距离 1 命中七里香", .serialized)
+    @MainActor func testSearchPinyinEditDistanceOne() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        // n→y，不是「少打最后一个字母」的前缀，必须走编辑距离
+        let result = await service.search(query: "qilixiayg", tab: .all, allSongs: testSongs)
+
+        #expect(result.totalMatchCount == 1)
+        #expect(result.songs.first?.title == "七里香")
+    }
+
+    @Test("首字母编辑距离 1 命中周杰伦", .serialized)
+    @MainActor func testSearchInitialsEditDistanceOne() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let result = await service.search(query: "zjk", tab: .all, allSongs: testSongs)
+
+        #expect(result.totalMatchCount == 6)
+        #expect(result.songs.allSatisfy { $0.artist == "周杰伦" })
+    }
+
+    @Test("过短拉丁 query 不做拼音模糊", .serialized)
+    @MainActor func testSearchShortLatinDoesNotFuzzyMatch() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let twoLetters = await service.search(query: "zg", tab: .all, allSongs: testSongs)
+        let oneLetter = await service.search(query: "z", tab: .all, allSongs: testSongs)
+
+        #expect(twoLetters.totalMatchCount == 0)
+        #expect(oneLetter.totalMatchCount == 0)
+        #expect(!oneLetter.songs.contains { $0.artist == "周杰伦" })
+    }
+
+    @Test("拉丁查询 Ed 不会因拼音误中文专辑", .serialized)
+    @MainActor func testSearchLatinEdDoesNotMatchChineseAlbumPinyin() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let result = await service.search(query: "Ed", tab: .all, allSongs: testSongs)
+
+        #expect(result.totalMatchCount == 2)
+        #expect(result.songs.allSatisfy { $0.artist == "Ed Sheeran" })
+        #expect(!result.songs.contains { $0.title == "夜曲" })
+    }
+
+    @Test("艺术家 Tab 用首字母匹配艺术家字段", .serialized)
+    @MainActor func testSearchArtistTabUsesPinyin() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let result = await service.search(query: "zjl", tab: .artist, allSongs: testSongs)
+
+        #expect(result.songs.count == 6)
+        #expect(result.songs.allSatisfy { $0.artist == "周杰伦" })
+        #expect(result.artists.contains { $0.name == "周杰伦" })
+    }
+
+    @Test("专辑 Tab 用首字母匹配专辑字段", .serialized)
+    @MainActor func testSearchAlbumTabUsesPinyin() async {
+        let service = SearchService(historyRepo: MockSearchHistoryRepository())
+        let byAlbum = await service.search(query: "qlx", tab: .album, allSongs: testSongs)
+        let byArtistInitials = await service.search(query: "zjl", tab: .album, allSongs: testSongs)
+
+        #expect(byAlbum.songs.contains { $0.album == "七里香" })
+        #expect(byAlbum.albums.contains { $0.name == "七里香" })
+        // 专辑字段里，只有「周杰伦的床边故事」的首字母包含 zjl
+        #expect(!byArtistInitials.songs.isEmpty)
+        #expect(byArtistInitials.songs.allSatisfy { $0.album == "周杰伦的床边故事" })
     }
 }

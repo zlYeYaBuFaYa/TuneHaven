@@ -161,6 +161,17 @@ private struct PlaylistContentView: View {
         !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// 空 query 保持整张歌单。有 query 时只 prepare 一次，三个字段共用拼音规则。
+    private func songsForDisplay(allSorted: [Song]) -> [Song] {
+        guard isFiltering, let prepared = PinyinSearchMatcher.prepare(searchText) else {
+            return allSorted
+        }
+        let filtered = detail.songs.filter {
+            PinyinSearchMatcher.matchesSong($0, query: prepared)
+        }
+        return applySorting(filtered)
+    }
+
     private func applySorting(_ songs: [Song]) -> [Song] {
         songs.sorted { a, b in
             let result: Bool
@@ -184,17 +195,7 @@ private struct PlaylistContentView: View {
 
     var body: some View {
         let allSorted = applySorting(detail.songs)
-        let displaySongs: [Song] = {
-            if isFiltering {
-                let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                return applySorting(detail.songs.filter {
-                    $0.title.lowercased().contains(q) ||
-                    $0.artist.lowercased().contains(q) ||
-                    $0.album.lowercased().contains(q)
-                })
-            }
-            return allSorted
-        }()
+        let displaySongs = songsForDisplay(allSorted: allSorted)
 
         if !isFiltering {
             Section {
@@ -220,6 +221,9 @@ private struct PlaylistContentView: View {
                             .foregroundColor(palette.iconSecondary)
                         Text("未找到匹配的歌曲")
                             .foregroundColor(palette.textSecondary)
+                        Text("试试拼音首字母")
+                            .font(.subheadline)
+                            .foregroundColor(palette.textTertiary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)

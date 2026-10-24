@@ -15,31 +15,33 @@ final class SearchService: ObservableObject {
     }
 
     func search(query: String, tab: LibraryTab, allSongs: [Song]) async -> SearchResult {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !q.isEmpty else {
+        guard let prepared = PinyinSearchMatcher.prepare(query) else {
             return .empty
         }
 
         currentSearchTask?.cancel()
 
-        log.debug("搜索: query=\(q), tab=\(tab)")
+        log.debug("搜索: query=\(prepared.raw), tab=\(tab)")
 
         let task = Task.detached(priority: .userInitiated) { () -> SearchResult in
             guard !Task.isCancelled else { return .empty }
             let matched = allSongs.filter {
-                $0.title.lowercased().contains(q) ||
-                $0.artist.lowercased().contains(q) ||
-                $0.album.lowercased().contains(q)
+                PinyinSearchMatcher.matchesSong($0, query: prepared)
             }
 
-            // 设计意图：按 Tab 缩小搜索范围——artist Tab 仅匹配 artist 字段，
-            // album Tab 仅匹配 album 字段，all Tab 搜索全部字段
+            // 设计意图：按 Tab 缩小歌曲列表——artist 只保留艺术家字段命中，
+            // album 只保留专辑字段命中。分组仍来自任一字段命中的歌曲。
+            // 字段比较与「全部」使用同一套拼音规则，避免只能在全部里用拼音。
             let filteredSongs: [Song]
             switch tab {
             case .artist:
-                filteredSongs = matched.filter { $0.artist.lowercased().contains(q) }
+                filteredSongs = matched.filter {
+                    PinyinSearchMatcher.matches(text: $0.artist, query: prepared)
+                }
             case .album:
-                filteredSongs = matched.filter { $0.album.lowercased().contains(q) }
+                filteredSongs = matched.filter {
+                    PinyinSearchMatcher.matches(text: $0.album, query: prepared)
+                }
             case .all:
                 filteredSongs = matched
             }

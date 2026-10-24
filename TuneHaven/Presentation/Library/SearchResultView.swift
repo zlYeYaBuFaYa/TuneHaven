@@ -120,6 +120,9 @@ struct SearchResultView: View {
                         .foregroundColor(palette.iconSecondary)
                     Text("未找到「\(query)」相关结果")
                         .foregroundColor(palette.textSecondary)
+                    Text("试试拼音首字母")
+                        .font(.subheadline)
+                        .foregroundColor(palette.textTertiary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
