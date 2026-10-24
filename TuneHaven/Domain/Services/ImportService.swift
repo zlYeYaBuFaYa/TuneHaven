@@ -11,6 +11,7 @@ final class ImportService: ObservableObject, FileImporting {
     private let fileService: FileStorageProviding
     private let coverProcessor: CoverImageProcessing
     private let metadataParser: AudioMetadataParsing
+    private let activityGate: BackupActivityGate?
 
     /// 新歌曲导入成功后的回调，用于触发缺失歌曲恢复等后续逻辑
     var onNewSongsImported: (@MainActor () async -> Void)?
@@ -18,16 +19,30 @@ final class ImportService: ObservableObject, FileImporting {
     init(songRepo: SongRepository,
          fileService: FileStorageProviding,
          coverProcessor: CoverImageProcessing,
-         metadataParser: AudioMetadataParsing) {
+         metadataParser: AudioMetadataParsing,
+         activityGate: BackupActivityGate? = nil) {
         self.songRepo = songRepo
         self.fileService = fileService
         self.coverProcessor = coverProcessor
         self.metadataParser = metadataParser
+        self.activityGate = activityGate
     }
     private var isCancelled = false
 
     func importFromFiles(urls: [URL], onProgress: @escaping @MainActor (ImportProgress) -> Void) async -> ImportResult {
         log.info("开始导入 \(urls.count) 个文件")
+        guard beginExternalImport() else {
+            return ImportResult(
+                successCount: 0,
+                skippedDuplicateCount: 0,
+                skippedFormatCount: 0,
+                failedCount: max(urls.count, 1),
+                incompleteMetadataCount: 0,
+                skippedOversizeCount: 0,
+                details: [SingleImportResult(fileName: "", status: .failed, song: nil, errorMessage: "已有导入或备份任务正在进行")]
+            )
+        }
+        defer { activityGate?.endImport() }
         isImporting = true
         isCancelled = false
         var results: [SingleImportResult] = []
@@ -93,12 +108,31 @@ final class ImportService: ObservableObject, FileImporting {
     }
 
     func processWiFiFile(tempURL: URL, originalFilename: String) async -> SingleImportResult {
+        guard beginExternalImport() else {
+            return SingleImportResult(fileName: originalFilename, status: .failed, song: nil, errorMessage: "已有导入或备份任务正在进行")
+        }
+        defer { activityGate?.endImport() }
         return await processFile(url: tempURL, overrideName: originalFilename)
     }
 
     func processAppleMusicFile(tempURL: URL, originalFilename: String, title: String?, artist: String?, album: String?, coverData: Data?) async -> SingleImportResult {
+        guard beginExternalImport() else {
+            return SingleImportResult(fileName: originalFilename, status: .failed, song: nil, errorMessage: "已有导入或备份任务正在进行")
+        }
+        defer { activityGate?.endImport() }
         let overrides = ImportOverrides(title: title, artist: artist, album: album, coverData: coverData)
         return await processFile(url: tempURL, overrideName: originalFilename, overrides: overrides)
+    }
+
+    private func beginExternalImport() -> Bool {
+        guard let activityGate else { return true }
+        do {
+            try activityGate.beginImport()
+            return true
+        } catch {
+            log.info("[Import] 与备份任务冲突，拒绝开始")
+            return false
+        }
     }
 
     private func processFile(url: URL, overrideName: String? = nil, overrides: ImportOverrides = ImportOverrides()) async -> SingleImportResult {
@@ -130,7 +164,7 @@ final class ImportService: ObservableObject, FileImporting {
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "文件读取失败")
         }
 
-        if let existing = await songRepo.fetchByHash(hash) {
+        if let existing = await songRepo.fetchByHash(hash), !existing.isAudioMissing {
             log.info("[Import] 跳过重复: \(fileName)")
             return SingleImportResult(fileName: fileName, status: .skippedDuplicate, song: existing, errorMessage: nil)
         }
@@ -144,6 +178,28 @@ final class ImportService: ObservableObject, FileImporting {
         let finalAlbum = overrides.album ?? parsed.album
         let finalCoverData = overrides.coverData ?? parsed.coverImageData
         let isIncomplete = parsed.isIncomplete && overrides.title == nil
+
+        if let target = await missingSongTarget(
+            hash: hash,
+            title: finalTitle,
+            artist: finalArtist,
+            album: finalAlbum,
+            duration: parsed.duration
+        ) {
+            return await reattachMissingSong(
+                target,
+                url: url,
+                fileName: fileName,
+                hash: hash,
+                fileSize: fileSize,
+                title: finalTitle,
+                artist: finalArtist,
+                album: finalAlbum,
+                parsed: parsed,
+                coverData: finalCoverData,
+                isIncomplete: isIncomplete
+            )
+        }
 
         let relPath: String
         do {
@@ -201,6 +257,97 @@ final class ImportService: ObservableObject, FileImporting {
             return SingleImportResult(fileName: fileName, status: (isIncomplete || coverFailed) ? .successIncompleteMetadata : .success, song: song, errorMessage: nil)
         } catch {
             log.error(error, context: "[Import] 歌曲入库失败: \(fileName)")
+            return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: error.localizedDescription)
+        }
+    }
+
+    private func missingSongTarget(
+        hash: String,
+        title: String,
+        artist: String,
+        album: String,
+        duration: TimeInterval
+    ) async -> Song? {
+        if !hash.isEmpty, let hashed = await songRepo.fetchByHash(hash), hashed.isAudioMissing {
+            return hashed
+        }
+        let missing = await songRepo.fetchSongsMissingAudio()
+        return BackupSongMatcher.bestMatch(
+            title: title,
+            artist: artist,
+            album: album,
+            duration: duration,
+            in: missing
+        )
+    }
+
+    private func reattachMissingSong(
+        _ existing: Song,
+        url: URL,
+        fileName: String,
+        hash: String,
+        fileSize: Int64,
+        title: String,
+        artist: String,
+        album: String,
+        parsed: ParsedMetadata,
+        coverData: Data?,
+        isIncomplete: Bool
+    ) async -> SingleImportResult {
+        let relPath: String
+        do {
+            relPath = try fileService.copyToMusic(from: url, fileHash: hash, originalFileName: fileName)
+        } catch {
+            log.error(error, context: "[Import] 挂回缺失歌曲失败: \(fileName)")
+            return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "文件复制失败")
+        }
+        var coverImagePath = existing.coverImagePath
+        var coverFailed = false
+        if let coverData {
+            do {
+                coverImagePath = try await coverProcessor.processSongCover(data: coverData, songId: existing.id)
+            } catch {
+                coverFailed = true
+            }
+        }
+        let song = Song(
+            id: existing.id,
+            title: title,
+            artist: artist,
+            album: album,
+            duration: parsed.duration > 0 ? parsed.duration : existing.duration,
+            fileHash: hash,
+            fileRelativePath: relPath,
+            coverImagePath: coverImagePath,
+            lyricsPath: existing.lyricsPath,
+            lyricsSource: existing.lyricsSource,
+            metadata: Metadata(
+                format: parsed.format,
+                sampleRate: parsed.sampleRate,
+                bitRate: parsed.bitRate,
+                channels: parsed.channels,
+                encoder: parsed.encoder,
+                trackNumber: parsed.trackNumber,
+                year: parsed.year,
+                genre: parsed.genre
+            ),
+            importDate: existing.importDate,
+            fileSize: fileSize,
+            playCount: existing.playCount,
+            isFavorite: existing.isFavorite,
+            favoriteDate: existing.favoriteDate,
+            lastPlayedDate: existing.lastPlayedDate
+        )
+        do {
+            try await songRepo.updateSongMedia(song)
+            log.info("[Import] 已挂回缺失歌曲: \(song.title)")
+            return SingleImportResult(
+                fileName: fileName,
+                status: (isIncomplete || coverFailed) ? .successIncompleteMetadata : .success,
+                song: song,
+                errorMessage: nil
+            )
+        } catch {
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: error.localizedDescription)
         }
     }

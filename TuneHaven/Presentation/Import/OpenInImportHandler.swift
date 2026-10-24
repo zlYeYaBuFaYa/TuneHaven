@@ -6,6 +6,7 @@ final class OpenInImportHandler {
     private let libraryService: MusicLibraryService
     private let fileStorage: FileStorageProviding
     private let snackbar: SnackbarState
+    private let onBackupPackage: (@MainActor (URL) -> Bool)?
     private let log = AppLogger.shared
 
     private var queue: [URL] = []
@@ -14,11 +15,13 @@ final class OpenInImportHandler {
     init(importService: ImportService,
          libraryService: MusicLibraryService,
          fileStorage: FileStorageProviding,
-         snackbar: SnackbarState) {
+         snackbar: SnackbarState,
+         onBackupPackage: (@MainActor (URL) -> Bool)? = nil) {
         self.importService = importService
         self.libraryService = libraryService
         self.fileStorage = fileStorage
         self.snackbar = snackbar
+        self.onBackupPackage = onBackupPackage
     }
 
     func enqueue(url: URL) {
@@ -50,6 +53,20 @@ final class OpenInImportHandler {
 
         let fileName = url.lastPathComponent
         let ext = (fileName as NSString).pathExtension.lowercased()
+
+        if ext == BackupPackageFormat.fileExtension {
+            if let onBackupPackage {
+                if onBackupPackage(url) {
+                    cleanup(url: url)
+                } else {
+                    snackbar.show(message: "无法读取备份包")
+                }
+            } else {
+                snackbar.show(message: "无法打开备份包")
+                cleanup(url: url)
+            }
+            return
+        }
 
         guard fileStorage.supportedExtensions.contains(ext) else {
             snackbar.show(message: "不支持的文件格式：.\(ext)")

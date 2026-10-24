@@ -23,6 +23,18 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
+			<string>TuneHaven Backup</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.tunehaven.backup</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
 			<string>Audio File</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
@@ -40,6 +52,29 @@
 				<string>public.aifc-audio</string>
 				<string>com.apple.coreaudio-format</string>
 			</array>
+		</dict>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.tunehaven.backup</string>
+			<key>UTTypeDescription</key>
+			<string>TuneHaven Backup</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tunehaven</string>
+				</array>
+				<key>public.mime-type</key>
+				<string>application/vnd.tunehaven.backup</string>
+			</dict>
 		</dict>
 	</array>
 	<key>LSSupportsOpeningDocumentsInPlace</key>

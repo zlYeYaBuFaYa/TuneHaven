@@ -156,7 +156,7 @@ struct AppErrorTests {
         // ⚠️ 新增 AppError case 后须同时：
         //   1. 在 AppError.allCases 中添加代表性实例
         //   2. 将下面的 expectedCount + 1
-        let expectedCount = 35
+        let expectedCount = 39
         #expect(
             AppError.allCases.count == expectedCount,
             "AppError.allCases 数量(\(AppError.allCases.count))与预期(\(expectedCount))不一致，请检查是否忘了更新 allCases"

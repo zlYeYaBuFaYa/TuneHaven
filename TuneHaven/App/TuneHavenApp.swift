@@ -33,6 +33,7 @@ struct TuneHavenApp: App {
                         .environmentObject(container.webDAVService)
                         .environmentObject(container.lyricsService)
                         .environmentObject(container.shareService)
+                        .environmentObject(container.backupService)
                         .environmentObject(container.subscriptionService)
                         .environment(\.imageCache, ImageCacheManager.shared)
                         .injectThemePalette(from: container.themeManager)
@@ -91,11 +92,20 @@ struct TuneHavenApp: App {
 
     private func ensureOpenInHandler() -> OpenInImportHandler {
         if let handler = openInHandler { return handler }
+        let backupService = container.backupService
+        let router = container.router
         let handler = OpenInImportHandler(
             importService: container.importService,
             libraryService: container.libraryService,
             fileStorage: FileStorageService.shared,
-            snackbar: container.snackbar
+            snackbar: container.snackbar,
+            onBackupPackage: { url in
+                let opened = backupService.receiveExternalPackage(url)
+                if opened {
+                    router.selectedTab = .settings
+                }
+                return opened
+            }
         )
         openInHandler = handler
         return handler

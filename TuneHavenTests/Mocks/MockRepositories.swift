@@ -267,7 +267,20 @@ final class MockSongRepository: SongRepository {
     func toggleFavorite(id: UUID) async throws {}
     func recordPlay(id: UUID) async throws {}
     func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws {}
+    func updateCoverPath(songId: UUID, coverImagePath: String?) async throws {
+        guard let index = songs.firstIndex(where: { $0.id == songId }) else { return }
+        songs[index].coverImagePath = coverImagePath
+    }
     func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws {}
+    func fetchSongsMissingAudio() async -> [Song] {
+        songs.filter(\.isAudioMissing)
+    }
+    func updateSongMedia(_ song: Song) async throws {
+        guard let index = songs.firstIndex(where: { $0.id == song.id }) else {
+            throw AppError.databaseError(NSError(domain: "TuneHaven.Tests", code: 404))
+        }
+        songs[index] = song
+    }
     func countReferences(toFileHash hash: String) async -> Int { 0 }
     func cleanupPendingDeletes() async {}
     func fetchRecentlyPlayed(days: Int, page: Int, pageSize: Int) async -> PagedResult<Song> {

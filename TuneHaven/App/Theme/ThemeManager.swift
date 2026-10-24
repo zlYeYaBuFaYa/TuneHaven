@@ -100,6 +100,18 @@ final class ThemeManager: ObservableObject {
         scheduleWindowRefresh(delay: 0.3, fullApply: false)
     }
 
+    /// 备份写回 `theme_style` 后刷新界面。免费档仍走现有 `enforceThemeAccess`。
+    /// 无法识别的主题 id 先落回默认主题，避免非法字符串留在偏好里。
+    func reloadStoredStyle() {
+        let raw = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle)
+        if raw == nil || registry.theme(for: raw ?? "") == nil {
+            UserDefaults.standard.set(registry.defaultTheme.id, forKey: AppStorageKey.themeStyle)
+        }
+        currentStyle = registry.resolveCurrentStyle()
+        enforceThemeAccess()
+        scheduleWindowRefresh(delay: 0.1, fullApply: true)
+    }
+
     // MARK: - Window Management
 
     func applyToWindows() {

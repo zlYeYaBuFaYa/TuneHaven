@@ -36,6 +36,10 @@ enum AppError: LocalizedError {
     case imageProcessingFailed(String)
     case purchaseFailed(String)
     case featureRequiresPremium(String)
+    case backupInvalidPackage(String)
+    case backupUnsupportedVersion(Int)
+    case backupCancelled
+    case backupCommitRolledBack(String)
 
     var errorDescription: String? {
         switch self {
@@ -74,6 +78,10 @@ enum AppError: LocalizedError {
         case .imageProcessingFailed(let msg): return "图片处理失败：\(msg)"
         case .purchaseFailed(let msg): return "购买失败：\(msg)"
         case .featureRequiresPremium(let f): return "此功能需要 Premium 订阅：\(f)"
+        case .backupInvalidPackage(let msg): return "备份包无效：\(msg)"
+        case .backupUnsupportedVersion(let v): return "不支持的备份版本：\(v)"
+        case .backupCancelled: return "备份或恢复已取消"
+        case .backupCommitRolledBack(let msg): return "恢复已回滚：\(msg)"
         }
     }
 
@@ -114,6 +122,10 @@ enum AppError: LocalizedError {
         case .imageProcessingFailed: return "IMG001"
         case .purchaseFailed: return "SUB001"
         case .featureRequiresPremium: return "SUB002"
+        case .backupInvalidPackage: return "BKP001"
+        case .backupUnsupportedVersion: return "BKP002"
+        case .backupCancelled: return "BKP003"
+        case .backupCommitRolledBack: return "BKP004"
         }
     }
 }
@@ -158,6 +170,10 @@ extension AppError: Equatable {
         case (.imageProcessingFailed(let a), .imageProcessingFailed(let b)): return a == b
         case (.purchaseFailed(let a), .purchaseFailed(let b)): return a == b
         case (.featureRequiresPremium(let a), .featureRequiresPremium(let b)): return a == b
+        case (.backupInvalidPackage(let a), .backupInvalidPackage(let b)): return a == b
+        case (.backupUnsupportedVersion(let a), .backupUnsupportedVersion(let b)): return a == b
+        case (.backupCancelled, .backupCancelled): return true
+        case (.backupCommitRolledBack(let a), .backupCommitRolledBack(let b)): return a == b
         default: return false
         }
     }
@@ -167,7 +183,7 @@ extension AppError: Equatable {
 extension AppError: CaseIterable {
     /// 含关联值的枚举无法由编译器合成 CaseIterable；此处为测试与完整性检查提供代表性实例。
     /// `expectedCaseCount` 与此列表长度在单元测试中交叉验证，新增 case 时两处须同步更新。
-    static let expectedCaseCount = 35
+    static let expectedCaseCount = 39
 
     static var allCases: [AppError] {
         let id = UUID()
@@ -207,6 +223,10 @@ extension AppError: CaseIterable {
             .imageProcessingFailed("test"),
             .purchaseFailed("test"),
             .featureRequiresPremium("losslessPlayback"),
+            .backupInvalidPackage("test"),
+            .backupUnsupportedVersion(99),
+            .backupCancelled,
+            .backupCommitRolledBack("test"),
         ]
     }
 }

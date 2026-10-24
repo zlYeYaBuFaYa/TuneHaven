@@ -10,6 +10,7 @@ struct RootTabView: View {
     @EnvironmentObject private var engine: AudioEngine
     @EnvironmentObject private var lyricsService: LyricsService
     @EnvironmentObject private var subscriptionService: SubscriptionService
+    @EnvironmentObject private var backupService: BackupRestoreService
     @Environment(\.themePalette) private var palette
 
     private var hasCustomBg: Bool {
@@ -64,6 +65,22 @@ struct RootTabView: View {
                         hasCustomBackground: hasCustomBg
                     )
             )
+        }
+        .sheet(item: Binding(
+            get: { backupService.presentation },
+            set: { newValue in
+                if newValue == nil {
+                    backupService.cancel()
+                    if !backupService.isBusy {
+                        backupService.discardPreparedPackage()
+                    }
+                }
+                backupService.presentation = newValue
+            }
+        )) { presentation in
+            BackupCenterView(presentation: presentation)
+                .environmentObject(backupService)
+                .environment(\.themePalette, themeManager.palette)
         }
         .onChange(of: playback.losslessBlockedSong) { blocked in
             guard let blocked else { return }
