@@ -115,6 +115,11 @@ final class AppDIContainer: ObservableObject {
         try await CoreDataStack.shared.load()
         await MigrationManager.shared.runPostLoadMigrations()
         SandboxPathManager.createAllDirectories()
+        // 冷启动没有进行中的分享。await 完成前不会 isReady，导出和分享都还没开始。
+        let removedBackupFiles = await BackupTempDirectory.cleanupOnLaunchBeforeUse()
+        if removedBackupFiles > 0 {
+            AppLogger.shared.info("[Backup] 冷启动已清理备份临时文件 \(removedBackupFiles) 项")
+        }
         WiFiTransferServer.cleanupTempFiles()
         OpenInImportHandler.cleanupInbox(fileStorage: FileStorageService.shared)
     }

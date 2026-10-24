@@ -21,10 +21,19 @@ final class BackupRestoreService: ObservableObject {
     private let library: BackupLibraryApplying
     private let activityGate: BackupActivityGate
     private let layout: BackupFileLayout
+    private let directories: BackupTempDirectory
     private let cancelFlag = BackupCancelFlag()
     private var preparedDirectory: URL?
     private var preparedSource: URL?
     private var preparedCatalog: BackupCatalog?
+    private var extractInFlight = 0
+    private var purgeIncomingWhenIdle = false
+    /// 已复制、但恢复页还没弹出的 incoming 文件。关掉旧页面时不能把它删掉。
+    private var pendingStagedURL: URL?
+
+    var shouldReleaseExternalModal: Bool {
+        pendingStagedURL == nil
+    }
 
     var onLibraryWillChange: (@MainActor (BackupRestoreMode) async -> Void)?
     var onPreferencesApplied: (@MainActor (BackupPreferences) -> Void)?
@@ -34,6 +43,7 @@ final class BackupRestoreService: ObservableObject {
         library: BackupLibraryApplying,
         activityGate: BackupActivityGate,
         layout: BackupFileLayout,
+        directories: BackupTempDirectory = .live,
         onLibraryWillChange: (@MainActor (BackupRestoreMode) async -> Void)? = nil,
         onPreferencesApplied: (@MainActor (BackupPreferences) -> Void)? = nil,
         onLibraryChanged: (@MainActor (BackupRestoreMode) async -> Void)? = nil
@@ -41,6 +51,7 @@ final class BackupRestoreService: ObservableObject {
         self.library = library
         self.activityGate = activityGate
         self.layout = layout
+        self.directories = directories
         self.onLibraryWillChange = onLibraryWillChange
         self.onPreferencesApplied = onPreferencesApplied
         self.onLibraryChanged = onLibraryChanged
@@ -53,11 +64,35 @@ final class BackupRestoreService: ObservableObject {
 
     func presentRestore(url: URL?) {
         lastError = nil
+        if let url, let pendingStagedURL, BackupTempDirectory.sameFile(url, pendingStagedURL) {
+            self.pendingStagedURL = nil
+        }
         presentation = BackupPresentation(id: UUID(), kind: .restore, packageURL: url)
     }
 
     func cancel() {
         cancelFlag.cancel()
+    }
+
+    /// 恢复页被系统关掉时调用。忙或仍在解包时先标记，等工作结束后再删 incoming 副本。
+    func handlePresentationChange(to newValue: BackupPresentation?) {
+        if let newValue {
+            presentation = newValue
+            return
+        }
+        let wasRestore = presentation?.kind == .restore
+        cancel()
+        presentation = nil
+        if wasRestore {
+            purgeIncomingWhenIdle = true
+        }
+        if !isBusy && extractInFlight == 0 {
+            discardPreparedPackage()
+            if wasRestore {
+                removeIncomingCopies()
+                purgeIncomingWhenIdle = false
+            }
+        }
     }
 
     func discardPreparedPackage() {
@@ -89,15 +124,23 @@ final class BackupRestoreService: ObservableObject {
             exportedAt: Date(),
             layout: layout
         )
-        let destination = SandboxPathManager.backupExportURL
+        if draft.catalog.manifest.payloadBytes > Int64(BackupPackageFormat.maxZipOffset) {
+            throw AppError.backupInvalidPackage("备份超过 4GB，请关闭「包含音频」后重试")
+        }
+        // 确认这次导出会继续之后，再清掉旧包。isBusy 已挡住另一次导出。
+        // 删除和打包都在后台，但 export() 返回前完成。只动 export。
+        // 快照失败或超过 4GB 时保留上一份包。
+        let exportDirectory = directories.export
+        let destination = exportDirectory
             .appendingPathComponent("TuneHaven-\(Self.fileStamp()).\(BackupPackageFormat.fileExtension)")
         progress = BackupProgress(phase: "正在打包", completed: 0, total: max(draft.files.count, 1))
         let cancelled = cancelFlag
         try await runOffMain {
+            BackupTempDirectory.removeContents(of: exportDirectory)
             try BackupPackageCodec.write(
                 draft: draft,
                 to: destination,
-                stagingParent: SandboxPathManager.backupExportURL,
+                stagingParent: exportDirectory,
                 isCancelled: { cancelled.isCancelled() }
             )
         }
@@ -120,54 +163,67 @@ final class BackupRestoreService: ObservableObject {
     ) async throws -> BackupRestoreSummary {
         try beginWork()
         defer { endWork() }
-        let catalog = try await withSecurityScope(url) {
-            try await self.catalog(for: url)
+        var committed = false
+        do {
+            let catalog = try await withSecurityScope(url) {
+                try await self.catalog(for: url)
+            }
+            guard let root = preparedDirectory else {
+                throw AppError.backupInvalidPackage("临时目录不存在")
+            }
+            let original = try await library.loadSnapshot()
+            let plan = BackupPlanner.plan(
+                local: original,
+                package: catalog,
+                mode: mode,
+                resolution: resolution
+            )
+            progress = BackupProgress(phase: "正在恢复", completed: 0, total: max(plan.copies.count, 1))
+            if mode != .preferencesOnly {
+                await onLibraryWillChange?(mode)
+            }
+            let summary = try await BackupCommitter.commit(
+                original: original,
+                plan: plan,
+                packageRoot: root,
+                layout: layout,
+                library: library,
+                isCancelled: { [cancelFlag] in cancelFlag.isCancelled() }
+            )
+            committed = true
+            onPreferencesApplied?(plan.snapshot.preferences)
+            if mode != .preferencesOnly {
+                await onLibraryChanged?(mode)
+            }
+            progress = BackupProgress(phase: "恢复完成", completed: 1, total: 1)
+            removeIncomingCopies(preservingNewerThan: url)
+            return summary
+        } catch {
+            if committed || (error as? AppError) == .backupCancelled {
+                removeIncomingCopies(preservingNewerThan: url)
+            }
+            throw error
         }
-        guard let root = preparedDirectory else {
-            throw AppError.backupInvalidPackage("临时目录不存在")
-        }
-        let original = try await library.loadSnapshot()
-        let plan = BackupPlanner.plan(
-            local: original,
-            package: catalog,
-            mode: mode,
-            resolution: resolution
-        )
-        progress = BackupProgress(phase: "正在恢复", completed: 0, total: max(plan.copies.count, 1))
-        if mode != .preferencesOnly {
-            await onLibraryWillChange?(mode)
-        }
-        let summary = try await BackupCommitter.commit(
-            original: original,
-            plan: plan,
-            packageRoot: root,
-            layout: layout,
-            library: library,
-            isCancelled: { [cancelFlag] in cancelFlag.isCancelled() }
-        )
-        onPreferencesApplied?(plan.snapshot.preferences)
-        if mode != .preferencesOnly {
-            await onLibraryChanged?(mode)
-        }
-        progress = BackupProgress(phase: "恢复完成", completed: 1, total: 1)
-        return summary
     }
 
-    @discardableResult
-    func receiveExternalPackage(_ url: URL) -> Bool {
+    /// 把外部备份复制到 incoming。不弹出页面。空闲时会先清掉目录里的旧副本。
+    func stageExternalPackage(_ url: URL) -> URL? {
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-        let directory = SandboxPathManager.backupIncomingURL
+        let directory = directories.incoming
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let destination = directory.appendingPathComponent("\(UUID().uuidString).\(BackupPackageFormat.fileExtension)")
             try FileManager.default.copyItem(at: url, to: destination)
-            presentRestore(url: destination)
-            return true
+            if !isBusy && extractInFlight == 0 {
+                BackupTempDirectory.removeContents(of: directory, keeping: destination)
+            }
+            pendingStagedURL = destination
+            return destination
         } catch {
             lastError = "无法读取备份包"
-            ErrorLogger.shared.log(.backupInvalidPackage("无法复制外部备份包"), context: "BackupRestore.receive")
-            return false
+            ErrorLogger.shared.log(.backupInvalidPackage("无法复制外部备份包"), context: "BackupRestore.stage")
+            return nil
         }
     }
 
@@ -188,6 +244,37 @@ final class BackupRestoreService: ObservableObject {
         if presentation == nil {
             discardPreparedPackage()
         }
+        purgePendingIncomingIfIdle()
+    }
+
+    private func removeIncomingCopies() {
+        BackupTempDirectory.removeContents(of: directories.incoming, keeping: pendingStagedURL)
+    }
+
+    /// 删掉 incoming 里的副本。还没弹出的新副本，或恢复页已经换成的另一份，留下。
+    private func removeIncomingCopies(preservingNewerThan url: URL) {
+        let keep = incomingFileToKeep(besides: url)
+        BackupTempDirectory.removeContents(of: directories.incoming, keeping: keep)
+    }
+
+    private func incomingFileToKeep(besides url: URL) -> URL? {
+        let candidates = [pendingStagedURL, presentation?.packageURL]
+        for candidate in candidates {
+            guard let candidate,
+                  !BackupTempDirectory.sameFile(candidate, url),
+                  BackupTempDirectory.containsFile(candidate, in: directories.incoming) else {
+                continue
+            }
+            return candidate
+        }
+        return nil
+    }
+
+    private func purgePendingIncomingIfIdle() {
+        guard purgeIncomingWhenIdle, !isBusy, extractInFlight == 0 else { return }
+        purgeIncomingWhenIdle = false
+        discardPreparedPackage()
+        removeIncomingCopies()
     }
 
     private func catalog(for url: URL) async throws -> BackupCatalog {
@@ -195,7 +282,12 @@ final class BackupRestoreService: ObservableObject {
             return preparedCatalog
         }
         discardPreparedPackage()
-        let directory = SandboxPathManager.backupExtractURL.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        extractInFlight += 1
+        defer {
+            extractInFlight -= 1
+            purgePendingIncomingIfIdle()
+        }
+        let directory = directories.extract.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let cancelled = cancelFlag
         let catalog = try await runOffMain {
             if cancelled.isCancelled() { throw AppError.backupCancelled }
