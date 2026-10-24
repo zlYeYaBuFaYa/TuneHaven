@@ -1,10 +1,10 @@
 # TuneHaven
 
-> 一款专注于 iOS 平台的本地音乐播放器应用，以「完全本地、简洁优雅」为设计理念
+> 一款 iOS 本地优先音乐播放器：基础播放离线可用，Premium 解锁无损、高级主题、WebDAV 与在线歌词
 
 [![Swift](https://img.shields.io/badge/Swift-5.0-orange.svg)](https://swift.org)
 [![iOS](https://img.shields.io/badge/iOS-18.0+-blue.svg)](https://apple.com/ios)
-[![Xcode](https://img.shields.io/badge/Xcode-16.0+-brightgreen.svg)](https://developer.apple.com/xcode)
+[![Xcode](https://img.shields.io/badge/Xcode-26+-brightgreen.svg)](https://developer.apple.com/xcode)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
 ---
@@ -15,12 +15,13 @@ TuneHaven 是一款功能完整的 iOS 本地音乐播放器，支持多种方�
 
 ### 核心特性
 
-- **音乐导入**：文件应用、Apple Music、Cloud Drive、WiFi 局域网传输、二维码分享直传
+- **音乐导入**：文件应用、Apple Music、Cloud Drive、WiFi 局域网传输、二维码分享直传；WebDAV 需 Premium
 - **播放控制**：播放/暂停/切歌、多种播放模式、倍速播放、定时关闭
 - **音乐库浏览**：全部歌曲、按艺术家/专辑分类浏览，支持排序与搜索
 - **歌单管理**：自定义歌单、系统歌单（我喜欢/最近播放）、歌单分组、批量操作
-- **歌词显示**：支持内嵌歌词、LRC 文件解析、在线歌词搜索、歌词字形转换
-- **主题系统**：4 套内置主题（素云白简/晴空蔚蓝/暮光玫瑰/星际穹顶），每套主题固定深浅色风格
+- **歌词显示**：内嵌歌词、LRC 文件解析、歌词字形转换；在线歌词搜索需 Premium
+- **主题系统**：4 套内置主题（素云白简/晴空蔚蓝/暮光玫瑰/星际穹顶），每套主题固定深浅色风格。免费档可用素云白简、晴空蔚蓝
+- **订阅**：StoreKit 2 年度订阅与终身买断；试用 30 天。设置里的「订阅管理」是列表第一项，默认折叠
 - **后台播放**：后台播放与锁屏控制
 
 ### 设计理念
@@ -42,7 +43,7 @@ TuneHaven 是一款功能完整的 iOS 本地音乐播放器，支持多种方�
 | 音频播放 | AVFoundation (AVPlayer) | 支持 9 种音频格式 |
 | 响应式编程 | Combine | 状态绑定与事件流 |
 | 异步编程 | Swift Concurrency | async/await |
-| 网络传输 | Network Framework | WiFi 传输 HTTP 服务器 |
+| 网络传输 | Network Framework | WiFi 传输 HTTP 服务器；WebDAV 为 Premium 导入 |
 | 测试框架 | XCTest / Swift Testing | 单元测试与 UI 测试 |
 | 模块化 | 单 Target | 无外部包依赖 |
 
@@ -70,10 +71,10 @@ Core Layer（核心基础设施层）
 
 ### 架构特点
 
-- **依赖方向严格单向**：Presentation -> Domain <- Data
-- **Service 即 ViewModel**：所有核心 Service 采用 `@MainActor final class: ObservableObject` 模式
-- **单例组件管理**：AudioEngine、PlaybackService、CoreDataStack 等核心组件统一管理
-- **依赖注入**：启动时在 TuneHavenApp 中通过 `.environmentObject()` 注入
+- **依赖方向**：Presentation → Domain ← Data。Core 是基础设施，供各层使用。Presentation 不引用 Core Data；StoreKit 只在 App 层 `StoreKitSubscriptionProvider`
+- **Service 即 ViewModel**：核心 Service 采用 `@MainActor final class: ObservableObject`，由 `AppDIContainer` 创建，再经 `.environmentObject()` 注入
+- **单例只留基础设施**：`AudioEngine`、`CoreDataStack`、`ImageCacheManager`、`FileStorageService` 等仍是 `static let shared`。`PlaybackService` 不是单例，由容器持有
+- **已知例外**：`ImageCacheManaging` 的方法签名使用 `UIImage`
 
 ### 导航架构
 
@@ -204,8 +205,8 @@ TuneHaven/
 
 第一阶段在 `#available(iOS 26, *)` 上分流，并在运行时读这个键：
 
-- 键开着，或系统低于 iOS 26：不透明导航栏、自绘 Tab 的超薄材质、sheet 的不透明抬升面，和现在一样。
-- 键关掉且系统为 iOS 26 及以上：导航栏交给系统，自绘 Tab 使用 `glassEffect`（不改成系统 `TabView`），纯色主题的路由 sheet 不再另铺不透明底。播放器全屏仍用色板渐变。星际穹顶的 sheet 仍用不透明抬升面，避免文字压在粒子背景上。
+- 键开着，或系统低于 iOS 26：自绘 Tab 用 `.ultraThinMaterial`，路由 sheet 用不透明抬升面。导航栏默认是不透明 `palette.surface`；星际穹顶这种自绘背景页的导航栏用超薄材质。
+- 键关掉且系统为 iOS 26 及以上：`#available(iOS 26, *)` 分支里导航栏交给系统，自绘 Tab 使用 `glassEffect`（不改成系统 `TabView`）。`backgroundType == .solidColor` 的素云白简、晴空蔚蓝、暮光玫瑰不再给路由 sheet 另铺不透明底。播放器全屏仍用色板渐变。星际穹顶（`hasCustomBackground`）的 sheet 仍用不透明抬升面。
 
 浅色主题的主色和次级文字、深色主题按钮上的 `onPrimary` 已按 4.5:1 调过。静态语义红随深浅色切换：浅色保持 `#C62828`，暗色恢复改前的 `#EF4444`，避免暮光玫瑰和星际穹顶上的对比度掉到约 3:1。付费墙继续用色板和 `SemanticColor.danger(for:)`。
 
@@ -346,7 +347,10 @@ Text("标题").foregroundColor(palette.textPrimary)
 - 冷启动在订阅状态确定之后才恢复上次歌曲。Free 用户上次若是无损歌曲，不会把它恢复成当前可播放歌曲，也不会一启动就挡住音乐库。
 - 上一首 / 下一首遇到无损时停在那一首并提示升级，不会静默跳过。
 - 订阅降为 Free 时，正在播放的无损会暂停并提示；正在播放的有损不中断。已保存的高级主题会回到素云白简。
-- WebDAV 的连接和下载在服务层检查权限，不只看设置页按钮。
+- WebDAV 的连接和下载、在线歌词搜索都在对应 Service 里检查权限，不只看设置页按钮。
+- 高级主题：设置页上锁后才调用 `setTheme`。`setTheme` 本身不校验档位。档位变为 Free 时 `applyTier` 把暮光玫瑰、星际穹顶退回素云白简。
+- 试用没有单独的到期日。已校验的 `AppTransaction.originalPurchaseDate` 优先；失败或未校验时才读 UserDefaults `app_first_launch_date`。日历日差小于 30 为试用。
+- 设置「订阅管理」在列表最上方，`DisclosureGroup` 默认折叠。展开后显示试用剩余、订阅到期或终身买断，以及恢复购买、管理订阅。没有「上次同步时间」。
 
 付费墙和设置里的「管理订阅」打开 `https://apps.apple.com/account/subscriptions`。
 
