@@ -94,6 +94,7 @@ final class ThemeManager: ObservableObject {
     var allAvailableThemes: [ThemeStyle] { registry.allThemes }
 
     func setTheme(_ style: ThemeStyle) {
+        if currentTier == .free && isPremiumTheme(style) { return }
         currentStyle = style
         storedThemeStyle = style.id
         pendingFullApply = false

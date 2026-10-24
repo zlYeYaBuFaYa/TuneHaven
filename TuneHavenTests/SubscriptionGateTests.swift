@@ -259,6 +259,27 @@ struct FreeThemeDowngradeTests {
         #expect(premium.currentStyle.id == "cloud_white")
     }
 
+    @Test("Free 的 setTheme 拒绝高级主题，仍可切换免费主题")
+    func testFreeSetThemeRejectsPremiumStyle() {
+        let previous = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle)
+        defer { restoreTheme(previous) }
+        UserDefaults.standard.set("cloud_white", forKey: AppStorageKey.themeStyle)
+        ThemeRegistry.shared.bootstrap()
+        let manager = ThemeManager()
+        manager.applyTier(.free)
+
+        manager.setTheme(.twilightRose)
+        #expect(manager.currentStyle.id == "cloud_white")
+        #expect(UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) == "cloud_white")
+
+        manager.setTheme(.azureSky)
+        #expect(manager.currentStyle.id == "azure_sky")
+
+        manager.applyTier(.premium)
+        manager.setTheme(.cosmicTech)
+        #expect(manager.currentStyle.id == "cosmic_tech")
+    }
+
     private func restoreTheme(_ previous: String?) {
         if let previous {
             UserDefaults.standard.set(previous, forKey: AppStorageKey.themeStyle)

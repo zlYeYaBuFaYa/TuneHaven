@@ -59,6 +59,7 @@ struct ThemeManagerSetThemeTests {
     @MainActor
     func testSetThemeUpdatesCurrentStyle() {
         let manager = ThemeManager()
+        manager.applyTier(.premium)
         manager.setTheme(.twilightRose)
 
         #expect(manager.currentStyle.id == "twilight_rose")
@@ -69,6 +70,7 @@ struct ThemeManagerSetThemeTests {
     @MainActor
     func testSetThemeCosmicToTwilight() {
         let manager = ThemeManager()
+        manager.applyTier(.premium)
         manager.setTheme(.cosmicTech)
         #expect(manager.colorScheme == .dark)
 
@@ -81,6 +83,7 @@ struct ThemeManagerSetThemeTests {
     @MainActor
     func testSetThemeDarkToLight() {
         let manager = ThemeManager()
+        manager.applyTier(.premium)
         manager.setTheme(.cosmicTech)
         #expect(manager.colorScheme == .dark)
 
@@ -92,6 +95,7 @@ struct ThemeManagerSetThemeTests {
     @MainActor
     func testMultipleSetTheme() {
         let manager = ThemeManager()
+        manager.applyTier(.premium)
         manager.setTheme(.azureSky)
         manager.setTheme(.cosmicTech)
         manager.setTheme(.twilightRose)

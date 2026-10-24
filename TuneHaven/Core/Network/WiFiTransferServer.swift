@@ -2,6 +2,31 @@ import Darwin
 import Foundation
 import Network
 
+/// 密码开启后的上传许可。token 只活在内存里，停止服务或更换密码时作废。
+struct WiFiTransferSession: Equatable {
+    var passwordEnabled = false
+    private(set) var uploadToken: String?
+
+    mutating func issueUploadToken() -> String {
+        let token = UUID().uuidString
+        uploadToken = token
+        return token
+    }
+
+    mutating func invalidateUploadToken() {
+        uploadToken = nil
+    }
+
+    func allowsUpload(authorizationHeader: String?) -> Bool {
+        guard passwordEnabled else { return true }
+        guard let uploadToken, !uploadToken.isEmpty else { return false }
+        guard let header = authorizationHeader?.trimmingCharacters(in: .whitespacesAndNewlines),
+              header.hasPrefix("Bearer ") else { return false }
+        let presented = String(header.dropFirst("Bearer ".count))
+        return !presented.isEmpty && presented == uploadToken
+    }
+}
+
 @MainActor
 final class WiFiTransferServer: ObservableObject {
     @Published private(set) var isRunning = false
@@ -16,7 +41,7 @@ final class WiFiTransferServer: ObservableObject {
 
     private var listener: NWListener?
     private var activeConnection: NWConnection?
-    private var passwordEnabled = false
+    private var session = WiFiTransferSession()
     private var authAttempts: [String: (attempts: Int, cooldownUntil: Date?)] = [:]
     private var port: UInt16 = 8080
 
@@ -25,7 +50,8 @@ final class WiFiTransferServer: ObservableObject {
     func start(passwordEnabled: Bool) throws {
         guard !isRunning else { return }
         log.info("WiFi 传输服务启动")
-        self.passwordEnabled = passwordEnabled
+        session.passwordEnabled = passwordEnabled
+        session.invalidateUploadToken()
         if passwordEnabled && password == nil { password = generateRandomPassword() }
 
         let params = NWParameters.tcp
@@ -67,12 +93,14 @@ final class WiFiTransferServer: ObservableObject {
         isRunning = false
         connectionState = .idle
         serverAddress = nil
+        session.invalidateUploadToken()
         authAttempts.removeAll()
     }
 
     func regeneratePassword() -> String {
         let pwd = generateRandomPassword()
         password = pwd
+        session.invalidateUploadToken()
         return pwd
     }
 
@@ -81,6 +109,7 @@ final class WiFiTransferServer: ObservableObject {
             throw AppError.wifiPasswordWrong
         }
         password = pwd
+        session.invalidateUploadToken()
     }
 
     static func cleanupTempFiles() {
@@ -148,8 +177,18 @@ final class WiFiTransferServer: ObservableObject {
                         let headers = headerData[headerData.startIndex..<headerEndRange.upperBound]
                         let overflow = headerData[headerEndRange.upperBound...]
 
-                        if self.isUploadRequest(headers),
-                           let ctx = self.beginStreamingUpload(headers: Data(headers), ip: ip) {
+                        if self.isUploadRequest(headers) {
+                            let headerBytes = Data(headers)
+                            guard self.allowsUpload(headers: headerBytes) else {
+                                self.sendJSON(connection: connection, status: 401, body: #"{"error":"未授权"}"#)
+                                connection.cancel()
+                                self.connectionState = .idle
+                                return
+                            }
+                            guard let ctx = self.beginStreamingUpload(headers: headerBytes, ip: ip) else {
+                                self.finishSmallRequest(headerData: headerData, connection: connection, ip: ip)
+                                return
+                            }
                             if !overflow.isEmpty {
                                 ctx.fileHandle.write(Data(overflow))
                                 ctx.bytesReceived = overflow.count
@@ -340,7 +379,7 @@ final class WiFiTransferServer: ObservableObject {
             return
         }
 
-        if passwordEnabled && pwd != (password ?? "") {
+        if session.passwordEnabled && pwd != (password ?? "") {
             record.attempts += 1
             if record.attempts >= 5 {
                 record.cooldownUntil = Date().addingTimeInterval(30)
@@ -355,12 +394,18 @@ final class WiFiTransferServer: ObservableObject {
         }
 
         authAttempts[ip] = (attempts: 0, cooldownUntil: nil)
-        sendJSON(connection: connection, status: 200, body: #"{"success":true}"#)
+        let token = session.issueUploadToken()
+        sendJSON(connection: connection, status: 200, body: #"{"success":true,"token":"\#(token)"}"#)
     }
 
     // MARK: - Upload (fallback for small in-memory requests)
 
     private func handleUpload(data: Data, connection: NWConnection) {
+        guard allowsUpload(headers: data) else {
+            sendJSON(connection: connection, status: 401, body: #"{"error":"未授权"}"#)
+            return
+        }
+
         if let clStr = extractHeader(from: data, key: "Content-Length"),
            let cl = Int(clStr), cl > Self.maxUploadBytes {
             sendJSON(connection: connection, status: 413, body: #"{"error":"文件过大，超过上传限制"}"#)
@@ -427,7 +472,7 @@ final class WiFiTransferServer: ObservableObject {
     // MARK: - HTTP Response
 
     private func sendHTML(connection: NWConnection) {
-        let html = WiFiTransferHTML.page(address: serverAddress ?? "", passwordRequired: passwordEnabled)
+        let html = WiFiTransferHTML.page(address: serverAddress ?? "", passwordRequired: session.passwordEnabled)
         guard let bodyData = html.data(using: .utf8) else { return }
         let response = buildHTTPResponse(status: 200, contentType: "text/html; charset=utf-8", body: bodyData)
         connection.send(content: response, completion: .idempotent)
@@ -531,6 +576,10 @@ final class WiFiTransferServer: ObservableObject {
             return json[key]
         }
         return nil
+    }
+
+    private func allowsUpload(headers: Data) -> Bool {
+        session.allowsUpload(authorizationHeader: extractHeader(from: headers, key: "Authorization"))
     }
 
     private func extractHeader(from data: Data, key: String) -> String? {

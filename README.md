@@ -348,7 +348,7 @@ Text("标题").foregroundColor(palette.textPrimary)
 - 上一首 / 下一首遇到无损时停在那一首并提示升级，不会静默跳过。
 - 订阅降为 Free 时，正在播放的无损会暂停并提示；正在播放的有损不中断。已保存的高级主题会回到素云白简。
 - WebDAV 的连接和下载、在线歌词搜索都在对应 Service 里检查权限，不只看设置页按钮。
-- 高级主题：设置页上锁后才调用 `setTheme`。`setTheme` 本身不校验档位。档位变为 Free 时 `applyTier` 把暮光玫瑰、星际穹顶退回素云白简。
+- 高级主题：设置页上锁后才调用 `setTheme`。`setTheme` 在免费档遇到高级主题时直接返回。档位变为 Free 时 `applyTier` 把暮光玫瑰、星际穹顶退回素云白简。
 - 试用没有单独的到期日。已校验的 `AppTransaction.originalPurchaseDate` 优先；失败或未校验时才读 UserDefaults `app_first_launch_date`。日历日差小于 30 为试用。
 - 设置「订阅管理」在列表最上方，`DisclosureGroup` 默认折叠。展开后显示试用剩余、订阅到期或终身买断，以及恢复购买、管理订阅。没有「上次同步时间」。
 

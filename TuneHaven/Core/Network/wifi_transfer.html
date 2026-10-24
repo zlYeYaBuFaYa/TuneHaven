@@ -56,13 +56,25 @@ input[type=password]{width:100%;padding:12px;border:1px solid #ddd;border-radius
 </div>
 <script>
 let selectedFiles=[];
+let accessToken='';
 function doAuth(){
   const pwd=document.getElementById('pwdInput').value;
   fetch('/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pwd})})
     .then(r=>r.json()).then(d=>{
-      if(d.success){document.getElementById('authSection').classList.add('hidden');document.getElementById('uploadSection').classList.remove('hidden');}
+      if(d.success&&d.token){
+        accessToken=d.token;
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('uploadSection').classList.remove('hidden');
+      }
       else alert(d.error||'密码错误，请重试');
     }).catch(()=>alert('连接失败'));
+}
+function showAuthAgain(){
+  accessToken='';
+  const auth=document.getElementById('authSection');
+  if(!auth)return;
+  auth.classList.remove('hidden');
+  document.getElementById('uploadSection').classList.add('hidden');
 }
 const drop=document.getElementById('drop');
 const fileInput=document.getElementById('fileInput');
@@ -108,6 +120,12 @@ async function startUpload(){
       document.getElementById('fi'+i).classList.add('fail');
       document.getElementById('fs'+i).textContent='✗';
       document.getElementById('fs'+i).style.color='#EF4444';
+      if(String(e&&e.message)==='401'){
+        document.getElementById('progressText').textContent='请重新验证密码';
+        uploadBtn.disabled=false;
+        uploadBtn.textContent='开始传输';
+        return;
+      }
     }
     done++;
     document.getElementById('progressFill').style.width=(done/total*100)+'%';
@@ -129,9 +147,14 @@ function uploadOne(file,idx){
         document.getElementById('fs'+idx).style.color='#6b7280';
       }
     };
-    xhr.onload=()=>{if(xhr.status>=200&&xhr.status<300)resolve();else reject(new Error(xhr.status));};
+    xhr.onload=()=>{
+      if(xhr.status===401){showAuthAgain();reject(new Error('401'));return;}
+      if(xhr.status>=200&&xhr.status<300)resolve();else reject(new Error(xhr.status));
+    };
     xhr.onerror=()=>reject(new Error('network'));
-    xhr.open('POST','/upload');xhr.send(fd);
+    xhr.open('POST','/upload');
+    if(accessToken)xhr.setRequestHeader('Authorization','Bearer '+accessToken);
+    xhr.send(fd);
   });
 }
 </script></body></html>
