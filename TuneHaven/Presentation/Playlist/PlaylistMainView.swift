@@ -83,7 +83,7 @@ struct PlaylistMainView: View {
         .adaptiveBackground()
         .navigationTitle("歌单")
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(palette.surface, for: .navigationBar)
+        .themeNavigationBarSurface()
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {

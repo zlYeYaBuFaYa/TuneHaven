@@ -46,7 +46,7 @@ struct ThemeColorPalette {
 
 // MARK: - 语义色（所有主题共享，参考 TDD Section 8.2）
 enum SemanticColor {
-    static let danger  = Color(hex: "#EF4444")  // rose-500
+    static let danger  = Color(hex: "#C62828")  // 浅色底上达到 4.5:1
     static let warning = Color(hex: "#F59E0B")  // amber-500
     static let success = Color(hex: "#10B981")  // emerald-500
     static let info    = Color(hex: "#3B82F6")  // blue-500

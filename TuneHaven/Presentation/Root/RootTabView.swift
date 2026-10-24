@@ -46,6 +46,7 @@ struct RootTabView: View {
         )) {
             injectPresentedEnvironment(
                 PlayerView()
+                    // 播放器文字落在色板渐变上。玻璃路径也保留这块不透明底，避免曲库透出来。
                     .presentationBackground(
                         LinearGradient(
                             colors: [themeManager.palette.background, themeManager.palette.surfaceSecondary, themeManager.palette.highlight],
@@ -58,7 +59,10 @@ struct RootTabView: View {
         .sheet(item: $router.sheet) { destination in
             injectPresentedEnvironment(
                 sheetView(for: destination)
-                    .presentationBackground(themeManager.palette.elevatedSurface)
+                    .themeSheetPresentationBackground(
+                        elevated: themeManager.palette.elevatedSurface,
+                        hasCustomBackground: hasCustomBg
+                    )
             )
         }
         .onChange(of: playback.losslessBlockedSong) { blocked in
@@ -95,7 +99,7 @@ struct RootTabView: View {
             .padding(.bottom, 4)
         }
         .background {
-            Rectangle().fill(.ultraThinMaterial).ignoresSafeArea(edges: .bottom)
+            LiquidGlassPolicy.tabBarBackdrop(surfaceTint: palette.surface)
         }
     }
 

@@ -28,7 +28,7 @@ struct WebDAVBrowserView: View {
         .adaptiveBackground()
         .navigationTitle(account.effectiveDisplayName)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(palette.surface, for: .navigationBar)
+        .themeNavigationBarSurface()
         .toolbar {
             if !selectedFiles.isEmpty {
                 ToolbarItem(placement: .primaryAction) {

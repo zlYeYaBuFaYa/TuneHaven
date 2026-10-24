@@ -50,8 +50,9 @@
 		<string>LaunchBackground</string>
 	</dict>
 	<!--
-		应急/过渡：链接 iOS 26 SDK 时保留现有外观。
-		换 iOS 27 SDK 打包前必须删除本键，并完成 Liquid Glass 真适配。本期不做该项。
+		应急/过渡：链接 iOS 26 SDK 时，本键为真会让 LiquidGlassPolicy 保持旧外观。
+		代码用 #available(iOS 26, *) 分流；关掉本键后才能在 iOS 26 上看到玻璃路径。
+		换 iOS 27 SDK 打包前必须删除本键。本期保留。
 	-->
 	<key>UIDesignRequiresCompatibility</key>
 	<true/>

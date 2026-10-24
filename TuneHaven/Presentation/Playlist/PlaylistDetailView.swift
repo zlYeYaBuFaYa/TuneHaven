@@ -45,7 +45,7 @@ struct PlaylistDetailView: View {
         .adaptiveBackground()
         .navigationTitle(detail?.playlist.name ?? "")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(palette.surface, for: .navigationBar)
+        .themeNavigationBarSurface()
         .toolbar {
             if detail?.playlist.isSystem != true {
                 ToolbarItem(placement: .navigationBarTrailing) {

@@ -38,7 +38,7 @@ struct LyricsSearchView: View {
             .adaptiveBackground()
             .navigationTitle("搜索歌词")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.surface, for: .navigationBar)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { dismiss() }
@@ -84,7 +84,7 @@ struct LyricsSearchView: View {
             .adaptiveBackground()
             .navigationTitle("手动输入歌词")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.surface, for: .navigationBar)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { showManualInput = false }

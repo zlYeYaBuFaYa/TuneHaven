@@ -32,13 +32,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     static func applyNavigationBarAppearance(surfaceColor: UIColor) {
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = surfaceColor
-        appearance.shadowColor = .clear
-        UINavigationBar.appearance().standardAppearance = appearance
-        UINavigationBar.appearance().compactAppearance = appearance
-        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        LiquidGlassPolicy.applyGlobalNavigationBarAppearance(surfaceColor: surfaceColor)
     }
 
     private func configureAudioSession() {

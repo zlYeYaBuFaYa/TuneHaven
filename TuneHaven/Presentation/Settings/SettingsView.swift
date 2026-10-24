@@ -91,7 +91,7 @@ struct SettingsView: View {
         .background(hasCustomBg ? Color.clear : palette.background)
         .navigationTitle("设置")
         .navigationBarTitleDisplayMode(.large)
-        .toolbarBackground(palette.surface, for: .navigationBar)
+        .themeNavigationBarSurface()
         .task {
             await calculateCacheSize()
             await checkNotificationPermission()

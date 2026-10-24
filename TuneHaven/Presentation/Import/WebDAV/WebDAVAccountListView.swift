@@ -26,7 +26,7 @@ struct WebDAVAccountListView: View {
             .adaptiveBackground()
             .navigationTitle("WebDAV 导入")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(palette.surface, for: .navigationBar)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { dismiss() }
