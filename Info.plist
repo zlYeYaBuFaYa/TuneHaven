@@ -49,5 +49,11 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
+	<!--
+		应急/过渡：链接 iOS 26 SDK 时保留现有外观。
+		换 iOS 27 SDK 打包前必须删除本键，并完成 Liquid Glass 真适配。本期不做该项。
+	-->
+	<key>UIDesignRequiresCompatibility</key>
+	<true/>
 </dict>
 </plist>
