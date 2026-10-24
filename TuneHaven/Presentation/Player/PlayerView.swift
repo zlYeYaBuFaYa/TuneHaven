@@ -9,6 +9,7 @@ struct PlayerView: View {
     @EnvironmentObject private var engine: AudioEngine
     @EnvironmentObject private var lyricsService: LyricsService
     @EnvironmentObject private var snackbar: SnackbarState
+    @EnvironmentObject private var subscriptionService: SubscriptionService
     @Environment(\.themePalette) private var palette
     private enum ActiveSheet: Identifiable {
         case moreActions
@@ -16,6 +17,7 @@ struct PlayerView: View {
         case speedPicker
         case addToPlaylist(songIds: [UUID])
         case lyricsSearch(Song)
+        case losslessPaywall
 
         var id: String {
             switch self {
@@ -24,6 +26,7 @@ struct PlayerView: View {
             case .speedPicker: return "speedPicker"
             case .addToPlaylist(let ids): return "addToPlaylist_\(ids.first?.uuidString ?? "")"
             case .lyricsSearch: return "lyricsSearch"
+            case .losslessPaywall: return "losslessPaywall"
             }
         }
     }
@@ -38,6 +41,7 @@ struct PlayerView: View {
     @State private var showLyricsImporter = false
     @State private var showLyricsPage = false
     @State private var pendingSheetTask: Task<Void, Never>?
+    @State private var losslessPaywallTask: Task<Void, Never>?
 
     @AppStorage(AppStorageKey.lyricsPreferSimplified) private var lyricsPreferSimplified: Bool = true
 
@@ -88,7 +92,14 @@ struct PlayerView: View {
             .offset(x: dragOffsetX, y: dragOffset)
         }
         .environment(\.themePalette, palette)
-        .onAppear { dragOffset = 0; dragOffsetX = 0 }
+        .onAppear {
+            dragOffset = 0
+            dragOffsetX = 0
+            scheduleLosslessPaywall()
+        }
+        .onChange(of: playback.losslessBlockedSong?.id) { _ in
+            scheduleLosslessPaywall()
+        }
         .sheet(item: $activeSheet) { sheet in
             Group {
                 switch sheet {
@@ -106,10 +117,16 @@ struct PlayerView: View {
                     LyricsSearchView(song: song) {
                         Task { await loadLyrics() }
                     }
+                case .losslessPaywall:
+                    PaywallView(triggerFeature: .losslessPlayback)
+                        .environmentObject(subscriptionService)
+                        .environmentObject(router)
                 }
             }
             .environment(\.themePalette, palette)
             .environmentObject(playlistService)
+            .environmentObject(subscriptionService)
+            .environmentObject(router)
         }
         .fileImporter(
             isPresented: $showLyricsImporter,
@@ -421,6 +438,35 @@ struct PlayerView: View {
             onQueueTap: { withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { showQueue = true } }
         )
         .padding(.vertical, 12)
+    }
+
+    /// 全屏播放器盖住 RootTabView 的 sheet。等封面稳定后再把软墙挂到播放器自己的 sheet 上。
+    /// onAppear 当下弹 sheet 不可靠；已有其它 sheet 时再延时一轮，与歌词搜索的付费墙一致。
+    private func scheduleLosslessPaywall() {
+        guard playback.losslessBlockedSong != nil else { return }
+        losslessPaywallTask?.cancel()
+        losslessPaywallTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.35))
+            guard !Task.isCancelled else { return }
+            guard playback.losslessBlockedSong != nil else { return }
+            if router.isPlayerPresented {
+                presentLosslessPaywallIfNeeded()
+            } else {
+                playback.clearLosslessBlock()
+                router.present(.paywall(feature: .losslessPlayback))
+            }
+        }
+    }
+
+    private func presentLosslessPaywallIfNeeded() {
+        guard playback.losslessBlockedSong != nil else { return }
+        playback.clearLosslessBlock()
+        if case .losslessPaywall = activeSheet { return }
+        if activeSheet != nil {
+            switchSheet(to: .losslessPaywall, delay: 0.35)
+        } else {
+            activeSheet = .losslessPaywall
+        }
     }
 
     private func loadLyrics() async {

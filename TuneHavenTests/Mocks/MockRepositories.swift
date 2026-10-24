@@ -149,8 +149,25 @@ final class MockAudioEngine: AudioEngineProtocol {
     var playCalled = false
     var pauseCalled = false
     var stopCalled = false
+    var suspendLoad = false
+    private var loadContinuation: CheckedContinuation<Void, Never>?
 
-    func load(url: URL) async { loadCalled = true; state = .paused }
+    func load(url: URL) async {
+        loadCalled = true
+        state = .loading
+        if suspendLoad {
+            await withCheckedContinuation { continuation in
+                loadContinuation = continuation
+            }
+        }
+        state = .paused
+    }
+
+    func resumeLoad() {
+        loadContinuation?.resume()
+        loadContinuation = nil
+    }
+
     func play() { playCalled = true; state = .playing }
     func pause() { pauseCalled = true; state = .paused }
     func stop() { stopCalled = true; state = .idle }

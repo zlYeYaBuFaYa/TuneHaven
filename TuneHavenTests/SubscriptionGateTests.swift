@@ -184,6 +184,40 @@ struct LosslessPlaybackGateTests {
         #expect(lossless.playback.isPlaying == false)
         #expect(lossless.playback.losslessBlockedSong?.id == flac.id)
     }
+
+    @Test("加载期间降为 Free 时，load 完成不再播放无损")
+    func testLoadRechecksGateBeforePlay() async {
+        let harness = await makeHarness(premium: true)
+        let song = makeFormatSong(format: "flac", title: "加载中降级")
+        harness.engine.suspendLoad = true
+
+        let task = Task { await harness.playback.play(song: song, in: .queue) }
+        await waitUntil { harness.engine.loadCalled }
+        await downgradeToFree(harness)
+        harness.engine.resumeLoad()
+        await task.value
+
+        #expect(harness.engine.playCalled == false)
+        #expect(harness.playback.isPlaying == false)
+        #expect(harness.playback.losslessBlockedSong?.id == song.id)
+    }
+
+    @Test("加载期间降为 Free 时，有损仍然可以开播")
+    func testLoadDowngradeStillPlaysLossy() async {
+        let harness = await makeHarness(premium: true)
+        let song = makeFormatSong(format: "mp3", title: "有损加载")
+        harness.engine.suspendLoad = true
+
+        let task = Task { await harness.playback.play(song: song, in: .queue) }
+        await waitUntil { harness.engine.loadCalled }
+        await downgradeToFree(harness)
+        harness.engine.resumeLoad()
+        await task.value
+
+        #expect(harness.engine.playCalled == true)
+        #expect(harness.playback.isPlaying == true)
+        #expect(harness.playback.losslessBlockedSong == nil)
+    }
 }
 
 // MARK: - Theme downgrade
