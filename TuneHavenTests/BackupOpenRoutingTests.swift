@@ -209,12 +209,21 @@ struct BackupOpenRoutingTests {
         )
         #expect(fixture.service.presentation?.kind == .restore)
         #expect(fixture.service.presentation?.packageURL?.path == staged.path)
+        #expect(fixture.service.presentation?.externalBackupToken == handoff.token)
+        #expect(fixture.service.shouldReleaseExternalModal == false)
+        let presentation = try #require(fixture.service.presentation)
+        ExternalBackupOpen.noteRestoreAppeared(
+            presentation: presentation,
+            router: router,
+            backupService: fixture.service
+        )
         #expect(fixture.service.shouldReleaseExternalModal)
         #expect(router.externalBackupTakesModal)
         #expect(snackbar.message.isEmpty)
         #expect(FileManager.default.fileExists(atPath: staged.path))
         await timeoutTask.value
         #expect(router.externalBackupTakesModal)
+        #expect(fixture.service.presentation?.kind == .restore)
         dismissBackupSheet(service: fixture.service, router: router)
         #expect(fixture.service.presentation == nil)
         #expect(FileManager.default.fileExists(atPath: staged.path) == false)
@@ -241,6 +250,13 @@ struct BackupOpenRoutingTests {
         )
         defer { timeoutTask.cancel() }
         await waitUntil { fixture.service.presentation?.kind == .restore }
+        if let presentation = fixture.service.presentation {
+            ExternalBackupOpen.noteRestoreAppeared(
+                presentation: presentation,
+                router: router,
+                backupService: fixture.service
+            )
+        }
 
         #expect(fixture.service.presentation?.packageURL?.path == staged.path)
         #expect(router.isPlayerPresented == false)
@@ -302,7 +318,7 @@ struct BackupOpenRoutingTests {
         #expect(FileManager.default.fileExists(atPath: staged.path))
 
         let presented = router.relinquishModalsForExternalBackup()
-        router.markExternalBackupPresented(token: presented.token)
+        router.confirmExternalBackupAppeared(token: presented.token)
         let keepTask = router.scheduleExternalBackupPresentationTimeout(
             token: presented.token,
             timeout: .milliseconds(20)
@@ -328,6 +344,125 @@ struct BackupOpenRoutingTests {
         await staleTask.value
         #expect(router.isCurrentExternalBackup(newer.token))
         #expect(FileManager.default.fileExists(atPath: staged.path))
+    }
+
+    @Test("局部 sheet 挡住、恢复页没有 onAppear：3秒复位、放弃提示、副本留到冷启动")
+    func testBlockedSheetWithoutAppearTimesOutAndKeepsCopy() async throws {
+        let fixture = try BackupTempFixture()
+        defer { fixture.cleanup() }
+        let source = try fixture.makePackage()
+        let staged = try #require(fixture.service.stageExternalPackage(source))
+        let router = AppRouter()
+        let snackbar = SnackbarState()
+        let handoff = router.relinquishModalsForExternalBackup()
+        #expect(handoff.needsDelay == false)
+        let timeoutTask = ExternalBackupOpen.begin(
+            url: staged,
+            handoff: handoff,
+            router: router,
+            backupService: fixture.service,
+            snackbar: snackbar,
+            presentationTimeout: .milliseconds(30)
+        )
+        #expect(fixture.service.presentation?.externalBackupToken == handoff.token)
+        #expect(fixture.service.shouldReleaseExternalModal == false)
+        await timeoutTask.value
+
+        #expect(snackbar.message == ExternalBackupOpen.modalOccupiedNotice)
+        #expect(router.externalBackupTakesModal == false)
+        #expect(router.isCurrentExternalBackup(handoff.token) == false)
+        #expect(fixture.service.presentation == nil)
+        #expect(FileManager.default.fileExists(atPath: staged.path))
+        #expect(FileManager.default.fileExists(atPath: source.path))
+        router.present(.paywall(feature: .losslessPlayback))
+        #expect(router.sheet?.id == SheetDestination.paywall(feature: .losslessPlayback).id)
+        BackupTempDirectory.cleanupOnLaunch(fixture.directories)
+        #expect(FileManager.default.fileExists(atPath: staged.path) == false)
+        #expect(FileManager.default.fileExists(atPath: source.path))
+    }
+
+    @Test("onAppear 确认后，兜底不拆掉恢复页")
+    func testAppearConfirmationSurvivesTimeout() async throws {
+        let fixture = try BackupTempFixture()
+        defer { fixture.cleanup() }
+        let staged = try #require(fixture.service.stageExternalPackage(try fixture.makePackage()))
+        let router = AppRouter()
+        let snackbar = SnackbarState()
+        let handoff = router.relinquishModalsForExternalBackup()
+        let timeoutTask = ExternalBackupOpen.begin(
+            url: staged,
+            handoff: handoff,
+            router: router,
+            backupService: fixture.service,
+            snackbar: snackbar,
+            presentationTimeout: .milliseconds(30)
+        )
+        let presentation = try #require(fixture.service.presentation)
+        ExternalBackupOpen.noteRestoreAppeared(
+            presentation: presentation,
+            router: router,
+            backupService: fixture.service
+        )
+        await timeoutTask.value
+
+        #expect(router.externalBackupTakesModal)
+        #expect(router.isCurrentExternalBackup(handoff.token))
+        #expect(fixture.service.presentation?.packageURL?.path == staged.path)
+        #expect(snackbar.message.isEmpty)
+        #expect(FileManager.default.fileExists(atPath: staged.path))
+        dismissBackupSheet(service: fixture.service, router: router)
+        #expect(fixture.service.presentation == nil)
+        #expect(FileManager.default.fileExists(atPath: staged.path) == false)
+        #expect(router.externalBackupTakesModal == false)
+    }
+
+    @Test("旧 token 的 onAppear 不把当前这次标成已弹")
+    func testStaleAppearTokenDoesNotMarkCurrentOpen() async throws {
+        let fixture = try BackupTempFixture()
+        defer { fixture.cleanup() }
+        let firstStaged = try #require(fixture.service.stageExternalPackage(try fixture.makePackage()))
+        let router = AppRouter()
+        let snackbar = SnackbarState()
+        let first = router.relinquishModalsForExternalBackup()
+        let firstTimeout = ExternalBackupOpen.begin(
+            url: firstStaged,
+            handoff: first,
+            router: router,
+            backupService: fixture.service,
+            snackbar: snackbar,
+            presentationTimeout: .seconds(2)
+        )
+        defer { firstTimeout.cancel() }
+        let firstPresentation = try #require(fixture.service.presentation)
+
+        let secondStaged = try #require(fixture.service.stageExternalPackage(try fixture.makePackage()))
+        let second = router.relinquishModalsForExternalBackup()
+        #expect(second.needsDelay)
+        let secondTimeout = ExternalBackupOpen.begin(
+            url: secondStaged,
+            handoff: second,
+            router: router,
+            backupService: fixture.service,
+            snackbar: snackbar,
+            settle: .milliseconds(20),
+            presentationTimeout: .milliseconds(300)
+        )
+        await waitUntil { fixture.service.presentation?.externalBackupToken == second.token }
+        #expect(fixture.service.presentation?.externalBackupToken == second.token)
+        ExternalBackupOpen.noteRestoreAppeared(
+            presentation: firstPresentation,
+            router: router,
+            backupService: fixture.service
+        )
+        #expect(router.isCurrentExternalBackup(second.token))
+        #expect(fixture.service.shouldReleaseExternalModal == false)
+        await secondTimeout.value
+
+        #expect(router.externalBackupTakesModal == false)
+        #expect(router.isCurrentExternalBackup(second.token) == false)
+        #expect(fixture.service.presentation == nil)
+        #expect(snackbar.message == ExternalBackupOpen.modalOccupiedNotice)
+        #expect(FileManager.default.fileExists(atPath: secondStaged.path))
     }
 }
 

@@ -36,7 +36,8 @@ final class AppRouter: ObservableObject {
     /// 为 true 时，延迟弹出的付费墙让出唯一的模态层。订阅门禁本身不在这里改变。
     private(set) var externalBackupTakesModal = false
     private var externalBackupToken = 0
-    /// 这次打开已经调用过 `presentRestore`。超时兜底只认这个标记，不把上一份还在的恢复页算进去。
+    /// 这次打开的恢复页已经 `onAppear`。超时兜底只认这个标记。
+    /// 调用 `presentRestore` 不算，否则被 Tab 里的局部 sheet 挡住时会整段会话占着模态层。
     private var externalBackupPresentedToken: Int?
 
     /// 播放器 sheet 和全屏页收起后，再等这么久才弹恢复页。长于付费墙的 0.35 秒延迟。
@@ -118,24 +119,29 @@ final class AppRouter: ObservableObject {
         return .present
     }
 
-    /// 与 `presentRestore` 同一刻调用。没走到这一步的打开，超时后会被放开。
-    func markExternalBackupPresented(token: Int) {
+    /// 恢复页 `onAppear` 时调用。token 不是当前这次打开时什么都不做。
+    func confirmExternalBackupAppeared(token: Int) {
         guard isCurrentExternalBackup(token) else { return }
         externalBackupPresentedToken = token
     }
 
-    /// 标志已经置位，但这次恢复页没弹出。后一次打开或已经弹出的页面不动。
-    func releaseExternalBackupIfNotPresented(token: Int) {
-        guard isCurrentExternalBackup(token) else { return }
-        guard externalBackupPresentedToken != token else { return }
+    /// 标志已经置位，但这份恢复页还没出现。后一次打开或已经出现的页面不动。
+    /// 返回 true 表示这次确实放开了模态层，调用方再提示并保留 incoming 副本。
+    @discardableResult
+    func releaseExternalBackupIfNotPresented(token: Int) -> Bool {
+        guard isCurrentExternalBackup(token) else { return false }
+        guard externalBackupPresentedToken != token else { return false }
         finishExternalBackupPresentation()
+        return true
     }
 
     /// 从标志置位开始计时。任务被取消时不复位，避免测试或提前结束把一次正常打开清掉。
+    /// 真正放开时才调用 `onReleased`。提示和撤回未出现的恢复页放在那个回调里，路由本身不依赖它们。
     @discardableResult
     func scheduleExternalBackupPresentationTimeout(
         token: Int,
-        timeout: Duration = AppRouter.externalBackupPresentationTimeout
+        timeout: Duration = AppRouter.externalBackupPresentationTimeout,
+        onReleased: (@MainActor () -> Void)? = nil
     ) -> Task<Void, Never> {
         return Task { @MainActor [weak self] in
             do {
@@ -143,7 +149,9 @@ final class AppRouter: ObservableObject {
             } catch {
                 return
             }
-            self?.releaseExternalBackupIfNotPresented(token: token)
+            guard let self else { return }
+            guard self.releaseExternalBackupIfNotPresented(token: token) else { return }
+            onReleased?()
         }
     }
 }

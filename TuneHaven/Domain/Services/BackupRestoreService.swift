@@ -9,6 +9,8 @@ struct BackupPresentation: Identifiable, Equatable {
     let id: UUID
     var kind: Kind
     var packageURL: URL?
+    /// 从「文件」打开时的交接 token。设置里的恢复页没有。出现后用它确认，旧 token 无效。
+    var externalBackupToken: Int? = nil
 }
 
 @MainActor
@@ -62,12 +64,36 @@ final class BackupRestoreService: ObservableObject {
         presentation = BackupPresentation(id: UUID(), kind: .export, packageURL: nil)
     }
 
-    func presentRestore(url: URL?) {
+    func presentRestore(url: URL?, externalBackupToken: Int? = nil) {
         lastError = nil
-        if let url, let pendingStagedURL, BackupTempDirectory.sameFile(url, pendingStagedURL) {
+        // 带 token 的外部打开要等恢复页真正出现再清 pending。没出现时关掉页面不能删掉这份副本。
+        if externalBackupToken == nil,
+           let url,
+           let pendingStagedURL,
+           BackupTempDirectory.sameFile(url, pendingStagedURL) {
             self.pendingStagedURL = nil
         }
-        presentation = BackupPresentation(id: UUID(), kind: .restore, packageURL: url)
+        presentation = BackupPresentation(
+            id: UUID(),
+            kind: .restore,
+            packageURL: url,
+            externalBackupToken: externalBackupToken
+        )
+    }
+
+    /// 恢复页 `onAppear` 确认这份副本已经在屏幕上。旧 token 或还没对上的副本不清 pending。
+    func acknowledgeExternalRestoreAppeared(token: Int) {
+        guard presentation?.externalBackupToken == token,
+              let url = presentation?.packageURL,
+              let pendingStagedURL,
+              BackupTempDirectory.sameFile(url, pendingStagedURL) else { return }
+        self.pendingStagedURL = nil
+    }
+
+    /// 3 秒内恢复页没有出现。撤掉这次绑定，避免局部 sheet 关掉后又冒出来。incoming 里 pending 的副本留下。
+    func retractUnconfirmedExternalRestore(token: Int) {
+        guard presentation?.externalBackupToken == token else { return }
+        handlePresentationChange(to: nil)
     }
 
     func cancel() {
