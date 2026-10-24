@@ -218,6 +218,26 @@ struct BackupTempCleanupTests {
         #expect(FileManager.default.fileExists(atPath: source.path))
     }
 
+    @Test("旧恢复页先关掉时，保留还没弹出的新副本")
+    func testDismissKeepsPendingStagedPackage() throws {
+        let fixture = try BackupTempFixture()
+        defer { fixture.cleanup() }
+        let firstSource = try fixture.makePackage()
+        let secondSource = try fixture.makePackage()
+        let first = try #require(fixture.service.stageExternalPackage(firstSource))
+        fixture.service.presentRestore(url: first)
+        #expect(fixture.service.shouldReleaseExternalModal)
+        let second = try #require(fixture.service.stageExternalPackage(secondSource))
+        #expect(fixture.service.shouldReleaseExternalModal == false)
+        fixture.service.handlePresentationChange(to: nil)
+        #expect(FileManager.default.fileExists(atPath: second.path))
+        #expect(!FileManager.default.fileExists(atPath: first.path))
+        fixture.service.presentRestore(url: second)
+        #expect(fixture.service.shouldReleaseExternalModal)
+        fixture.service.handlePresentationChange(to: nil)
+        #expect(!FileManager.default.fileExists(atPath: second.path))
+    }
+
     @Test("关闭导出页不会删除 incoming 副本")
     func testDismissExportKeepsIncoming() throws {
         let fixture = try BackupTempFixture()

@@ -70,7 +70,7 @@ struct RootTabView: View {
             get: { backupService.presentation },
             set: { newValue in
                 backupService.handlePresentationChange(to: newValue)
-                if newValue == nil {
+                if newValue == nil, backupService.shouldReleaseExternalModal {
                     router.finishExternalBackupPresentation()
                 }
             }

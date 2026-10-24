@@ -28,6 +28,12 @@ final class BackupRestoreService: ObservableObject {
     private var preparedCatalog: BackupCatalog?
     private var extractInFlight = 0
     private var purgeIncomingWhenIdle = false
+    /// 已复制、但恢复页还没弹出的 incoming 文件。关掉旧页面时不能把它删掉。
+    private var pendingStagedURL: URL?
+
+    var shouldReleaseExternalModal: Bool {
+        pendingStagedURL == nil
+    }
 
     var onLibraryWillChange: (@MainActor (BackupRestoreMode) async -> Void)?
     var onPreferencesApplied: (@MainActor (BackupPreferences) -> Void)?
@@ -58,6 +64,9 @@ final class BackupRestoreService: ObservableObject {
 
     func presentRestore(url: URL?) {
         lastError = nil
+        if let url, let pendingStagedURL, BackupTempDirectory.sameFile(url, pendingStagedURL) {
+            self.pendingStagedURL = nil
+        }
         presentation = BackupPresentation(id: UUID(), kind: .restore, packageURL: url)
     }
 
@@ -115,8 +124,11 @@ final class BackupRestoreService: ObservableObject {
             exportedAt: Date(),
             layout: layout
         )
-        // 新包落盘前先清掉旧包。isBusy 已挡住另一次导出，不会和正在写的文件并发。
-        // 只动 export。快照读取失败时保留上一份包。
+        if draft.catalog.manifest.payloadBytes > Int64(BackupPackageFormat.maxZipOffset) {
+            throw AppError.backupInvalidPackage("备份超过 4GB，请关闭「包含音频」后重试")
+        }
+        // 确认这次导出会继续之后，再清掉旧包。isBusy 已挡住另一次导出。
+        // 只动 export。快照失败或超过 4GB 时保留上一份包。
         BackupTempDirectory.removeContents(of: directories.export)
         let destination = directories.export
             .appendingPathComponent("TuneHaven-\(Self.fileStamp()).\(BackupPackageFormat.fileExtension)")
@@ -204,6 +216,7 @@ final class BackupRestoreService: ObservableObject {
             if !isBusy && extractInFlight == 0 {
                 BackupTempDirectory.removeContents(of: directory, keeping: destination)
             }
+            pendingStagedURL = destination
             return destination
         } catch {
             lastError = "无法读取备份包"
@@ -233,19 +246,26 @@ final class BackupRestoreService: ObservableObject {
     }
 
     private func removeIncomingCopies() {
-        BackupTempDirectory.removeContents(of: directories.incoming)
+        BackupTempDirectory.removeContents(of: directories.incoming, keeping: pendingStagedURL)
     }
 
-    /// 删掉 incoming 里的副本。若恢复页已经换成另一份 incoming 包，留下那一份。
+    /// 删掉 incoming 里的副本。还没弹出的新副本，或恢复页已经换成的另一份，留下。
     private func removeIncomingCopies(preservingNewerThan url: URL) {
-        let keep = presentation?.packageURL.flatMap { current -> URL? in
-            guard !BackupTempDirectory.sameFile(current, url),
-                  BackupTempDirectory.containsFile(current, in: directories.incoming) else {
-                return nil
-            }
-            return current
-        }
+        let keep = incomingFileToKeep(besides: url)
         BackupTempDirectory.removeContents(of: directories.incoming, keeping: keep)
+    }
+
+    private func incomingFileToKeep(besides url: URL) -> URL? {
+        let candidates = [pendingStagedURL, presentation?.packageURL]
+        for candidate in candidates {
+            guard let candidate,
+                  !BackupTempDirectory.sameFile(candidate, url),
+                  BackupTempDirectory.containsFile(candidate, in: directories.incoming) else {
+                continue
+            }
+            return candidate
+        }
+        return nil
     }
 
     private func purgePendingIncomingIfIdle() {
