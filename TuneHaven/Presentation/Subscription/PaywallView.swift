@@ -265,7 +265,10 @@ struct PaywallView: View {
     private var footerSection: some View {
         VStack(spacing: 12) {
             Button("恢复购买") {
-                Task { await subscriptionService.restorePurchases() }
+                Task {
+                    await subscriptionService.restorePurchases()
+                    if subscriptionService.tier == .premium { dismiss() }
+                }
             }
             .font(.subheadline)
             .foregroundColor(palette.primary)

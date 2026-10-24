@@ -360,7 +360,30 @@ final class PlaybackService: ObservableObject {
 
         applySpeedForSong(song)
 
-        if autoPlay {
+        // 加载期间可能已经降为 Free。handleTierChange 只暂停「正在播放」的无损，
+        // 挡不住随后这次 engine.play()，所以开播前再验一次。
+        // 拦截后立刻返回、不再 await，好让调用方的 openPlayer() 赶在 SwiftUI 刷新前落地，
+        // 全屏播放器才能接住这次付费墙信号。
+        let canAutoPlay = autoPlay && ensureCanPlay(song)
+        if autoPlay && !canAutoPlay {
+            engine.pause()
+            isPlaying = false
+            currentCoverPath = song.coverImagePath
+            let cover = currentCoverPath
+            let loadedDuration = engine.duration
+            Task { @MainActor in
+                await nowPlaying.update(
+                    song: song,
+                    currentTime: 0,
+                    duration: loadedDuration,
+                    speed: 0,
+                    coverPath: cover
+                )
+            }
+            return
+        }
+
+        if canAutoPlay {
             engine.play()
             isPlaying = true
             do {
@@ -375,7 +398,7 @@ final class PlaybackService: ObservableObject {
             song: song,
             currentTime: 0,
             duration: engine.duration,
-            speed: autoPlay ? playbackSpeed : 0,
+            speed: canAutoPlay ? playbackSpeed : 0,
             coverPath: currentCoverPath
         )
     }

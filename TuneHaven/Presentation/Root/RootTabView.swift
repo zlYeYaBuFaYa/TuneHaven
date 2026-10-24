@@ -62,9 +62,17 @@ struct RootTabView: View {
             )
         }
         .onChange(of: playback.losslessBlockedSong) { blocked in
-            if blocked != nil {
-                router.present(.paywall(feature: .losslessPlayback))
+            guard let blocked else { return }
+            let playback = playback
+            let router = router
+            Task { @MainActor in
+                // 曲库点播会在拦截之后立刻 openPlayer()。稍等再决定由谁弹墙，
+                // 避免 sheet 落在 fullScreenCover 下面。播放器打开时由 PlayerView 接手。
+                try? await Task.sleep(for: .seconds(0.35))
+                guard playback.losslessBlockedSong?.id == blocked.id else { return }
+                if router.isPlayerPresented { return }
                 playback.clearLosslessBlock()
+                router.present(.paywall(feature: .losslessPlayback))
             }
         }
         .onAppear {
