@@ -43,7 +43,8 @@ final class AppDIContainer: ObservableObject {
             songRepo: songRepo,
             fileService: FileStorageService.shared,
             coverProcessor: coverProcessor,
-            metadataParser: AudioMetadataParser.shared
+            metadataParser: AudioMetadataParser.shared,
+            activityGate: activityGate
         )
     }()
     lazy var webDAVService: WebDAVService = {
@@ -65,6 +66,32 @@ final class AppDIContainer: ObservableObject {
             subscriptionService: self.subscriptionService
         )
     }()
+    lazy var backupService: BackupRestoreService = {
+        BackupRestoreService(
+            library: CoreDataBackupLibraryStore(),
+            activityGate: activityGate,
+            layout: BackupFileLayout(
+                musicDirectory: SandboxPathManager.musicURL,
+                lyricsDirectory: SandboxPathManager.lyricsURL,
+                coverDirectory: SandboxPathManager.coverImagesURL
+            ),
+            onLibraryWillChange: { [weak self] _ in
+                self?.playbackService.stop()
+            },
+            onPreferencesApplied: { [weak self] preferences in
+                if let raw = preferences.playMode, let mode = PlayMode(rawValue: raw) {
+                    self?.playbackService.playMode = mode
+                }
+                self?.themeManager.reloadStoredStyle()
+            },
+            onLibraryChanged: { [weak self] _ in
+                await CoreDataStack.shared.refreshViewContext()
+                await self?.libraryService.loadSongs()
+                await self?.playlistService.loadPlaylists()
+                await self?.groupService.loadGroups()
+            }
+        )
+    }()
     lazy var shareService: ShareService = {
         ShareService(
             songRepo: songRepo,
@@ -79,6 +106,7 @@ final class AppDIContainer: ObservableObject {
     }()
     // MARK: - Shared Repositories
     private let songRepo: SongRepository
+    private let activityGate = BackupActivityGate()
     private var cancellables = Set<AnyCancellable>()
 
     /// App 启动时的基础设施初始化（迁移、数据库加载、沙盒目录、临时文件清理）

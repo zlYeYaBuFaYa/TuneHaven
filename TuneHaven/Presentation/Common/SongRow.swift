@@ -30,8 +30,13 @@ struct SongRow: View {
                     HStack(spacing: 4) {
                         Text(song.title)
                             .font(.subheadline.weight(.medium))
-                            .foregroundColor(isPlaying ? palette.primary : palette.textPrimary)
+                            .foregroundColor(song.isAudioMissing ? palette.textTertiary : (isPlaying ? palette.primary : palette.textPrimary))
                             .lineLimit(1)
+                        if song.isAudioMissing {
+                            Text("未找到")
+                                .font(.caption2)
+                                .foregroundColor(palette.textTertiary)
+                        }
                         if isPlaying {
                             WaveformIndicator(color: palette.primary)
                         }
@@ -65,7 +70,7 @@ struct SongRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(song.title), \(song.artist)")
+        .accessibilityLabel(song.isAudioMissing ? "\(song.title), \(song.artist), 未找到" : "\(song.title), \(song.artist)")
         .swipeActions(edge: .trailing) {
             if let del = onDelete {
                 Button(role: .destructive, action: del) {

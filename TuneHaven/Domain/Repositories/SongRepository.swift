@@ -17,6 +17,8 @@ protocol SongRepository: AnyObject {
     func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws
     func updateCoverPath(songId: UUID, coverImagePath: String?) async throws
     func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws
+    func fetchSongsMissingAudio() async -> [Song]
+    func updateSongMedia(_ song: Song) async throws
     func countReferences(toFileHash hash: String) async -> Int
     func cleanupPendingDeletes() async
     func fetchRecentlyPlayed(days: Int, page: Int, pageSize: Int) async -> PagedResult<Song>

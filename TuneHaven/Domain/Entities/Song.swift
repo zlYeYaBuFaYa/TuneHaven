@@ -25,6 +25,21 @@ struct Song: Identifiable, Hashable, Sendable {
     var favoriteDate: Date?
     var lastPlayedDate: Date?
 
+    /// 备份里没有音频时使用此前缀。播放与列表都把它当成「未找到」。
+    static let missingAudioPathPrefix = "missing/"
+
+    var isAudioMissing: Bool {
+        fileRelativePath.isEmpty || fileRelativePath.hasPrefix(Self.missingAudioPathPrefix)
+    }
+
+    static func missingAudioPath(for id: UUID) -> String {
+        "\(missingAudioPathPrefix)\(id.uuidString)"
+    }
+
+    static func missingFileHash(for id: UUID) -> String {
+        "missing-\(id.uuidString)"
+    }
+
     /// 判断歌曲是否为无损格式
     var isLossless: Bool {
         let fmt = metadata.format.lowercased()
@@ -42,6 +57,36 @@ struct Song: Identifiable, Hashable, Sendable {
         default:
             return false
         }
+    }
+
+    /// 只替换已落盘的媒体位置，其余字段保持不变。
+    /// `updateLyricsSource` 为真时才改歌词来源，避免封面更新把来源清掉。
+    func withStoredMedia(
+        fileRelativePath: String,
+        coverImagePath: String?,
+        lyricsPath: String?,
+        lyricsSource: LyricsSource? = nil,
+        updateLyricsSource: Bool = false
+    ) -> Song {
+        Song(
+            id: id,
+            title: title,
+            artist: artist,
+            album: album,
+            duration: duration,
+            fileHash: fileHash,
+            fileRelativePath: fileRelativePath,
+            coverImagePath: coverImagePath,
+            lyricsPath: lyricsPath,
+            lyricsSource: updateLyricsSource ? lyricsSource : self.lyricsSource,
+            metadata: metadata,
+            importDate: importDate,
+            fileSize: fileSize,
+            playCount: playCount,
+            isFavorite: isFavorite,
+            favoriteDate: favoriteDate,
+            lastPlayedDate: lastPlayedDate
+        )
     }
 }
 

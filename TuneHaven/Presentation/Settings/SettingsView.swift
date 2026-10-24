@@ -24,6 +24,7 @@ struct SettingsView: View {
     @State private var expandedSubscription = false
     @State private var expandedImport = false
     @State private var expandedShare = false
+    @State private var expandedBackup = false
     @State private var expandedAppearance = false
     @State private var expandedPlayback = false
     @State private var expandedStorage = false
@@ -59,6 +60,8 @@ struct SettingsView: View {
                 isExpanded: $expandedShare,
                 activeSheet: $activeSheet
             )
+
+            SettingsBackupSection(isExpanded: $expandedBackup)
 
             SettingsAppearanceSection(
                 isExpanded: $expandedAppearance

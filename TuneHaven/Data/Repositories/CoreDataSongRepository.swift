@@ -251,6 +251,35 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
         }
     }
 
+    func fetchSongsMissingAudio() async -> [Song] {
+        await performFetch(context: "fetchSongsMissingAudio", defaultValue: []) { request in
+            request.predicate = NSPredicate(
+                format: "softDeleted == NO AND (fileRelativePath BEGINSWITH %@ OR fileRelativePath == %@)",
+                Song.missingAudioPathPrefix,
+                ""
+            )
+        } transform: {
+            $0.compactMap { SongMapper.toDomain($0) }
+        }
+    }
+
+    func updateSongMedia(_ song: Song) async throws {
+        try await stack.performBackground { ctx in
+            let request = SongEntity.fetchRequest()
+            request.predicate = NSPredicate(format: "id == %@", song.id as CVarArg)
+            request.fetchLimit = 1
+            guard let entity = try ctx.fetch(request).first else {
+                throw AppError.databaseError(NSError(domain: "TuneHaven.Backup", code: 404))
+            }
+            entity.fileHash = song.fileHash
+            entity.fileRelativePath = song.fileRelativePath
+            entity.importDate = song.importDate
+            entity.softDeleted = false
+            entity.deletedAt = nil
+            SongMapper.updateEntity(entity, from: song)
+        }
+    }
+
     func updateCoverPath(songId: UUID, coverImagePath: String?) async throws {
         try await stack.performBackground { ctx in
             let request = SongEntity.fetchRequest()
