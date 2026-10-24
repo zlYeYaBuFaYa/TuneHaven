@@ -10,7 +10,7 @@ import Foundation
 // │  测试文件                    覆盖模块                         │
 // ├─────────────────────────────────────────────────────────────┤
 // │  PlayQueueServiceTests      播放队列核心逻辑                  │
-// │  SearchServiceTests         搜索逻辑（前缀匹配/分组）          │
+// │  SearchServiceTests         搜索逻辑（包含/拼音/分组）         │
 // │  LyricsServiceTests         LRC 歌词解析                     │
 // │  AppErrorTests              错误码和错误描述                   │
 // │  FileStorageServiceTests    文件格式校验/SHA256/沙盒路径       │
