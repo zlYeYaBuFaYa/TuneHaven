@@ -70,6 +70,9 @@ struct RootTabView: View {
             get: { backupService.presentation },
             set: { newValue in
                 backupService.handlePresentationChange(to: newValue)
+                if newValue == nil {
+                    router.finishExternalBackupPresentation()
+                }
             }
         )) { presentation in
             BackupCenterView(presentation: presentation)
@@ -83,8 +86,13 @@ struct RootTabView: View {
             Task { @MainActor in
                 // 曲库点播会在拦截之后立刻 openPlayer()。稍等再决定由谁弹墙，
                 // 避免 sheet 落在 fullScreenCover 下面。播放器打开时由 PlayerView 接手。
+                // 从文件打开备份时，这次付费墙让出模态层，不跟恢复页抢。
                 try? await Task.sleep(for: .seconds(0.35))
                 guard playback.losslessBlockedSong?.id == blocked.id else { return }
+                if router.externalBackupTakesModal {
+                    playback.clearLosslessBlock()
+                    return
+                }
                 if router.isPlayerPresented { return }
                 playback.clearLosslessBlock()
                 router.present(.paywall(feature: .losslessPlayback))

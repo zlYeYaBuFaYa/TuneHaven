@@ -97,6 +97,14 @@ struct PlayerView: View {
             dragOffsetX = 0
             scheduleLosslessPaywall()
         }
+        .onChange(of: router.playerModalReset) { _ in
+            pendingSheetTask?.cancel()
+            losslessPaywallTask?.cancel()
+            activeSheet = nil
+            if router.externalBackupTakesModal {
+                playback.clearLosslessBlock()
+            }
+        }
         .onChange(of: playback.losslessBlockedSong?.id) { _ in
             scheduleLosslessPaywall()
         }
@@ -449,6 +457,10 @@ struct PlayerView: View {
             try? await Task.sleep(for: .seconds(0.35))
             guard !Task.isCancelled else { return }
             guard playback.losslessBlockedSong != nil else { return }
+            if router.externalBackupTakesModal {
+                playback.clearLosslessBlock()
+                return
+            }
             if router.isPlayerPresented {
                 presentLosslessPaywallIfNeeded()
             } else {

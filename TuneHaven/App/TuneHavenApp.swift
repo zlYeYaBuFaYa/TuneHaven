@@ -81,6 +81,34 @@ struct TuneHavenApp: App {
         }
     }
 
+    /// 播放器或其它 sheet 还在时，等它们收起后再弹恢复页。不调用播放控制。
+    @MainActor
+    private static func presentStagedBackup(
+        _ url: URL,
+        handoff: ExternalBackupHandoff,
+        router: AppRouter,
+        backupService: BackupRestoreService
+    ) {
+        let show = {
+            guard router.isCurrentExternalBackup(handoff.token) else { return }
+            backupService.presentRestore(url: url)
+        }
+        guard handoff.needsDelay else {
+            show()
+            return
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: AppRouter.externalBackupDismissSettle)
+            guard router.isCurrentExternalBackup(handoff.token) else { return }
+            if handoff.playerWasPresented {
+                router.closePlayer()
+                try? await Task.sleep(for: AppRouter.externalBackupDismissSettle)
+                guard router.isCurrentExternalBackup(handoff.token) else { return }
+            }
+            show()
+        }
+    }
+
     private func handleIncomingURL(_ url: URL) {
         AppLogger.shared.info("[App] onOpenURL: \(url.lastPathComponent)")
         guard isReady else {
@@ -100,11 +128,11 @@ struct TuneHavenApp: App {
             fileStorage: FileStorageService.shared,
             snackbar: container.snackbar,
             onBackupPackage: { url in
-                let opened = backupService.receiveExternalPackage(url)
-                if opened {
-                    router.selectedTab = .settings
-                }
-                return opened
+                guard let staged = backupService.stageExternalPackage(url) else { return false }
+                let handoff = router.relinquishModalsForExternalBackup()
+                router.selectedTab = .settings
+                Self.presentStagedBackup(staged, handoff: handoff, router: router, backupService: backupService)
+                return true
             }
         )
         openInHandler = handler

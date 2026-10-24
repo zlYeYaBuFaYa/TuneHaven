@@ -212,13 +212,6 @@ final class BackupRestoreService: ObservableObject {
         }
     }
 
-    @discardableResult
-    func receiveExternalPackage(_ url: URL) -> Bool {
-        guard let staged = stageExternalPackage(url) else { return false }
-        presentRestore(url: staged)
-        return true
-    }
-
     // MARK: - Private
 
     private func beginWork() throws {
