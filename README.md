@@ -185,15 +185,24 @@ TuneHaven/
 
 | 项目 | 要求 |
 |------|------|
-| Xcode | 16.0 或更高版本 |
+| Xcode | 26 或更高版本（编译 `glassEffect` 需要 iOS 26 SDK） |
 | iOS 部署目标 | iOS 18.0 |
 | Swift 版本 | 5.0 |
 
-### iOS 26 过渡（A）
+### iOS 26 过渡（A）与 Liquid Glass 第一阶段（B）
 
-最低部署目标是 **iOS 18.0**（工程里项目与各 Target 的 `IPHONEOS_DEPLOYMENT_TARGET` 均为 18.0）。链接 iOS 26 SDK 时，根目录 `Info.plist` 的 `UIDesignRequiresCompatibility` = YES，用来保留现有外观。
+最低部署目标是 **iOS 18.0**（工程里项目与各 Target 的 `IPHONEOS_DEPLOYMENT_TARGET` 均为 18.0）。根目录 `Info.plist` 的 `UIDesignRequiresCompatibility` 仍是 YES。
 
-这是**应急/过渡**：换 iOS 27 SDK 打包前必须拿掉该键，并做 Liquid Glass。本期不做 Liquid Glass、系统 Tab、NavigationSplitView。
+这是**应急/过渡**：换 iOS 27 SDK 打包前必须删除该键。本期不删。
+
+第一阶段在 `#available(iOS 26, *)` 上分流，并在运行时读这个键：
+
+- 键开着，或系统低于 iOS 26：不透明导航栏、自绘 Tab 的超薄材质、sheet 的不透明抬升面，和现在一样。
+- 键关掉且系统为 iOS 26 及以上：导航栏交给系统，自绘 Tab 使用 `glassEffect`（不改成系统 `TabView`），纯色主题的路由 sheet 不再另铺不透明底。播放器全屏仍用色板渐变。星际穹顶的 sheet 仍用不透明抬升面，避免文字压在粒子背景上。
+
+浅色主题的主色和次级文字、深色主题按钮上的 `onPrimary`、浅色语义红已按 4.5:1 调过，付费墙继续用色板。
+
+本机用 Xcode 26 验收时：分别保留和临时关掉兼容键（不要把关掉的结果提交），在浅色、深色主题下看 Tab、导航栏、sheet 和付费墙。iOS 18 模拟器应始终是旧外观。云端环境没有 Xcode，这条清单要在本机跑。
 
 ### 隐私清单
 
@@ -212,7 +221,7 @@ cd TuneHaven
 
 ### 2. 打开项目
 
-使用 Xcode 16.0+ 打开 `TuneHaven.xcodeproj`
+使用 Xcode 26+ 打开 `TuneHaven.xcodeproj`
 
 ### 3. 选择目标设备
 
