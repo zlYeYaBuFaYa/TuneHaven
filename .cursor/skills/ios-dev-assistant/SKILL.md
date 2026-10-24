@@ -518,7 +518,7 @@ Core/          → 基础设施（音频、缓存、网络、持久化、存储�
 ### 编码风格
 
 - Swift 6.0，async/await + Combine
-- SwiftUI，部署目标 iOS 16.4+
+- SwiftUI，部署目标 iOS 18.0+
 - `@MainActor` 保证 UI 线程安全
 - CoreData 双上下文（viewContext + backgroundContext），Repository 模式隔离
 - 错误使用 `AppError`，通过 `ErrorLogger` 记录
