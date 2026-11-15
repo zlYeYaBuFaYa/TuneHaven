@@ -23,7 +23,7 @@ struct TuneHavenTests {
 
     // MARK: - 基础模型验证
 
-    @Test("Song 模型 Identifiable：id 相同则相等")
+    @Test("Song 按全部字段判等：id 相同但内容不同则不相等")
     func testSongEquality() {
         let id = UUID()
         let metadata = Metadata(
@@ -44,8 +44,9 @@ struct TuneHavenTests {
             metadata: metadata, importDate: Date(), fileSize: 7 * 1024 * 1024,
             playCount: 0, isFavorite: false, favoriteDate: nil, lastPlayedDate: nil
         )
-        // 相同 id 应该相等（根据 == 实现）
-        #expect(s1 == s2)
+        // Song 使用合成的 Equatable，内容变化需要触发 SwiftUI 刷新
+        #expect(s1.id == s2.id)
+        #expect(s1 != s2)
     }
 
     @Test("Song 模型 Hashable：不同 id 产生不同哈希")

@@ -151,10 +151,13 @@ struct MusicLibraryServiceGroupingTests {
         #expect(groups[0].coverImagePath == firstCover)
     }
 
-    @Test("AlbumGroup id 等于 artist/name 格式")
+    @Test("AlbumGroup id 用 \\0 分隔 artist 与 name，名字含 / 时不冲突")
     func testAlbumGroupId() {
         let group = AlbumGroup(name: "七里香", artist: "周杰伦", year: 2004, songCount: 5, coverImagePath: nil)
-        #expect(group.id == "周杰伦/七里香")
+        #expect(group.id == "周杰伦\0七里香")
+        let a = AlbumGroup(name: "B/C", artist: "A", year: nil, songCount: 1, coverImagePath: nil)
+        let b = AlbumGroup(name: "C", artist: "A/B", year: nil, songCount: 1, coverImagePath: nil)
+        #expect(a.id != b.id)
     }
 
     // MARK: - 专辑详情排序（按 trackNumber）

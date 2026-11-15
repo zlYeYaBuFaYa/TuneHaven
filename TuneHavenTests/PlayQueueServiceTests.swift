@@ -266,7 +266,7 @@ struct PlayQueueServiceTests {
         #expect(!next!.isPlayed)
     }
 
-    @Test("nextSong(shuffle) 所有歌曲已播放时返回 nil", .serialized)
+    @Test("nextSong(shuffle) 所有歌曲已播放时重置标记并继续随机", .serialized)
     @MainActor func testNextSongShuffleAllPlayed() {
         let service = PlayQueueService()
         let songs = [makeSong(title: "A"), makeSong(title: "B")]
@@ -279,7 +279,8 @@ struct PlayQueueServiceTests {
         }
 
         let next = service.nextSong(for: .shuffle, dislikes: [:])
-        #expect(next == nil)
+        #expect(next != nil)
+        #expect(service.queue.allSatisfy { !$0.isPlayed })
     }
 
     @Test("nextSong(shuffle) dislikeCount 高的歌曲概率降低", .serialized)

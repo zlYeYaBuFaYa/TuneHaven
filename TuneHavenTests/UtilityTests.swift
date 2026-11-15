@@ -422,12 +422,15 @@ struct PlaylistGroupTests {
         #expect(g1.id != g2.id)
     }
 
-    @Test("相同 id 的两个分组相等（Hashable 基于 id）")
+    @Test("PlaylistGroup 按全部字段判等：id 相同但名称不同则不相等")
     func testEqualityById() {
         let id = UUID()
-        let g1 = PlaylistGroup(id: id, name: "A", createdAt: Date(), sortOrder: 0)
-        let g2 = PlaylistGroup(id: id, name: "B", createdAt: Date(), sortOrder: 5)
-        #expect(g1 == g2)
+        let date = Date()
+        let g1 = PlaylistGroup(id: id, name: "A", createdAt: date, sortOrder: 0)
+        let g2 = PlaylistGroup(id: id, name: "B", createdAt: date, sortOrder: 5)
+        let g3 = PlaylistGroup(id: id, name: "A", createdAt: date, sortOrder: 0)
+        #expect(g1 != g2)
+        #expect(g1 == g3)
     }
 
     @Test("name 字段可变更")
@@ -448,12 +451,13 @@ struct PlaylistGroupTests {
     func testHashableInSet() {
         let id1 = UUID()
         let id2 = UUID()
-        let g1 = PlaylistGroup(id: id1, name: "G1", createdAt: Date(), sortOrder: 0)
-        let g2 = PlaylistGroup(id: id1, name: "G1-copy", createdAt: Date(), sortOrder: 1)
-        let g3 = PlaylistGroup(id: id2, name: "G2", createdAt: Date(), sortOrder: 2)
+        let date = Date()
+        let g1 = PlaylistGroup(id: id1, name: "G1", createdAt: date, sortOrder: 0)
+        let g1Dup = PlaylistGroup(id: id1, name: "G1", createdAt: date, sortOrder: 0)
+        let g2 = PlaylistGroup(id: id2, name: "G2", createdAt: date, sortOrder: 1)
 
-        let set: Set<PlaylistGroup> = [g1, g2, g3]
-        #expect(set.count == 2) // g1 和 g2 的 id 相同，只算一个
+        let set: Set<PlaylistGroup> = [g1, g1Dup, g2]
+        #expect(set.count == 2) // g1 与 g1Dup 完全相同，只算一个
     }
 }
 
