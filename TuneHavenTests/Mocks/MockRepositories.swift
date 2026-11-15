@@ -213,12 +213,14 @@ final class MockSubscriptionProvider: SubscriptionProviding {
     var purchaseResult: PurchaseResult = .success
     var entitlementState = EntitlementState(hasLifetime: false, hasActiveSubscription: false, subscriptionExpirationDate: nil)
     var originalPurchaseDate: Date?
+    var localFirstLaunchDate: Date?
 
     func fetchProducts() async throws -> [SubscriptionProduct] { products }
     func purchase(_ productID: String) async throws -> PurchaseResult { purchaseResult }
     func restorePurchases() async throws {}
     func resolveEntitlements() async -> EntitlementState { entitlementState }
     func appOriginalPurchaseDate() async -> Date? { originalPurchaseDate }
+    func localInstallDate() -> Date? { localFirstLaunchDate }
     func transactionUpdates() -> AsyncStream<TransactionUpdate> {
         AsyncStream { $0.finish() }
     }

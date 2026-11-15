@@ -83,6 +83,10 @@ final class StoreKitSubscriptionProvider: SubscriptionProviding {
 
     // MARK: - Trial
 
+    func localInstallDate() -> Date? {
+        UserDefaults.standard.object(forKey: AppStorageKey.appFirstLaunchDate) as? Date
+    }
+
     func appOriginalPurchaseDate() async -> Date? {
         do {
             let appTransaction = try await AppTransaction.shared

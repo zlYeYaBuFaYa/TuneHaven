@@ -21,6 +21,15 @@ final class SubscriptionService: ObservableObject {
 
     // MARK: - Initialization
 
+    /// 启动用：只读本机购买记录和本地首次启动日期，不联网，几乎立即返回。
+    /// 之后再调用 `initialize()` 在后台联网校验，状态变化经 `$tier` 通知。
+    func loadLocalStatus() async {
+        let start = Date()
+        let entitlements = await provider.resolveEntitlements()
+        apply(entitlements, installDate: provider.localInstallDate())
+        log.info("[Subscription] 本地状态已就绪，用时 \(String(format: "%.0f", Date().timeIntervalSince(start) * 1000))ms")
+    }
+
     func initialize() async {
         await refreshStatus()
         await loadProducts()
@@ -37,7 +46,15 @@ final class SubscriptionService: ObservableObject {
 
     func refreshStatus() async {
         let entitlements = await provider.resolveEntitlements()
+        if entitlements.hasLifetime || entitlements.hasActiveSubscription {
+            apply(entitlements, installDate: nil)
+        } else {
+            apply(entitlements, installDate: await provider.appOriginalPurchaseDate())
+        }
+    }
 
+    /// 权益优先级：终身买断 > 有效订阅 > 试用期 > Free
+    private func apply(_ entitlements: EntitlementState, installDate: Date?) {
         if entitlements.hasLifetime {
             tier = .premium
             status = .lifetime
@@ -52,7 +69,7 @@ final class SubscriptionService: ObservableObject {
             return
         }
 
-        if let installDate = await provider.appOriginalPurchaseDate() {
+        if let installDate {
             let daysSinceInstall = Calendar.current.dateComponents(
                 [.day], from: installDate, to: Date()
             ).day ?? Int.max

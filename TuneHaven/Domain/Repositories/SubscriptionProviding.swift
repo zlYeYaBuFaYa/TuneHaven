@@ -7,8 +7,15 @@ protocol SubscriptionProviding: Sendable {
     func restorePurchases() async throws
     /// 一次性解析当前全部权益状态（单次遍历 currentEntitlements）
     func resolveEntitlements() async -> EntitlementState
+    /// 已校验的首次下载日期。可能需要联网，开发版上会等到失败才返回。
     func appOriginalPurchaseDate() async -> Date?
+    /// 本机记录的首次启动日期，不联网。启动时用它先算出试用状态。
+    func localInstallDate() -> Date?
     func transactionUpdates() -> AsyncStream<TransactionUpdate>
+}
+
+extension SubscriptionProviding {
+    func localInstallDate() -> Date? { nil }
 }
 
 /// 权益解析结果

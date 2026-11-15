@@ -156,10 +156,13 @@ struct TuneHavenApp: App {
             await container.libraryService.cleanupOnLaunch()
             container.playbackService.checkSleepTimerOnForeground()
             recordFirstLaunchDateIfNeeded()
-            await container.subscriptionService.initialize()
+            // 启动只同步，不硬挡：先用本机数据算出订阅状态就显示界面，
+            // 联网校验（AppTransaction、商品、交易监听）放到后台，结果经 $tier 生效。
+            await container.subscriptionService.loadLocalStatus()
             container.setupSubscriptionBindings()
             await container.playbackService.restoreLastPlayedSong()
             isReady = true
+            Task { await container.subscriptionService.initialize() }
             AppLogger.shared.info("[App] initialize done — isReady=true")
 
             // bootstrap 里的备份临时目录清理已经结束。这之后才处理冷启动积压的打开请求。
