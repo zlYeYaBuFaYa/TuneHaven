@@ -279,3 +279,19 @@ struct PlayModeTests {
         #expect(PlayMode.shuffle.rawValue == 3)
     }
 }
+
+@Suite("MusicLibraryService - 排序沿用")
+@MainActor
+struct MusicLibrarySortReuseTests {
+
+    @Test("不带参数的 loadSongs() 沿用上次的排序，导入后刷新不打乱用户选择")
+    func reloadKeepsLastSort() async {
+        let service = MusicLibraryService(songRepo: MockSongRepository(), imageCache: ImageCacheManager.shared)
+        #expect(service.currentSort == (.title, true))
+
+        await service.loadSongs(sortBy: .importDate, ascending: false)
+        await service.loadSongs()
+
+        #expect(service.currentSort == (.importDate, false))
+    }
+}

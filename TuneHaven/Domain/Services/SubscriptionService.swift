@@ -21,13 +21,12 @@ final class SubscriptionService: ObservableObject {
 
     // MARK: - Initialization
 
-    /// 启动用：只读本机购买记录和本地首次启动日期，不联网，几乎立即返回。
-    /// 之后再调用 `initialize()` 在后台联网校验，状态变化经 `$tier` 通知。
-    func loadLocalStatus() async {
-        let start = Date()
-        let entitlements = await provider.resolveEntitlements()
-        apply(entitlements, installDate: provider.localInstallDate())
-        log.info("[Subscription] 本地状态已就绪，用时 \(String(format: "%.0f", Date().timeIntervalSince(start) * 1000))ms")
+    /// 启动用：只读上次缓存的权益和本地首次启动日期，不访问 StoreKit，立即返回。
+    /// 之后再调用 `initialize()` 在后台读取购买记录并联网校验，状态变化经 `$tier` 通知。
+    func loadLocalStatus() {
+        let cached = provider.cachedEntitlements()
+            ?? EntitlementState(hasLifetime: false, hasActiveSubscription: false, subscriptionExpirationDate: nil)
+        apply(cached, installDate: provider.localInstallDate())
     }
 
     func initialize() async {

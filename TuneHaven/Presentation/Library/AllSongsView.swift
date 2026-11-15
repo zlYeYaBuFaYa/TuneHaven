@@ -24,7 +24,10 @@ struct AllSongsView: View {
         }
         .onAppear {
             recomputeDisplaySongs()
-            Task { await libraryService.loadSongs(sortBy: sortOption, ascending: isAscending) }
+            // 启动时已按保存的排序加载过，排序一致就不再重复加载整个曲库
+            if libraryService.currentSort != (sortOption, isAscending) {
+                Task { await libraryService.loadSongs(sortBy: sortOption, ascending: isAscending) }
+            }
         }
         .onChange(of: libraryService.songs) { _ in recomputeDisplaySongs() }
         .onChange(of: formatFilter) { _ in recomputeDisplaySongs() }

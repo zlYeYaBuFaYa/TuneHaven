@@ -18,7 +18,13 @@ final class MusicLibraryService: ObservableObject {
         self.imageCache = imageCache
     }
 
-    func loadSongs(sortBy: SongSortOption = .title, ascending: Bool = true) async {
+    /// 当前 `songs` 使用的排序。不传参数的 `loadSongs()` 沿用它，导入后刷新不会打乱用户选的排序
+    private(set) var currentSort: (option: SongSortOption, ascending: Bool) = (.title, true)
+
+    func loadSongs(sortBy: SongSortOption? = nil, ascending: Bool? = nil) async {
+        let sortBy = sortBy ?? currentSort.option
+        let ascending = ascending ?? currentSort.ascending
+        currentSort = (sortBy, ascending)
         log.info("加载音乐库，排序: \(sortBy)")
         isLoading = true
         do {

@@ -22,4 +22,6 @@ enum AppStorageKey {
     static let lyricsCooldown = "lyrics_match_cooldown"
     /// App 首次启动日期（AppTransaction 获取失败时的兜底）
     static let appFirstLaunchDate = "app_first_launch_date"
+    /// 上次解析出的购买权益，启动时先用它，不等 StoreKit
+    static let cachedEntitlements = "subscription_cached_entitlements"
 }

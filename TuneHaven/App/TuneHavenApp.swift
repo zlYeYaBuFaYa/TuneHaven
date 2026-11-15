@@ -136,6 +136,14 @@ struct TuneHavenApp: App {
         return handler
     }
 
+    /// 与 LibraryMainView 的 @AppStorage 同键，启动时直接按用户保存的排序加载
+    private static var storedSongSort: (option: SongSortOption, ascending: Bool) {
+        let defaults = UserDefaults.standard
+        let option = SongSortOption(rawValue: defaults.integer(forKey: AppStorageKey.songSortOption)) ?? .title
+        let ascending = defaults.object(forKey: AppStorageKey.songSortAscending) as? Bool ?? true
+        return (option, ascending)
+    }
+
     private func recordFirstLaunchDateIfNeeded() {
         let key = AppStorageKey.appFirstLaunchDate
         if UserDefaults.standard.object(forKey: key) == nil {
@@ -152,13 +160,13 @@ struct TuneHavenApp: App {
             AppLogger.shared.info("[App] initialize start")
             try await container.bootstrap()
             try await container.playlistService.initializeSystemPlaylists()
-            await container.libraryService.loadSongs()
+            await container.libraryService.loadSongs(sortBy: Self.storedSongSort.option, ascending: Self.storedSongSort.ascending)
             await container.libraryService.cleanupOnLaunch()
             container.playbackService.checkSleepTimerOnForeground()
             recordFirstLaunchDateIfNeeded()
-            // 启动只同步，不硬挡：先用本机数据算出订阅状态就显示界面，
-            // 联网校验（AppTransaction、商品、交易监听）放到后台，结果经 $tier 生效。
-            await container.subscriptionService.loadLocalStatus()
+            // 启动只同步，不硬挡：先用缓存的权益和本地首次启动日期算出订阅状态就显示界面，
+            // 购买记录、AppTransaction、商品和交易监听放到后台，结果经 $tier 生效。
+            container.subscriptionService.loadLocalStatus()
             container.setupSubscriptionBindings()
             await container.playbackService.restoreLastPlayedSong()
             isReady = true

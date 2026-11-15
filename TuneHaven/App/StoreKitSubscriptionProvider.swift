@@ -74,11 +74,33 @@ final class StoreKitSubscriptionProvider: SubscriptionProviding {
             }
         }
 
-        return EntitlementState(
+        let state = EntitlementState(
             hasLifetime: hasLifetime,
             hasActiveSubscription: hasActiveSubscription,
             subscriptionExpirationDate: subscriptionExpirationDate
         )
+        saveCachedEntitlements(state)
+        return state
+    }
+
+    func cachedEntitlements() -> EntitlementState? {
+        guard let dict = UserDefaults.standard.dictionary(forKey: AppStorageKey.cachedEntitlements) else { return nil }
+        let expiration = dict["expiration"] as? Date
+        let subscriptionValid = (dict["subscription"] as? Bool ?? false) && (expiration.map { $0 > Date() } ?? true)
+        return EntitlementState(
+            hasLifetime: dict["lifetime"] as? Bool ?? false,
+            hasActiveSubscription: subscriptionValid,
+            subscriptionExpirationDate: expiration
+        )
+    }
+
+    private func saveCachedEntitlements(_ state: EntitlementState) {
+        var dict: [String: Any] = [
+            "lifetime": state.hasLifetime,
+            "subscription": state.hasActiveSubscription,
+        ]
+        if let expiration = state.subscriptionExpirationDate { dict["expiration"] = expiration }
+        UserDefaults.standard.set(dict, forKey: AppStorageKey.cachedEntitlements)
     }
 
     // MARK: - Trial
