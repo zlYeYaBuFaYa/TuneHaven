@@ -37,6 +37,19 @@ final class FileStorageService: @unchecked Sendable {
         return relativePath
     }
 
+    func moveToMusic(from sourceURL: URL, fileHash: String, originalFileName: String) throws -> String {
+        log.info("移动文件到音乐目录: \(originalFileName)")
+        let relativePath = "\(fileHash.prefix(8))_\(sanitizeFileName(originalFileName))"
+        let destURL = SandboxPathManager.musicFileURL(relativePath: relativePath)
+
+        if FileManager.default.fileExists(atPath: destURL.path) {
+            try? FileManager.default.removeItem(at: sourceURL)
+        } else {
+            try FileManager.default.moveItem(at: sourceURL, to: destURL)
+        }
+        return relativePath
+    }
+
     func moveToPendingDelete(relativePath: String) throws -> String {
         let srcURL = SandboxPathManager.musicFileURL(relativePath: relativePath)
         guard FileManager.default.fileExists(atPath: srcURL.path) else { return relativePath }

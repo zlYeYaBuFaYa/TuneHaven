@@ -46,7 +46,7 @@ struct AppleMusicImportView: View {
     private var authorizedContent: some View {
         if vm.isLoading {
             ProgressView("正在扫描资料库...")
-        } else if vm.mediaItems.isEmpty {
+        } else if vm.tracks.isEmpty {
             VStack(spacing: 16) {
                 Image(systemName: "music.note.list")
                     .resizable()
@@ -85,14 +85,14 @@ struct AppleMusicImportView: View {
 
     private var selectionToolbar: some View {
         HStack {
-            Text("\(vm.filteredItems.count) 首可导入")
+            Text("\(vm.filteredTracks.count) 首可导入")
                 .font(.caption)
                 .foregroundColor(palette.textTertiary)
             Spacer()
             Button {
                 vm.toggleSelectAll()
             } label: {
-                Text(vm.selectedIds.count == vm.filteredItems.count ? "取消全选" : "全选")
+                Text(vm.selectedIds.count == vm.filteredTracks.count ? "取消全选" : "全选")
                     .font(.caption)
                     .foregroundColor(palette.primary)
             }
@@ -103,8 +103,8 @@ struct AppleMusicImportView: View {
 
     private var songList: some View {
         List {
-            ForEach(vm.filteredItems, id: \.persistentID) { item in
-                mediaItemRow(item)
+            ForEach(vm.filteredTracks) { track in
+                trackRow(track)
                     .listRowBackground(palette.surface)
             }
         }
@@ -112,21 +112,21 @@ struct AppleMusicImportView: View {
         .scrollContentBackground(.hidden)
     }
 
-    private func mediaItemRow(_ item: MPMediaItem) -> some View {
-        let isSelected = vm.selectedIds.contains(item.persistentID)
+    private func trackRow(_ track: AppleMusicTrack) -> some View {
+        let isSelected = vm.selectedIds.contains(track.id)
         return HStack(spacing: 12) {
             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                 .foregroundColor(isSelected ? palette.primary : palette.textTertiary)
                 .font(.title3)
 
-            ArtworkThumbnail(artwork: item.artwork)
+            ArtworkThumbnail(artwork: vm.artwork(for: track.id))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.title ?? "未知歌曲")
+                Text(track.title)
                     .font(.subheadline.weight(.medium))
                     .foregroundColor(palette.textPrimary)
                     .lineLimit(1)
-                Text("\(item.artist ?? SongDefaults.unknownArtist) · \(item.albumTitle ?? SongDefaults.unknownAlbum)")
+                Text("\(track.artist) · \(track.album)")
                     .font(.caption)
                     .foregroundColor(palette.textSecondary)
                     .lineLimit(1)
@@ -134,13 +134,13 @@ struct AppleMusicImportView: View {
 
             Spacer()
 
-            Text(TimeInterval(item.playbackDuration).formattedTime)
+            Text(track.duration.formattedTime)
                 .font(.caption.monospacedDigit())
                 .foregroundColor(palette.textTertiary)
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            vm.toggleSelection(item.persistentID)
+            vm.toggleSelection(track.id)
         }
     }
 
@@ -162,21 +162,31 @@ struct AppleMusicImportView: View {
     }
 
     private func importResultBanner(_ result: ImportResult) -> some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(palette.primary)
-            Text("导入完成：成功 \(result.successCount) 首")
-                .font(.subheadline)
-                .foregroundColor(palette.textPrimary)
-            if result.skippedDuplicateCount > 0 {
-                Text("跳过 \(result.skippedDuplicateCount) 首重复")
-                    .font(.caption)
-                    .foregroundColor(palette.textSecondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("导入完成：成功 \(result.successCount) 首")
+                    .font(.subheadline)
+                    .foregroundColor(palette.textPrimary)
+                ForEach(resultDetailLines(result), id: \.self) { line in
+                    Text(line)
+                        .font(.caption)
+                        .foregroundColor(palette.textSecondary)
+                }
             }
             Spacer()
         }
         .padding()
         .background(palette.surface)
+    }
+
+    private func resultDetailLines(_ result: ImportResult) -> [String] {
+        var lines: [String] = []
+        if result.skippedDuplicateCount > 0 { lines.append("跳过 \(result.skippedDuplicateCount) 首重复") }
+        if result.failedCount > 0 { lines.append("失败 \(result.failedCount) 首") }
+        if vm.transcodedCount > 0 { lines.append("\(vm.transcodedCount) 首无法原样导出，已转码为 AAC") }
+        return lines
     }
 
     private struct ArtworkThumbnail: View {

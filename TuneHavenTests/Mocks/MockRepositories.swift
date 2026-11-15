@@ -63,6 +63,9 @@ final class MockFileStorageProviding: FileStorageProviding, @unchecked Sendable 
     func copyToMusic(from sourceURL: URL, fileHash: String, originalFileName: String) throws -> String {
         "\(fileHash.prefix(8))_\(originalFileName)"
     }
+    func moveToMusic(from sourceURL: URL, fileHash: String, originalFileName: String) throws -> String {
+        "\(fileHash.prefix(8))_\(originalFileName)"
+    }
     func fileSize(at url: URL) -> Int64 { 1024 }
     func createDirectoryIfNeeded(at url: URL) throws {}
     func removeItem(at url: URL) throws {}

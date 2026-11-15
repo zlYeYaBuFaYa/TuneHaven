@@ -124,6 +124,37 @@ final class ImportService: ObservableObject, FileImporting {
         return await processFile(url: tempURL, overrideName: originalFilename, overrides: overrides)
     }
 
+    // MARK: - Apple Music 批量导入
+
+    /// 整批只占一次导入锁，批内可以并发处理多首。返回 false 表示有导入或备份正在进行。
+    func beginBatchImport() -> Bool {
+        guard beginExternalImport() else { return false }
+        isImporting = true
+        return true
+    }
+
+    func endBatchImport() {
+        isImporting = false
+        activityGate?.endImport()
+    }
+
+    /// 批内处理一份导出的临时文件。必须在 `beginBatchImport()` 与 `endBatchImport()` 之间调用。
+    /// 临时文件直接移动进 Music 目录，失败或重复时由调用方清理。
+    func processBatchExportedFile(tempURL: URL, originalFilename: String, title: String?, artist: String?, album: String?, coverData: Data?) async -> SingleImportResult {
+        let overrides = ImportOverrides(title: title, artist: artist, album: album, coverData: coverData)
+        return await processFile(url: tempURL, overrideName: originalFilename, overrides: overrides, consumeSource: true)
+    }
+
+    /// 复制或移动进 Music 目录，在后台执行整文件读写。
+    private func storeInMusic(url: URL, hash: String, fileName: String, consumeSource: Bool) async throws -> String {
+        let fileService = fileService
+        return try await Task.detached(priority: .userInitiated) {
+            consumeSource
+                ? try fileService.moveToMusic(from: url, fileHash: hash, originalFileName: fileName)
+                : try fileService.copyToMusic(from: url, fileHash: hash, originalFileName: fileName)
+        }.value
+    }
+
     private func beginExternalImport() -> Bool {
         guard let activityGate else { return true }
         do {
@@ -135,7 +166,8 @@ final class ImportService: ObservableObject, FileImporting {
         }
     }
 
-    private func processFile(url: URL, overrideName: String? = nil, overrides: ImportOverrides = ImportOverrides()) async -> SingleImportResult {
+    /// `consumeSource` 为 true 时源文件是本 App 的临时文件，入库时移动而不是复制。
+    private func processFile(url: URL, overrideName: String? = nil, overrides: ImportOverrides = ImportOverrides(), consumeSource: Bool = false) async -> SingleImportResult {
         let fileName = overrideName ?? url.lastPathComponent
         let ext = (fileName as NSString).pathExtension.lowercased()
         log.info("[Import] processFile start: \(fileName) ext=\(ext)")
@@ -157,7 +189,9 @@ final class ImportService: ObservableObject, FileImporting {
 
         let hash: String
         do {
-            hash = try fileService.sha256(of: url)
+            // 整文件读取，放到后台，避免导入时卡住界面
+            let fileService = fileService
+            hash = try await Task.detached(priority: .userInitiated) { try fileService.sha256(of: url) }.value
             log.info("[Import] sha256 done: \(hash.prefix(12))...")
         } catch {
             log.error(error, context: "[Import] 文件哈希计算失败: \(fileName)")
@@ -197,13 +231,14 @@ final class ImportService: ObservableObject, FileImporting {
                 album: finalAlbum,
                 parsed: parsed,
                 coverData: finalCoverData,
-                isIncomplete: isIncomplete
+                isIncomplete: isIncomplete,
+                consumeSource: consumeSource
             )
         }
 
         let relPath: String
         do {
-            relPath = try fileService.copyToMusic(from: url, fileHash: hash, originalFileName: fileName)
+            relPath = try await storeInMusic(url: url, hash: hash, fileName: fileName, consumeSource: consumeSource)
             log.info("[Import] 文件复制完成: \(relPath)")
         } catch {
             log.error(error, context: "[Import] 文件复制失败: \(fileName)")
@@ -292,11 +327,12 @@ final class ImportService: ObservableObject, FileImporting {
         album: String,
         parsed: ParsedMetadata,
         coverData: Data?,
-        isIncomplete: Bool
+        isIncomplete: Bool,
+        consumeSource: Bool
     ) async -> SingleImportResult {
         let relPath: String
         do {
-            relPath = try fileService.copyToMusic(from: url, fileHash: hash, originalFileName: fileName)
+            relPath = try await storeInMusic(url: url, hash: hash, fileName: fileName, consumeSource: consumeSource)
         } catch {
             log.error(error, context: "[Import] 挂回缺失歌曲失败: \(fileName)")
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "文件复制失败")
