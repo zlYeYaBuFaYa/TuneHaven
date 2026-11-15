@@ -76,7 +76,7 @@ struct BackupPackageTests {
         try FileManager.default.createDirectory(at: music, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: lyrics, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: covers, withIntermediateDirectories: true)
-        let song = BackupTestFiles.song(title: "夜曲", favorite: true, relativePath: "night.mp3", fileSize: 4096)
+        let song = BackupTestFiles.song(title: "夜曲", relativePath: "night.mp3", favorite: true, fileSize: 4096)
         try Data(repeating: 7, count: 4096).write(to: music.appendingPathComponent("night.mp3"))
         let layout = BackupFileLayout(musicDirectory: music, lyricsDirectory: lyrics, coverDirectory: covers)
         let snapshot = BackupLibrarySnapshot(
@@ -187,7 +187,7 @@ struct BackupPlannerTests {
     @Test("合并：跳过、替换保留播放次数、另存副本")
     func testMergeSongChoices() {
         let playedAt = Date(timeIntervalSince1970: 1_600_000_000)
-        let local = BackupTestFiles.song(title: "夜曲", playCount: 7, lastPlayed: playedAt, favorite: false)
+        let local = BackupTestFiles.song(title: "夜曲", favorite: false, playCount: 7, lastPlayed: playedAt)
         let packageSong = BackupTestFiles.record(id: UUID(), title: "夜曲", favorite: true, audio: "audio/a.mp3")
         let snapshot = BackupTestFiles.snapshot(songs: [local])
 

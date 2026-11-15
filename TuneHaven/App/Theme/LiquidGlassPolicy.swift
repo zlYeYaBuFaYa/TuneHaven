@@ -1,12 +1,11 @@
 import SwiftUI
 import UIKit
 
-/// Liquid Glass 第一阶段的分流。
+/// Liquid Glass 分流。
 ///
-/// 部署目标仍是 iOS 18。`#available(iOS 26, *)` 判断系统版本；
-/// `UIDesignRequiresCompatibility` 本期留在 Info.plist，这里再读一次。
-/// 键为真时保持旧外观。关掉键且系统为 iOS 26+ 才走玻璃路径。
-/// 换 iOS 27 SDK 打包前必须删除该键。这里不改用系统 `TabView`。
+/// 部署目标是 iOS 18。iOS 26 及以上走系统玻璃外观，更早的系统保持旧外观。
+/// Info.plist 不再声明 `UIDesignRequiresCompatibility`：iOS 27 SDK 不再支持退回旧设计。
+/// 这里不改用系统 `TabView`，Tab 栏仍由 `RootTabView` 自绘。
 enum LiquidGlassPolicy {
     enum NavigationBarSurface: Equatable {
         case system
@@ -24,32 +23,19 @@ enum LiquidGlassPolicy {
         case solidElevated
     }
 
-    static func usesLiquidGlassEffects(osIs26OrNewer: Bool, compatibilityMode: Bool) -> Bool {
-        osIs26OrNewer && !compatibilityMode
-    }
-
-    static func navigationBarSurface(
-        osIs26OrNewer: Bool,
-        compatibilityMode: Bool,
-        customMaterial: Bool
-    ) -> NavigationBarSurface {
-        if usesLiquidGlassEffects(osIs26OrNewer: osIs26OrNewer, compatibilityMode: compatibilityMode) {
+    static func navigationBarSurface(osIs26OrNewer: Bool, customMaterial: Bool) -> NavigationBarSurface {
+        if osIs26OrNewer {
             return .system
         }
         return customMaterial ? .ultraThin : .opaqueSurface
     }
 
-    static func tabBarMaterial(osIs26OrNewer: Bool, compatibilityMode: Bool) -> TabBarMaterial {
-        usesLiquidGlassEffects(osIs26OrNewer: osIs26OrNewer, compatibilityMode: compatibilityMode) ? .glass : .ultraThin
+    static func tabBarMaterial(osIs26OrNewer: Bool) -> TabBarMaterial {
+        osIs26OrNewer ? .glass : .ultraThin
     }
 
-    static func sheetBackdrop(
-        osIs26OrNewer: Bool,
-        compatibilityMode: Bool,
-        hasCustomBackground: Bool
-    ) -> SheetBackdrop {
-        let glass = usesLiquidGlassEffects(osIs26OrNewer: osIs26OrNewer, compatibilityMode: compatibilityMode)
-        if glass && !hasCustomBackground {
+    static func sheetBackdrop(osIs26OrNewer: Bool, hasCustomBackground: Bool) -> SheetBackdrop {
+        if osIs26OrNewer && !hasCustomBackground {
             return .system
         }
         return .solidElevated
@@ -62,41 +48,8 @@ enum LiquidGlassPolicy {
         return false
     }
 
-    static let compatibilityModeEnabled: Bool = compatibilityMode(
-        infoValue: Bundle.main.object(forInfoDictionaryKey: "UIDesignRequiresCompatibility")
-    )
-
-    static var isLiquidGlassActive: Bool {
-        usesLiquidGlassEffects(
-            osIs26OrNewer: osIs26OrNewer,
-            compatibilityMode: compatibilityModeEnabled
-        )
-    }
-
-    static func compatibilityMode(infoValue: Any?) -> Bool {
-        switch infoValue {
-        case let flag as Bool:
-            return flag
-        case let number as NSNumber:
-            return number.boolValue
-        case let text as String:
-            switch text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-            case "yes", "true", "1":
-                return true
-            default:
-                return false
-            }
-        default:
-            return false
-        }
-    }
-
     static func applyGlobalNavigationBarAppearance(surfaceColor: UIColor) {
-        guard navigationBarSurface(
-            osIs26OrNewer: osIs26OrNewer,
-            compatibilityMode: compatibilityModeEnabled,
-            customMaterial: false
-        ) == .opaqueSurface else {
+        guard navigationBarSurface(osIs26OrNewer: osIs26OrNewer, customMaterial: false) == .opaqueSurface else {
             return
         }
         let appearance = opaqueNavigationBarAppearance(surfaceColor: surfaceColor)
@@ -123,24 +76,16 @@ enum LiquidGlassPolicy {
     @ViewBuilder
     static func tabBarBackdrop(surfaceTint: Color) -> some View {
         if #available(iOS 26, *) {
-            if isLiquidGlassActive {
-                Rectangle()
-                    .fill(Color.clear)
-                    // surface 着色给标签一个稳定的深浅底，避免直接压在封面上。
-                    .glassEffect(.regular.tint(surfaceTint.opacity(0.45)), in: Rectangle())
-                    .ignoresSafeArea(edges: .bottom)
-            } else {
-                legacyTabBarBackdrop
-            }
+            Rectangle()
+                .fill(Color.clear)
+                // surface 着色给标签一个稳定的深浅底，避免直接压在封面上。
+                .glassEffect(.regular.tint(surfaceTint.opacity(0.45)), in: Rectangle())
+                .ignoresSafeArea(edges: .bottom)
         } else {
-            legacyTabBarBackdrop
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .bottom)
         }
-    }
-
-    private static var legacyTabBarBackdrop: some View {
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .ignoresSafeArea(edges: .bottom)
     }
 }
 
@@ -151,7 +96,6 @@ private struct ThemeNavigationBarSurfaceModifier: ViewModifier {
     func body(content: Content) -> some View {
         switch LiquidGlassPolicy.navigationBarSurface(
             osIs26OrNewer: LiquidGlassPolicy.osIs26OrNewer,
-            compatibilityMode: LiquidGlassPolicy.compatibilityModeEnabled,
             customMaterial: customMaterial
         ) {
         case .system:
@@ -174,7 +118,6 @@ extension View {
     func themeSheetPresentationBackground(elevated: Color, hasCustomBackground: Bool) -> some View {
         if LiquidGlassPolicy.sheetBackdrop(
             osIs26OrNewer: LiquidGlassPolicy.osIs26OrNewer,
-            compatibilityMode: LiquidGlassPolicy.compatibilityModeEnabled,
             hasCustomBackground: hasCustomBackground
         ) == .system {
             self

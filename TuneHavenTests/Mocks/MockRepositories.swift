@@ -51,7 +51,7 @@ final class MockCoverImageProcessing: CoverImageProcessing {
     }
 }
 
-final class MockFileStorageProviding: FileStorageProviding {
+final class MockFileStorageProviding: FileStorageProviding, @unchecked Sendable {
     var maxFileSizeBytes: Int64 = 500 * 1024 * 1024
     var supportedExtensions: Set<String> = ["mp3", "m4a", "flac"]
     var importTempURL: URL = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -75,6 +75,9 @@ final class MockFileStorageProviding: FileStorageProviding {
     }
     var lyricsDirectoryURL: URL {
         URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("Lyrics")
+    }
+    var coverImagesDirectoryURL: URL {
+        URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("CoverImages")
     }
     func fileExists(at url: URL) -> Bool { fileExistsResult }
     func isReadableFile(at url: URL) -> Bool { fileExistsResult }
@@ -284,7 +287,7 @@ final class MockSongRepository: SongRepository {
     func countReferences(toFileHash hash: String) async -> Int { 0 }
     func cleanupPendingDeletes() async {}
     func fetchRecentlyPlayed(days: Int, page: Int, pageSize: Int) async -> PagedResult<Song> {
-        PagedResult(items: [], totalCount: 0, hasMore: false)
+        PagedResult(items: [], totalCount: 0, currentPage: page, hasMore: false)
     }
     func fetchArtistGroups() async -> [ArtistGroup] { [] }
     func fetchAlbumGroups() async -> [AlbumGroup] { [] }

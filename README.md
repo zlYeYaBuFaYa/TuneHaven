@@ -4,7 +4,7 @@
 
 [![Swift](https://img.shields.io/badge/Swift-5.0-orange.svg)](https://swift.org)
 [![iOS](https://img.shields.io/badge/iOS-18.0+-blue.svg)](https://apple.com/ios)
-[![Xcode](https://img.shields.io/badge/Xcode-26+-brightgreen.svg)](https://developer.apple.com/xcode)
+[![Xcode](https://img.shields.io/badge/Xcode-27+-brightgreen.svg)](https://developer.apple.com/xcode)
 
 ## 功能
 
@@ -16,7 +16,7 @@
 | 搜索 | 原文、拼音全拼、拼音首字母、单字符容错；音乐库与歌单内搜索；按标签保存搜索历史 |
 | 歌单 | 我喜欢、最近播放、自建歌单、分组、拖拽排序、批量添加、自动拼封面、播放队列 |
 | 歌词 | 内嵌、导入 LRC、手动粘贴、在线匹配（Premium）；卡拉 OK 逐行填充、缩放、简繁切换 |
-| 主题 | 素云白简、晴空蔚蓝（免费）；暮光玫瑰、星际穹顶（Premium）。已适配 iOS 26 Liquid Glass |
+| 主题 | 素云白简、晴空蔚蓝（免费）；暮光玫瑰、星际穹顶（Premium）。iOS 26/27 使用 Liquid Glass，iOS 18–25 保持旧外观 |
 | 分享 | 同一 WiFi 下扫码直传歌曲和歌单，自动跳过对方已有的歌 |
 | 备份 | 导出 `.tunehaven`；恢复支持合并 / 替换曲库 / 仅偏好，失败自动回滚 |
 | 订阅 | StoreKit 2 年度订阅与终身买断，新用户试用 30 天，到期温和降级 |
@@ -37,7 +37,7 @@ App → Presentation → Domain ← Data
 
 ## 构建与测试
 
-环境：Xcode 26+（`glassEffect` 需要 iOS 26 SDK），部署目标 iOS 18.0。
+环境：Xcode 27+（iOS 27 SDK），部署目标 iOS 18.0。
 
 ```bash
 # 构建
@@ -55,7 +55,6 @@ xcodebuild test -project TuneHaven.xcodeproj -scheme TuneHaven \
 
 ## 提审前检查
 
-- `Info.plist` 的 `UIDesignRequiresCompatibility` 目前为 `true`（iOS 26 过渡开关），换 iOS 27 SDK 打包前必须删除
 - 隐私政策 `https://tunehaven.app/privacy` 不在本仓库托管，提审前必须确认可以公开访问
 - 内购商品 `com.tunehaven.subscription.yearly`、`com.tunehaven.lifetime` 需在 App Store Connect 配置
 

@@ -8,6 +8,7 @@ import Foundation
 @Suite("PlaylistService - 命名校验逻辑")
 struct PlaylistNameValidationTests {
 
+    @MainActor
     private func makeService() -> PlaylistService {
         PlaylistService(repo: MockPlaylistRepository(), songRepo: MockSongRepository(), coverProcessor: MockCoverImageProcessing())
     }

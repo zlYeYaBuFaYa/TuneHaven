@@ -198,7 +198,6 @@ final class ThemeManager: ObservableObject {
         guard let vc = vc else { return }
         let surface = LiquidGlassPolicy.navigationBarSurface(
             osIs26OrNewer: LiquidGlassPolicy.osIs26OrNewer,
-            compatibilityMode: LiquidGlassPolicy.compatibilityModeEnabled,
             customMaterial: false
         )
         guard surface == .opaqueSurface else { return }

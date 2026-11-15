@@ -6,6 +6,7 @@ import SwiftUI
 // MARK: - ThemeRegistry Tests
 
 @Suite("ThemeRegistry Tests")
+@MainActor
 struct ThemeRegistryTests {
 
     init() {
