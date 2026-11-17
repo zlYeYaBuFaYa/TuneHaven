@@ -73,19 +73,9 @@ enum LiquidGlassPolicy {
         bar.scrollEdgeAppearance = appearance
     }
 
-    @ViewBuilder
-    static func tabBarBackdrop(surfaceTint: Color) -> some View {
-        if #available(iOS 26, *) {
-            Rectangle()
-                .fill(Color.clear)
-                // surface 着色给标签一个稳定的深浅底，避免直接压在封面上。
-                .glassEffect(.regular.tint(surfaceTint.opacity(0.45)), in: Rectangle())
-                .ignoresSafeArea(edges: .bottom)
-        } else {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea(edges: .bottom)
-        }
+    /// 悬浮控制层（底栏、迷你播放器）：iOS 26+ 系统玻璃，iOS 18–25 regular 材质；减少透明度时用不透明表面
+    static func floatingBarBackdrop(surfaceTint: Color, cornerRadius: CGFloat) -> some View {
+        FloatingBarBackdrop(surfaceTint: surfaceTint, cornerRadius: cornerRadius)
     }
 }
 
@@ -123,6 +113,28 @@ extension View {
             self
         } else {
             self.presentationBackground(elevated)
+        }
+    }
+}
+
+private struct FloatingBarBackdrop: View {
+    let surfaceTint: Color
+    let cornerRadius: CGFloat
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.themePalette) private var palette
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if reduceTransparency {
+            shape.fill(surfaceTint)
+                .overlay(shape.stroke(palette.separator, lineWidth: 1))
+        } else if #available(iOS 26, *) {
+            shape.fill(Color.clear)
+                .glassEffect(.regular.tint(surfaceTint.opacity(0.35)), in: shape)
+        } else {
+            shape.fill(.regularMaterial)
+                .overlay(shape.stroke(palette.separator, lineWidth: 0.5))
+                .shadow(color: palette.cardShadow, radius: 10, y: 4)
         }
     }
 }

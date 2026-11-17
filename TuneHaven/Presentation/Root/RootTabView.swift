@@ -36,7 +36,7 @@ struct RootTabView: View {
         .environment(\.hasCustomBackground, hasCustomBg)
         .animation(nil, value: router.selectedTab)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 0) {
+            VStack(spacing: 8) {
                 MiniPlayerBar()
                 customTabBar
             }
@@ -107,42 +107,54 @@ struct RootTabView: View {
 
     // MARK: - Custom Tab Bar
 
+    /// 图标加文字的悬浮底栏（docs/UI设计文档.md §5.2、§6；交互设计文档 §2.1）。
+    /// 选中态同时体现在符号、胶囊底和可访问语义上。
     private var customTabBar: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                tabButton(.library, label: "音乐库")
-                tabButton(.playlist, label: "歌单")
-                tabButton(.settings, label: "设置")
-            }
-            .padding(.top, 8)
-            .padding(.bottom, 4)
+        HStack(spacing: 4) {
+            tabButton(.library, label: "音乐库", symbol: "music.note.list")
+            tabButton(.playlist, label: "歌单", symbol: "music.note")
+            tabButton(.settings, label: "设置", symbol: "gearshape")
         }
+        .padding(6)
         .background {
-            LiquidGlassPolicy.tabBarBackdrop(surfaceTint: palette.surface)
+            LiquidGlassPolicy.floatingBarBackdrop(surfaceTint: palette.surface, cornerRadius: 26)
         }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 4)
     }
 
-    private func tabButton(_ tab: AppTab, label: String) -> some View {
-        Button {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                #if DEBUG
-                AppLogger.shared.debug("[RootTabView] tab switch: \(router.selectedTab) → \(tab)")
-                #endif
-                router.selectedTab = tab
-            }
+    private func tabButton(_ tab: AppTab, label: String, symbol: String) -> some View {
+        let isSelected = router.selectedTab == tab
+        return Button {
+            // 再次点击当前 Tab 不触发额外行为（交互设计文档 §2.1）
+            guard !isSelected else { return }
+            router.selectedTab = tab
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
+                Image(systemName: isSelected ? Self.selectedSymbol(symbol) : symbol)
+                    .font(.system(size: 19, weight: isSelected ? .semibold : .regular))
+                    .frame(height: 24)
                 Text(label)
-                    .font(.system(size: 11, weight: router.selectedTab == tab ? .semibold : .regular))
-                    .foregroundColor(router.selectedTab == tab ? palette.primary : palette.textSecondary)
-                Circle()
-                    .fill(router.selectedTab == tab ? palette.primary : Color.clear)
-                    .frame(width: 5, height: 5)
+                    .font(.caption2.weight(isSelected ? .semibold : .regular))
+                    .lineLimit(1)
             }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
+            .foregroundColor(isSelected ? palette.textPrimary : palette.textSecondary)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background {
+                if isSelected {
+                    Capsule().fill(palette.textPrimary.opacity(0.07))
+                }
+            }
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    /// 选中时优先实心符号；没有实心版本的保持原样
+    private static func selectedSymbol(_ symbol: String) -> String {
+        UIImage(systemName: symbol + ".fill") != nil ? symbol + ".fill" : symbol
     }
 
     private func injectPresentedEnvironment<V: View>(_ content: V) -> some View {

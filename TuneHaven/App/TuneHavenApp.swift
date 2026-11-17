@@ -171,6 +171,12 @@ struct TuneHavenApp: App {
             // 购买记录、AppTransaction、商品和交易监听放到后台，结果经 $tier 生效。
             container.subscriptionService.loadLocalStatus()
             await container.playbackService.restoreLastPlayedSong()
+            #if DEBUG
+            await DebugLibrarySeeder.seedIfRequested(
+                importService: container.importService,
+                libraryService: container.libraryService
+            )
+            #endif
             isReady = true
             Task { await container.subscriptionService.initialize() }
             AppLogger.shared.info("[App] initialize done — isReady=true")
