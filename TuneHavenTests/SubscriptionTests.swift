@@ -89,15 +89,14 @@ struct PremiumFeatureTests {
         }
     }
 
-    @Test("allCases 包含 4 个功能")
+    @Test("allCases 包含 3 个功能（主题已全部免费）")
     func testCaseCount() {
-        #expect(PremiumFeature.allCases.count == 4)
+        #expect(PremiumFeature.allCases.count == 3)
     }
 
     @Test("rawValue 可作为 String 传递")
     func testRawValues() {
         #expect(PremiumFeature.losslessPlayback.rawValue == "losslessPlayback")
-        #expect(PremiumFeature.premiumTheme.rawValue == "premiumTheme")
         #expect(PremiumFeature.webDAVImport.rawValue == "webDAVImport")
         #expect(PremiumFeature.onlineLyricsSearch.rawValue == "onlineLyricsSearch")
     }

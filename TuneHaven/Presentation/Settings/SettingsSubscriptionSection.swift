@@ -64,7 +64,7 @@ struct SettingsSubscriptionSection: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("曲库本地优先，基础播放无需订阅。Premium 解锁无损播放、高级主题、WebDAV 与在线歌词。")
+                    Text("曲库本地优先，基础播放无需订阅。Premium 解锁无损播放、WebDAV 与在线歌词。")
                         .font(.caption)
                         .foregroundColor(palette.textSecondary)
                     Text("隐私政策可在浏览器中打开。若链接暂时无法访问，请稍后再试或通过 App Store 产品页查看。")

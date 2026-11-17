@@ -124,7 +124,6 @@ struct PaywallView: View {
     private func featureIcon(_ feature: PremiumFeature) -> String {
         switch feature {
         case .losslessPlayback:   return "waveform"
-        case .premiumTheme:       return "paintbrush.fill"
         case .webDAVImport:       return "server.rack"
         case .onlineLyricsSearch: return "text.magnifyingglass"
         }
@@ -133,7 +132,6 @@ struct PaywallView: View {
     private func featureDescription(_ feature: PremiumFeature) -> String {
         switch feature {
         case .losslessPlayback:   return "FLAC、WAV、AIFF、ALAC、CAF"
-        case .premiumTheme:       return "暮光玫瑰、星际穹顶等高级主题"
         case .webDAVImport:       return "坚果云、NAS 等 WebDAV 服务器"
         case .onlineLyricsSearch: return "LRCLIB 在线歌词匹配与搜索"
         }

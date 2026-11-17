@@ -26,13 +26,12 @@ enum SubscriptionStatus: Equatable {
 /// 受控功能枚举 — 后期新增功能只需添加 case + 配置 requiredTier
 enum PremiumFeature: String, CaseIterable {
     case losslessPlayback
-    case premiumTheme
     case webDAVImport
     case onlineLyricsSearch
 
     var requiredTier: SubscriptionTier {
         switch self {
-        case .losslessPlayback, .premiumTheme, .webDAVImport, .onlineLyricsSearch:
+        case .losslessPlayback, .webDAVImport, .onlineLyricsSearch:
             return .premium
         }
     }
@@ -40,7 +39,6 @@ enum PremiumFeature: String, CaseIterable {
     var displayName: String {
         switch self {
         case .losslessPlayback:   return "无损音质播放"
-        case .premiumTheme:       return "高级主题风格"
         case .webDAVImport:       return "WebDAV 导入"
         case .onlineLyricsSearch: return "在线歌词搜索"
         }

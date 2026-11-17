@@ -1,6 +1,6 @@
 # TuneHaven
 
-> iOS 本地优先音乐播放器：曲库、有损播放、歌单和本地导入离线免费可用，Premium 解锁无损播放、高级主题、WebDAV 导入和在线歌词。
+> iOS 本地优先音乐播放器：曲库、有损播放、歌单和本地导入离线免费可用，Premium 解锁无损播放、WebDAV 导入和在线歌词。
 
 [![Swift](https://img.shields.io/badge/Swift-5.0-orange.svg)](https://swift.org)
 [![iOS](https://img.shields.io/badge/iOS-18.0+-blue.svg)](https://apple.com/ios)
@@ -16,7 +16,7 @@
 | 搜索 | 原文、拼音全拼、拼音首字母、单字符容错；音乐库与歌单内搜索；按标签保存搜索历史 |
 | 歌单 | 我喜欢、最近播放、自建歌单、分组、拖拽排序、批量添加、自动拼封面、播放队列 |
 | 歌词 | 内嵌、导入 LRC、手动粘贴、在线匹配（Premium）；卡拉 OK 逐行填充、缩放、简繁切换 |
-| 主题 | 素云白简、晴空蔚蓝（免费）；暮光玫瑰、星际穹顶（Premium）。iOS 26/27 使用 Liquid Glass，iOS 18–25 保持旧外观 |
+| 主题 | 云霞、晴屿、月晕三套全部免费，日间／黑夜跟随系统。iOS 26/27 使用 Liquid Glass，iOS 18–25 保持旧外观 |
 | 分享 | 同一 WiFi 下扫码直传歌曲和歌单，自动跳过对方已有的歌 |
 | 备份 | 导出 `.tunehaven`；恢复支持合并 / 替换曲库 / 仅偏好，失败自动回滚 |
 | 订阅 | StoreKit 2 年度订阅与终身买断，新用户试用 30 天，到期温和降级 |
@@ -69,6 +69,8 @@ xcodebuild test -project TuneHaven.xcodeproj -scheme TuneHaven \
 | [需求文档](docs/需求文档.md) | 功能、业务规则、Free/Premium 权限、已知缺口 |
 | [技术设计文档](docs/技术设计文档.md) | 架构、各服务实现、协议、存储、错误码、隐私清单 |
 | [项目文档](docs/项目文档.md) | 技术栈、目录、数据库、配置、构建测试、代码遗留 |
+| [UI 设计文档](docs/UI设计文档.md) | 云霞／晴屿／月晕三套日夜方案、色彩令牌、组件与页面规格、视觉验收 |
+| [交互设计文档](docs/交互设计文档.md) | 导航、播放、搜索、歌单、歌词、导入、异常恢复与交互验收 |
 
 ## 代码统计
 

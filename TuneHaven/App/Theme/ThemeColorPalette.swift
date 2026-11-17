@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// 完整的主题色板
+/// 完整的主题色板。由 `ThemeColorPalette.make(day:night:)` 从设计令牌派生，全部是随系统深浅切换的动态色。
 struct ThemeColorPalette {
     // MARK: - 核心色
     let primary: Color
@@ -38,11 +38,20 @@ struct ThemeColorPalette {
     // MARK: - 对比色
     let onPrimary: Color
 
-    // MARK: - Spotify 升级新增
+    // MARK: - 层级与浮层
     let elevatedSurface: Color
     let cardShadow: Color
     let miniPlayerBg: Color
     let hoverHighlight: Color
+
+    // MARK: - 2026 重设计令牌（docs/UI设计文档.md §4）
+    /// 左侧、右侧、下部三束背景光晕
+    let glowA: Color
+    let glowB: Color
+    let glowC: Color
+    /// 主操作底色与其前景（播放键、选中分段）
+    let actionFill: Color
+    let onAction: Color
 }
 
 // MARK: - 语义色（所有主题共享，参考 TDD Section 8.2）

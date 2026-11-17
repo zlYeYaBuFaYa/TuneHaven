@@ -107,7 +107,6 @@ final class AppDIContainer: ObservableObject {
     // MARK: - Shared Repositories
     private let songRepo: SongRepository
     private let activityGate = BackupActivityGate()
-    private var cancellables = Set<AnyCancellable>()
 
     /// App 启动时的基础设施初始化（迁移、数据库加载、沙盒目录、临时文件清理）
     func bootstrap() async throws {
@@ -177,14 +176,5 @@ final class AppDIContainer: ObservableObject {
             sleepTimer: SleepTimerService(),
             subscriptionService: subscriptionService
         )
-    }
-
-    func setupSubscriptionBindings() {
-        subscriptionService.$tier
-            .combineLatest(subscriptionService.$isStatusVerified)
-            .sink { [weak self] tier, verified in
-                self?.themeManager.applyTier(tier, verified: verified)
-            }
-            .store(in: &cancellables)
     }
 }

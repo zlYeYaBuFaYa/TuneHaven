@@ -12,7 +12,7 @@ final class SubscriptionService: ObservableObject {
     @Published private(set) var isPurchasing = false
     @Published private(set) var restoreError: String?
     /// `tier` 是否已由 StoreKit 确认。`loadLocalStatus()` 给出的只是本地推断，可能是临时 Free，
-    /// 不可逆的操作（例如把高级主题降级并写回偏好）要等它为 true。
+    /// 依据权益做不可逆的操作时要等它为 true。
     @Published private(set) var isStatusVerified = false
 
     static let trialDurationDays = 30

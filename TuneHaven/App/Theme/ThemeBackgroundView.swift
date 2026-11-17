@@ -54,6 +54,7 @@ struct ThemeContainerBackgroundModifier: ViewModifier {
 struct ThemeBackgroundView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @Environment(\.themePalette) private var palette
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         ZStack {
@@ -61,21 +62,45 @@ struct ThemeBackgroundView: View {
             themeBackground
         }
         .ignoresSafeArea()
+        .accessibilityHidden(true)
     }
 
     @ViewBuilder
     private var themeBackground: some View {
         let config = themeManager.currentStyle.visualConfig
         switch config.backgroundType {
-        case .solidColor:
+        case .solidColor, .userWallpaper:
             palette.background
-        case .codeGenerated(let pattern):
-            switch pattern {
-            case .cosmicParticles:
-                CosmicParticlesBackground()
+        case .softGlow:
+            // 减少透明度时只用不透明底色
+            if reduceTransparency {
+                palette.background
+            } else {
+                SoftGlowBackground(palette: palette)
             }
-        case .userWallpaper:
-            palette.background
+        }
+    }
+}
+
+/// 三束低频柔光：左上、右侧、下部。静态绘制，不逐帧计算模糊（docs/UI设计文档.md §6.1）
+struct SoftGlowBackground: View {
+    let palette: ThemeColorPalette
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let radius = max(w, h)
+            ZStack {
+                palette.background
+                RadialGradient(colors: [palette.glowA, palette.glowA.opacity(0)],
+                               center: UnitPoint(x: 0.05, y: 0.12), startRadius: 0, endRadius: radius * 0.55)
+                RadialGradient(colors: [palette.glowB, palette.glowB.opacity(0)],
+                               center: UnitPoint(x: 1.0, y: 0.32), startRadius: 0, endRadius: radius * 0.5)
+                RadialGradient(colors: [palette.glowC, palette.glowC.opacity(0)],
+                               center: UnitPoint(x: 0.45, y: 1.0), startRadius: 0, endRadius: radius * 0.55)
+            }
+            .frame(width: w, height: h)
         }
     }
 }

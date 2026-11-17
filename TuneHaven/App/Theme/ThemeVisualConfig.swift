@@ -4,13 +4,9 @@ import SwiftUI
 
 enum ThemeBackgroundType: Equatable {
     case solidColor
-    case codeGenerated(ThemePatternType)
+    /// 不透明底色上叠三束低频柔光（docs/UI设计文档.md §6.1）
+    case softGlow
     case userWallpaper
-}
-
-enum ThemePatternType: String, Equatable {
-    case cosmicParticles
-    // TODO: 后续主题迭代时按需新增模式，每种须在 ThemeBackgroundView.themeBackground 中提供专属渲染实现
 }
 
 // MARK: - 主题卡片风格
@@ -62,6 +58,19 @@ struct ThemeVisualConfig {
     let contentOverlayOpacity: Double
     let navigationBarBlur: Bool
     let tabBarBlur: Bool
+}
+
+extension ThemeVisualConfig {
+    /// 三套主题共用：柔光背景、轻填充卡片、系统字体
+    static let softGlow = ThemeVisualConfig(
+        backgroundType: .softGlow,
+        cardStyle: .softFloat,
+        cardConfig: .softFloat,
+        fontStyle: .system,
+        contentOverlayOpacity: 0,
+        navigationBarBlur: true,
+        tabBarBlur: true
+    )
 }
 
 // MARK: - hasCustomBackground（保留 computed property）

@@ -93,52 +93,6 @@ struct SearchDebouncerTests {
     }
 }
 
-// MARK: - #19 ThemeVisualConfig 映射正确性（UI 重设计后适配 4 套新主题）
-
-@Suite("P1 Fix #19: ThemeVisualConfig 映射")
-@MainActor
-struct ThemeVisualConfigTests {
-
-    init() {
-        ThemeRegistry.shared.reset()
-        ThemeRegistry.shared.bootstrap()
-    }
-
-    @Test("素云白简使用 solidColor + softFloat 配置")
-    func testCloudWhiteConfig() {
-        let style = ThemeStyle.cloudWhite
-        #expect(style.visualConfig.backgroundType == .solidColor)
-        #expect(style.visualConfig.cardStyle == .softFloat)
-        #expect(style.hasCustomBackground == false)
-    }
-
-    @Test("星际穹顶使用 cosmicParticles + glassmorphism")
-    func testCosmicTechConfig() {
-        let style = ThemeStyle.cosmicTech
-        #expect(style.visualConfig.backgroundType == .codeGenerated(.cosmicParticles))
-        #expect(style.visualConfig.cardStyle == .glassmorphism)
-        #expect(style.hasCustomBackground == true)
-    }
-
-    @Test("暮光玫瑰使用 glassmorphism 卡片风格")
-    func testTwilightRoseConfig() {
-        let style = ThemeStyle.twilightRose
-        #expect(style.visualConfig.cardStyle == .glassmorphism)
-        #expect(style.visualConfig.navigationBarBlur == true)
-    }
-
-    @Test("所有新主题都已在 ThemeRegistry 注册")
-    func testAllNewThemesRegistered() {
-        let themes = ThemeRegistry.shared.allThemes
-        #expect(themes.count == 4)
-        let ids = Set(themes.map { $0.id })
-        #expect(ids.contains("cloud_white"))
-        #expect(ids.contains("azure_sky"))
-        #expect(ids.contains("twilight_rose"))
-        #expect(ids.contains("cosmic_tech"))
-    }
-}
-
 // MARK: - #15 删除歌单清理关联 (逻辑验证)
 
 @Suite("P1 Fix: PlayQueueService 边界条件")

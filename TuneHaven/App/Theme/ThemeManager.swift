@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - EnvironmentKey
 
 struct ThemePaletteKey: EnvironmentKey {
-    static let defaultValue = ThemeStyle.cloudWhite.palette
+    static let defaultValue = ThemeStyle.cloudHaze.palette
 }
 
 extension EnvironmentValues {
@@ -22,86 +22,51 @@ final class ThemeManager: ObservableObject {
 
     private let registry = ThemeRegistry.shared
 
-    private static let legacyMapping: [String: String] = [
-        "meadow_breeze":   "cloud_white",
-        "rose_dream":      "cloud_white",
-        "frost_elegance":  "cloud_white",
-        "crimson_tech":    "cloud_white",
-        "comic_pop":       "cloud_white",
-        "ink_wash":        "cloud_white",
-        "deep_space_neon": "cloud_white",
-        "morandi_green":   "cloud_white",
-        "classic_indigo":  "cloud_white",
-        "sakura_pink":     "cloud_white",
-        "minimal_pure":    "cloud_white",
-        "warm_sunlight":   "cloud_white",
-        "digital_mist":    "cloud_white",
-        "mint_breeze":     "cloud_white",
-        "deep_ocean":      "cloud_white",
-        "cyber_neon":      "cloud_white",
-        "glacier_blue":    "cloud_white",
-        "aurora_dream":    "cloud_white",
-        "midnight_gold":   "cloud_white",
+    /// 更早版本的主题 ID，统一并入新的默认主题
+    private static let retiredThemeIDs: Set<String> = [
+        "meadow_breeze", "rose_dream", "frost_elegance", "crimson_tech", "comic_pop",
+        "ink_wash", "deep_space_neon", "morandi_green", "classic_indigo", "sakura_pink",
+        "minimal_pure", "warm_sunlight", "digital_mist", "mint_breeze", "deep_ocean",
+        "cyber_neon", "glacier_blue", "aurora_dream", "midnight_gold",
     ]
 
     init() {
         registry.bootstrap()
-
-        let rawId = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) ?? registry.defaultTheme.id
-        if let migrated = Self.legacyMapping[rawId] {
-            UserDefaults.standard.set(migrated, forKey: AppStorageKey.themeStyle)
-        }
-
+        Self.migrateStoredThemeID(registry: registry)
         currentStyle = registry.resolveCurrentStyle()
     }
 
-    private static let freeThemeIDs: Set<String> = ["cloud_white", "azure_sky"]
-
-    private(set) var currentTier: SubscriptionTier = .free
-
-    /// 档位变化时调用。`verified` 为 false 表示档位只是启动时的本地推断：
-    /// 此时不改主题、不写偏好，避免续费后缓存过期的付费用户被临时 Free 永久重置主题。
-    func applyTier(_ tier: SubscriptionTier, verified: Bool = true) {
-        currentTier = tier
-        if verified {
-            enforceThemeAccess()
+    /// 把偏好中的旧主题 ID 换成新 ID 并写回；无法识别的落回默认主题
+    private static func migrateStoredThemeID(registry: ThemeRegistry) {
+        let defaults = UserDefaults.standard
+        guard let raw = defaults.string(forKey: AppStorageKey.themeStyle) else { return }
+        let canonical = retiredThemeIDs.contains(raw)
+            ? registry.defaultTheme.id
+            : (registry.canonicalID(for: raw) ?? registry.defaultTheme.id)
+        if canonical != raw {
+            defaults.set(canonical, forKey: AppStorageKey.themeStyle)
         }
-    }
-
-    /// Free 且当前不是免费主题时，强制回到素云白简并写回偏好。
-    func enforceThemeAccess() {
-        guard currentTier == .free else { return }
-        guard !Self.freeThemeIDs.contains(currentStyle.id) else { return }
-        setTheme(.cloudWhite)
-    }
-
-    func isPremiumTheme(_ style: ThemeStyle) -> Bool {
-        !Self.freeThemeIDs.contains(style.id)
     }
 
     var palette: ThemeColorPalette { currentStyle.palette }
 
-    var colorScheme: ColorScheme { currentStyle.colorScheme }
-
     var allAvailableThemes: [ThemeStyle] { registry.allThemes }
 
+    /// 三套主题都免费，选中即生效并保存
     func setTheme(_ style: ThemeStyle) {
-        if currentTier == .free && isPremiumTheme(style) { return }
         currentStyle = style
         storedThemeStyle = style.id
         pendingFullApply = false
         scheduleWindowRefresh(delay: 0.3, fullApply: false)
     }
 
-    /// 备份写回 `theme_style` 后刷新界面。免费档仍走现有 `enforceThemeAccess`。
-    /// 无法识别的主题 id 先落回默认主题，避免非法字符串留在偏好里。
+    /// 备份写回 `theme_style` 后刷新界面。旧主题 ID 换算为新 ID，无法识别的落回默认主题。
     func reloadStoredStyle() {
-        let raw = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle)
-        if raw == nil || registry.theme(for: raw ?? "") == nil {
+        Self.migrateStoredThemeID(registry: registry)
+        if UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) == nil {
             UserDefaults.standard.set(registry.defaultTheme.id, forKey: AppStorageKey.themeStyle)
         }
         currentStyle = registry.resolveCurrentStyle()
-        enforceThemeAccess()
         scheduleWindowRefresh(delay: 0.1, fullApply: true)
     }
 
@@ -114,13 +79,13 @@ final class ThemeManager: ObservableObject {
         }
         let bgColor = UIColor(currentStyle.palette.background)
         let surfaceColor = UIColor(currentStyle.palette.surface)
-        let uiStyle: UIUserInterfaceStyle = currentStyle.colorScheme == .dark ? .dark : .light
 
-        AppLogger.shared.debug("[ThemeManager] applyToWindows — theme=\(currentStyle.id) scheme=\(currentStyle.colorScheme)")
+        AppLogger.shared.debug("[ThemeManager] applyToWindows — theme=\(currentStyle.id)")
 
+        // 深浅外观跟随系统：不覆盖 userInterfaceStyle，动态色随系统切换
         windowScene.windows.forEach { window in
             window.backgroundColor = bgColor
-            window.overrideUserInterfaceStyle = uiStyle
+            window.overrideUserInterfaceStyle = .unspecified
             Self.updateNavigationBars(on: window.rootViewController, surfaceColor: surfaceColor)
         }
     }
@@ -132,13 +97,12 @@ final class ThemeManager: ObservableObject {
         }
         let bgColor = UIColor(currentStyle.palette.background)
         let surfaceColor = UIColor(currentStyle.palette.surface)
-        let uiStyle: UIUserInterfaceStyle = currentStyle.colorScheme == .dark ? .dark : .light
 
         AppDelegate.applyNavigationBarAppearance(surfaceColor: surfaceColor)
 
         windowScene.windows.forEach { window in
             window.backgroundColor = bgColor
-            window.overrideUserInterfaceStyle = uiStyle
+            window.overrideUserInterfaceStyle = .unspecified
         }
         AppLogger.shared.debug("[ThemeManager] refreshWindows done — theme=\(currentStyle.id)")
     }
@@ -180,7 +144,6 @@ final class ThemeManager: ObservableObject {
         func body(content: Content) -> some View {
             content
                 .environment(\.themePalette, themeManager.palette)
-                .preferredColorScheme(themeManager.colorScheme)
         }
     }
 

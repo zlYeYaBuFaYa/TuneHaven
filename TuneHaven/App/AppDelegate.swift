@@ -22,10 +22,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
         let bgColor = UIColor(style.palette.background)
         let surfaceColor = UIColor(style.palette.surface)
-        let uiStyle: UIUserInterfaceStyle = style.colorScheme == .dark ? .dark : .light
 
+        // 深浅外观跟随系统，不再按主题强制
         UIWindow.appearance().backgroundColor = bgColor
-        UIWindow.appearance().overrideUserInterfaceStyle = uiStyle
 
         Self.applyNavigationBarAppearance(surfaceColor: surfaceColor)
         AppLogger.shared.info("[AppDelegate] configureEarlyAppearance — theme=\(style.id) bg=\(bgColor)")

@@ -52,57 +52,22 @@ struct PlayQueueOrderTests {
 
 // MARK: - #2 ThemeManager setTheme 正常工作（需求2）
 
-@Suite("ThemeManager SetTheme Tests")
+@Suite("ThemeManager SetTheme Tests", .serialized)
 struct ThemeManagerSetThemeTests {
 
-    @Test("setTheme 切换到暮光玫瑰后 currentStyle 更新")
-    @MainActor
-    func testSetThemeUpdatesCurrentStyle() {
-        let manager = ThemeManager()
-        manager.applyTier(.premium)
-        manager.setTheme(.twilightRose)
-
-        #expect(manager.currentStyle.id == "twilight_rose")
-        #expect(manager.palette.background == ThemeStyle.twilightRose.palette.background)
-    }
-
-    @Test("setTheme 从星际穹顶切换到暮光玫瑰后 colorScheme 保持 dark")
-    @MainActor
-    func testSetThemeCosmicToTwilight() {
-        let manager = ThemeManager()
-        manager.applyTier(.premium)
-        manager.setTheme(.cosmicTech)
-        #expect(manager.colorScheme == .dark)
-
-        manager.setTheme(.twilightRose)
-        #expect(manager.colorScheme == .dark)
-        #expect(manager.currentStyle.id == "twilight_rose")
-    }
-
-    @Test("setTheme 从深色主题切换到浅色主题 colorScheme 变为 light")
-    @MainActor
-    func testSetThemeDarkToLight() {
-        let manager = ThemeManager()
-        manager.applyTier(.premium)
-        manager.setTheme(.cosmicTech)
-        #expect(manager.colorScheme == .dark)
-
-        manager.setTheme(.cloudWhite)
-        #expect(manager.colorScheme == .light)
-    }
-
-    @Test("连续多次 setTheme 最终状态正确")
+    @Test("连续多次 setTheme 最终状态与色板正确")
     @MainActor
     func testMultipleSetTheme() {
+        let previous = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle)
+        defer { UserDefaults.standard.set(previous ?? "cloud_haze", forKey: AppStorageKey.themeStyle) }
         let manager = ThemeManager()
-        manager.applyTier(.premium)
-        manager.setTheme(.azureSky)
-        manager.setTheme(.cosmicTech)
-        manager.setTheme(.twilightRose)
-        manager.setTheme(.cloudWhite)
+        manager.setTheme(.clearIsle)
+        manager.setTheme(.moonHalo)
+        manager.setTheme(.cloudHaze)
+        manager.setTheme(.moonHalo)
 
-        #expect(manager.currentStyle.id == "cloud_white")
-        #expect(manager.colorScheme == .light)
+        #expect(manager.currentStyle.id == "moon_halo")
+        #expect(manager.palette.background == ThemeStyle.moonHalo.palette.background)
     }
 }
 

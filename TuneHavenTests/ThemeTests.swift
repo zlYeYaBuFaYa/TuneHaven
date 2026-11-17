@@ -5,7 +5,7 @@ import SwiftUI
 
 // MARK: - ThemeRegistry Tests
 
-@Suite("ThemeRegistry Tests")
+@Suite("ThemeRegistry Tests", .serialized)
 @MainActor
 struct ThemeRegistryTests {
 
@@ -14,72 +14,38 @@ struct ThemeRegistryTests {
         ThemeRegistry.shared.bootstrap()
     }
 
-    @Test("bootstrap 后注册表包含 4 个主题")
-    func testAllThemesCount() {
-        #expect(ThemeRegistry.shared.allThemes.count == 4)
+    @Test("bootstrap 后注册表包含云霞、晴屿、月晕三套主题")
+    func testAllThemes() {
+        #expect(ThemeRegistry.shared.allThemes.map(\.id) == ["cloud_haze", "clear_isle", "moon_halo"])
+        #expect(ThemeRegistry.shared.allThemes.map(\.displayName) == ["云霞", "晴屿", "月晕"])
     }
 
-    @Test("所有主题 id 唯一")
-    func testAllThemeIdsUnique() {
-        let ids = ThemeRegistry.shared.allThemes.map { $0.id }
-        #expect(ids.count == Set(ids).count)
+    @Test("默认主题为云霞")
+    func testDefaultTheme() {
+        #expect(ThemeRegistry.shared.defaultTheme.id == "cloud_haze")
     }
 
-    @Test("所有主题 displayName 不为空")
-    func testAllThemeDisplayNamesNotEmpty() {
-        for theme in ThemeRegistry.shared.allThemes {
-            #expect(!theme.displayName.isEmpty, "主题 \(theme.id) 的 displayName 不应为空")
-        }
-    }
-
-    @Test("可通过 id 查找新主题")
-    func testThemeLookup() {
-        #expect(ThemeRegistry.shared.theme(for: "cloud_white") != nil)
-        #expect(ThemeRegistry.shared.theme(for: "azure_sky") != nil)
-        #expect(ThemeRegistry.shared.theme(for: "twilight_rose") != nil)
-        #expect(ThemeRegistry.shared.theme(for: "cosmic_tech") != nil)
+    @Test("旧主题 ID 换算为新主题")
+    func testLegacyIDs() {
+        let registry = ThemeRegistry.shared
+        #expect(registry.canonicalID(for: "cloud_white") == "cloud_haze")
+        #expect(registry.canonicalID(for: "azure_sky") == "clear_isle")
+        #expect(registry.canonicalID(for: "twilight_rose") == "cloud_haze")
+        #expect(registry.canonicalID(for: "cosmic_tech") == "moon_halo")
+        #expect(registry.canonicalID(for: "moon_halo") == "moon_halo")
+        #expect(registry.canonicalID(for: "nonexistent") == nil)
     }
 
     @Test("查找不存在的 id 返回 nil")
     func testThemeLookupNotFound() {
         #expect(ThemeRegistry.shared.theme(for: "nonexistent") == nil)
-    }
-
-    @Test("旧主题 id 查找返回 nil（已移除）")
-    func testOldThemeIdsReturnNil() {
-        #expect(ThemeRegistry.shared.theme(for: "mint_breeze") == nil)
-        #expect(ThemeRegistry.shared.theme(for: "deep_ocean") == nil)
-        #expect(ThemeRegistry.shared.theme(for: "cyber_neon") == nil)
-        #expect(ThemeRegistry.shared.theme(for: "glacier_blue") == nil)
-        #expect(ThemeRegistry.shared.theme(for: "aurora_dream") == nil)
-        #expect(ThemeRegistry.shared.theme(for: "midnight_gold") == nil)
-    }
-
-    @Test("默认主题为素云白简")
-    func testDefaultTheme() {
-        #expect(ThemeRegistry.shared.defaultTheme.id == "cloud_white")
-    }
-
-    @Test("Light 主题的 colorScheme 为 .light")
-    func testLightThemesHaveLightScheme() {
-        for id in ["cloud_white", "azure_sky"] {
-            let theme = ThemeRegistry.shared.theme(for: id)
-            #expect(theme?.colorScheme == .light, "\(id) should be .light")
-        }
-    }
-
-    @Test("Dark 主题的 colorScheme 为 .dark")
-    func testDarkThemesHaveDarkScheme() {
-        for id in ["twilight_rose", "cosmic_tech"] {
-            let theme = ThemeRegistry.shared.theme(for: id)
-            #expect(theme?.colorScheme == .dark, "\(id) should be .dark")
-        }
+        #expect(ThemeRegistry.shared.theme(for: "cloud_white") == nil)
     }
 
     @Test("重复 register 不会导致重复主题")
     func testDuplicateRegisterIgnored() {
         let before = ThemeRegistry.shared.allThemes.count
-        ThemeRegistry.shared.register(.cloudWhite)
+        ThemeRegistry.shared.register(.cloudHaze)
         #expect(ThemeRegistry.shared.allThemes.count == before)
     }
 
@@ -91,111 +57,115 @@ struct ThemeRegistryTests {
     }
 }
 
+// MARK: - ThemeManager 迁移
+
+@Suite("ThemeManager 旧主题迁移", .serialized)
+@MainActor
+struct ThemeManagerMigrationTests {
+
+    private func withStoredTheme(_ raw: String?, _ body: () -> Void) {
+        let previous = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle)
+        defer {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: AppStorageKey.themeStyle)
+            } else {
+                UserDefaults.standard.removeObject(forKey: AppStorageKey.themeStyle)
+            }
+        }
+        if let raw {
+            UserDefaults.standard.set(raw, forKey: AppStorageKey.themeStyle)
+        } else {
+            UserDefaults.standard.removeObject(forKey: AppStorageKey.themeStyle)
+        }
+        body()
+    }
+
+    @Test("启动时把旧主题 ID 换成新 ID 并写回偏好", arguments: [
+        ("cloud_white", "cloud_haze"),
+        ("azure_sky", "clear_isle"),
+        ("twilight_rose", "cloud_haze"),
+        ("cosmic_tech", "moon_halo"),
+        ("midnight_gold", "cloud_haze"),
+        ("garbage", "cloud_haze"),
+    ])
+    func testMigratesOnLaunch(raw: String, expected: String) {
+        withStoredTheme(raw) {
+            let manager = ThemeManager()
+            #expect(manager.currentStyle.id == expected)
+            #expect(UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) == expected)
+        }
+    }
+
+    @Test("恢复旧备份写回旧主题 ID 后，reloadStoredStyle 换算为新主题")
+    func testReloadMapsLegacyBackupValue() {
+        withStoredTheme("clear_isle") {
+            let manager = ThemeManager()
+            UserDefaults.standard.set("cosmic_tech", forKey: AppStorageKey.themeStyle)
+            manager.reloadStoredStyle()
+            #expect(manager.currentStyle.id == "moon_halo")
+            #expect(UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) == "moon_halo")
+        }
+    }
+
+    @Test("三套主题都免费，任意切换立即生效并保存")
+    func testAllThemesSelectable() {
+        withStoredTheme(nil) {
+            let manager = ThemeManager()
+            for style in manager.allAvailableThemes {
+                manager.setTheme(style)
+                #expect(manager.currentStyle.id == style.id)
+                #expect(UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) == style.id)
+            }
+        }
+    }
+}
+
 // MARK: - ThemeStyle Tests
 
 @Suite("ThemeStyle Tests")
 struct ThemeStyleTests {
 
-    @Test("cloudWhite 的 id 正确")
-    func testCloudWhiteId() {
-        #expect(ThemeStyle.cloudWhite.id == "cloud_white")
-    }
-
-    @Test("azureSky 的 id 正确")
-    func testAzureSkyId() {
-        #expect(ThemeStyle.azureSky.id == "azure_sky")
-    }
-
-    @Test("twilightRose 的 id 正确")
-    func testTwilightRoseId() {
-        #expect(ThemeStyle.twilightRose.id == "twilight_rose")
-    }
-
-    @Test("cosmicTech 的 id 正确")
-    func testCosmicTechId() {
-        #expect(ThemeStyle.cosmicTech.id == "cosmic_tech")
-    }
-
-    @Test("所有主题的 Identifiable id 不为空")
-    func testIdentifiable() {
-        let themes: [ThemeStyle] = [
-            .cloudWhite, .azureSky, .twilightRose, .cosmicTech
-        ]
-        for style in themes {
-            #expect(!style.id.isEmpty)
-        }
+    private func hex(_ color: Color, _ scheme: ColorScheme) -> UInt32 {
+        var env = EnvironmentValues()
+        env.colorScheme = scheme
+        let r = color.resolve(in: env)
+        func c(_ v: Float) -> UInt32 { UInt32((Double(v) * 255).rounded()) }
+        return (c(r.red) << 16) | (c(r.green) << 8) | c(r.blue)
     }
 
     @Test("ThemeStyle Equatable 基于 id 判等")
     func testEquatable() {
-        #expect(ThemeStyle.cloudWhite == ThemeStyle.cloudWhite)
-        #expect(ThemeStyle.cloudWhite != ThemeStyle.cosmicTech)
+        #expect(ThemeStyle.cloudHaze == ThemeStyle.cloudHaze)
+        #expect(ThemeStyle.cloudHaze != ThemeStyle.moonHalo)
     }
 
-    @Test("cosmicTech 有专属 cosmicParticles 背景")
-    func testCosmicTechHasCustomBackground() {
-        #expect(ThemeStyle.cosmicTech.hasCustomBackground == true)
-        #expect(ThemeStyle.cosmicTech.visualConfig.backgroundType == .codeGenerated(.cosmicParticles))
-    }
-
-    @Test("cloudWhite 使用 solidColor 背景")
-    func testCloudWhiteSolidBackground() {
-        #expect(ThemeStyle.cloudWhite.hasCustomBackground == false)
-        #expect(ThemeStyle.cloudWhite.visualConfig.backgroundType == .solidColor)
-    }
-}
-
-// MARK: - ThemeColorPalette Tests
-
-@Suite("ThemeColorPalette Tests")
-struct ThemeColorPaletteTests {
-
-    @Test("cloudWhite palette 所有颜色字段可被访问（含新增 4 个）")
-    func testCloudWhitePaletteAccessible() {
-        let palette = ThemeStyle.cloudWhite.palette
-        _ = palette.primary
-        _ = palette.primaryDark
-        _ = palette.primaryLight
-        _ = palette.background
-        _ = palette.surface
-        _ = palette.surfaceSecondary
-        _ = palette.textPrimary
-        _ = palette.textSecondary
-        _ = palette.textTertiary
-        _ = palette.separator
-        _ = palette.secondary
-        _ = palette.accent
-        _ = palette.highlight
-        _ = palette.gradientStart
-        _ = palette.gradientEnd
-        _ = palette.playerBackground
-        _ = palette.playerText
-        _ = palette.playerSubtext
-        _ = palette.progressBackground
-        _ = palette.iconSecondary
-        _ = palette.tagBackground
-        _ = palette.tagText
-        _ = palette.elevatedSurface
-        _ = palette.cardShadow
-        _ = palette.miniPlayerBg
-        _ = palette.hoverHighlight
-    }
-
-    @Test("每个主题都有完整的 palette（26 属性）")
-    func testEachStyleHasPalette() {
-        let themes: [ThemeStyle] = [
-            .cloudWhite, .azureSky, .twilightRose, .cosmicTech
-        ]
-        for style in themes {
-            _ = style.palette.primary
-            _ = style.palette.background
-            _ = style.palette.textPrimary
-            _ = style.palette.gradientStart
-            _ = style.palette.elevatedSurface
-            _ = style.palette.cardShadow
-            _ = style.palette.miniPlayerBg
-            _ = style.palette.hoverHighlight
+    @Test("三套主题都使用柔光背景")
+    func testSoftGlowBackground() {
+        for style in [ThemeStyle.cloudHaze, .clearIsle, .moonHalo] {
+            #expect(style.visualConfig.backgroundType == .softGlow)
+            #expect(style.hasCustomBackground)
         }
+    }
+
+    @Test("色板随系统深浅切换到对应令牌", arguments: [ThemeStyle.cloudHaze, .clearIsle, .moonHalo])
+    func testPaletteFollowsColorScheme(style: ThemeStyle) {
+        let p = style.palette
+        #expect(hex(p.background, .light) == style.day.background)
+        #expect(hex(p.background, .dark) == style.night.background)
+        #expect(hex(p.textPrimary, .light) == style.day.textPrimary)
+        #expect(hex(p.textPrimary, .dark) == style.night.textPrimary)
+        #expect(hex(p.actionFill, .light) == style.day.actionFill)
+        #expect(hex(p.actionFill, .dark) == style.night.actionFill)
+        #expect(hex(p.primary, .dark) == style.night.accent)
+        #expect(hex(p.glowA, .light) == style.day.glowA)
+        #expect(hex(p.surface, .dark) == style.night.surfaceOpaque)
+    }
+
+    @Test("令牌与设计文档一致（抽查）")
+    func testTokensMatchDesignDoc() {
+        #expect(ThemeStyle.cloudHaze.day.accent == 0x5E4E88)
+        #expect(ThemeStyle.clearIsle.night.background == 0x121C18)
+        #expect(ThemeStyle.moonHalo.night.onAction == 0x242E48)
     }
 }
 

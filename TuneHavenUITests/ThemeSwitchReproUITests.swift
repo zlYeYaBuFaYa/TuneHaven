@@ -1,6 +1,6 @@
 import XCTest
 
-/// 在设置页反复切换 4 套主题，检查界面不消失（白屏回归）。
+/// 在设置页反复切换 3 套主题，检查界面不消失（白屏回归）。
 final class ThemeSwitchReproUITests: XCTestCase {
 
     @MainActor
@@ -17,7 +17,8 @@ final class ThemeSwitchReproUITests: XCTestCase {
         XCTAssertTrue(appearance.waitForExistence(timeout: 10))
         appearance.tap()
 
-        let themes = ["星际穹顶", "素云白简", "暮光玫瑰", "晴空蔚蓝"]
+        // 主题卡片的可访问名称为「主题：{名称}」
+        let themes = ["月晕", "云霞", "晴屿"].map { "主题：\($0)" }
         XCTAssertTrue(app.buttons[themes[0]].waitForExistence(timeout: 10))
 
         for round in 0..<3 {

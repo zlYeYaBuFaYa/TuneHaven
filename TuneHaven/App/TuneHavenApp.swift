@@ -170,7 +170,6 @@ struct TuneHavenApp: App {
             // 启动只同步，不硬挡：先用缓存的权益和本地首次启动日期算出订阅状态就显示界面，
             // 购买记录、AppTransaction、商品和交易监听放到后台，结果经 $tier 生效。
             container.subscriptionService.loadLocalStatus()
-            container.setupSubscriptionBindings()
             await container.playbackService.restoreLastPlayedSong()
             isReady = true
             Task { await container.subscriptionService.initialize() }

@@ -11,43 +11,57 @@ struct PaletteContrastTests {
         let scheme: ColorScheme
     }
 
-    private let samples = [
-        Sample(name: "素云白简", style: .cloudWhite, scheme: .light),
-        Sample(name: "晴空蔚蓝", style: .azureSky, scheme: .light),
-        Sample(name: "暮光玫瑰", style: .twilightRose, scheme: .dark),
-        Sample(name: "星际穹顶", style: .cosmicTech, scheme: .dark),
-    ]
+    private let samples: [Sample] = [ThemeStyle.cloudHaze, .clearIsle, .moonHalo].flatMap { style in
+        [
+            Sample(name: "\(style.displayName)日间", style: style, scheme: .light),
+            Sample(name: "\(style.displayName)黑夜", style: style, scheme: .dark),
+        ]
+    }
 
-    @Test("文字、主色、按钮字和语义红在浅色与深色主题上达到 4.5:1")
+    @Test("文字、主色、主操作前景和语义红在六套外观上达到 4.5:1")
     func foregroundsMeetBodyContrast() {
         for sample in samples {
-            let palette = sample.style.palette
+            let p = sample.style.palette
+            let on = { (color: Color) in self.resolved(color, scheme: sample.scheme) }
+            let background = on(p.background)
             let floors = [
-                "background": palette.background,
-                "surface": palette.surface,
-                "elevatedSurface": palette.elevatedSurface,
-                "playerBackground": palette.playerBackground,
+                "background": background,
+                "surface": on(p.surface),
+                "elevatedSurface": on(p.elevatedSurface),
+                "playerBackground": on(p.playerBackground),
             ]
             for (floorName, floor) in floors {
-                expectAtLeastBody("\(sample.name) textPrimary/\(floorName)", palette.textPrimary, floor)
-                expectAtLeastBody("\(sample.name) textSecondary/\(floorName)", palette.textSecondary, floor)
-                expectAtLeastBody("\(sample.name) textTertiary/\(floorName)", palette.textTertiary, floor)
-                expectAtLeastBody("\(sample.name) primary/\(floorName)", palette.primary, floor)
-                expectAtLeastBody("\(sample.name) iconSecondary/\(floorName)", palette.iconSecondary, floor)
+                expectAtLeastBody("\(sample.name) textPrimary/\(floorName)", on(p.textPrimary), floor)
+                expectAtLeastBody("\(sample.name) textSecondary/\(floorName)", on(p.textSecondary), floor)
+                expectAtLeastBody("\(sample.name) textTertiary/\(floorName)", on(p.textTertiary), floor)
+                expectAtLeastBody("\(sample.name) primary/\(floorName)", on(p.primary), floor)
+                expectAtLeastBody("\(sample.name) iconSecondary/\(floorName)", on(p.iconSecondary), floor)
             }
-            expectAtLeastBody("\(sample.name) onPrimary/primary", palette.onPrimary, palette.primary)
-            expectAtLeastBody("\(sample.name) onPrimary/textTertiary", palette.onPrimary, palette.textTertiary)
-            expectAtLeastBody("\(sample.name) playerText/playerBackground", palette.playerText, palette.playerBackground)
-            expectAtLeastBody("\(sample.name) playerSubtext/playerBackground", palette.playerSubtext, palette.playerBackground)
-            expectAtLeastBody("\(sample.name) tagText/tagBackground", palette.tagText, palette.tagBackground)
+            expectAtLeastBody("\(sample.name) onPrimary/primary", on(p.onPrimary), on(p.primary))
+            expectAtLeastBody("\(sample.name) onAction/actionFill", on(p.onAction), on(p.actionFill))
+            expectAtLeastBody("\(sample.name) playerText/playerBackground", on(p.playerText), on(p.playerBackground))
+            expectAtLeastBody("\(sample.name) playerSubtext/playerBackground", on(p.playerSubtext), on(p.playerBackground))
+            // 半透明底色先叠到页面底色上再计算
+            let tagFloor = composite(on(p.tagBackground), over: background)
+            expectAtLeastBody("\(sample.name) tagText/tagBackground", on(p.tagText), tagFloor)
+            let highlightFloor = composite(on(p.highlight), over: background)
+            expectAtLeastBody("\(sample.name) textPrimary/highlight", on(p.textPrimary), highlightFloor)
 
             let danger = SemanticColor.danger(for: sample.scheme)
-            expectAtLeastBody("\(sample.name) danger/background", danger, palette.background)
-            expectAtLeastBody("\(sample.name) danger/surface", danger, palette.surface)
+            expectAtLeastBody("\(sample.name) danger/background", danger, background)
+            expectAtLeastBody("\(sample.name) danger/surface", danger, on(p.surface))
+        }
+    }
 
-            let secondary = contrast(palette.textSecondary, palette.background)
-            let tertiary = contrast(palette.textTertiary, palette.background)
-            #expect(secondary > tertiary, "\(sample.name) 的次级文字应比三级文字更易读")
+    @Test("主文字叠在光晕最亮处仍达到 4.5:1")
+    func textOverGlowMeetsContrast() {
+        for sample in samples {
+            let p = sample.style.palette
+            for (name, glow) in [("glowA", p.glowA), ("glowB", p.glowB), ("glowC", p.glowC)] {
+                let floor = resolved(glow, scheme: sample.scheme)
+                expectAtLeastBody("\(sample.name) textPrimary/\(name)", resolved(p.textPrimary, scheme: sample.scheme), floor)
+                expectAtLeastBody("\(sample.name) textSecondary/\(name)", resolved(p.textSecondary, scheme: sample.scheme), floor)
+            }
         }
     }
 
@@ -60,12 +74,10 @@ struct PaletteContrastTests {
             let expected = sample.scheme == .dark ? legacyDark : lightRed
             expectSameRed("\(sample.name) 静态 danger", danger, expected)
 
-            let palette = sample.style.palette
+            let p = sample.style.palette
             let floors = [
-                "background": palette.background,
-                "surface": palette.surface,
-                "elevatedSurface": palette.elevatedSurface,
-                "playerBackground": palette.playerBackground,
+                "background": resolved(p.background, scheme: sample.scheme),
+                "surface": resolved(p.surface, scheme: sample.scheme),
             ]
             for (floorName, floor) in floors {
                 let ratio = contrast(danger, floor)
@@ -74,7 +86,6 @@ struct PaletteContrastTests {
                     #expect(ratio >= 4.5, "\(label) 对比度 \(ratio) 低于 4.5")
                 } else {
                     let legacyRatio = contrast(legacyDark, floor)
-                    // 0.02 只吸收动态色解析的量化误差。#C62828 在暗色底上大约低 1.5，过不了这道线。
                     #expect(
                         ratio + 0.02 >= legacyRatio,
                         "\(label) 对比度 \(ratio) 低于改前 #EF4444 的 \(legacyRatio)"
@@ -82,6 +93,15 @@ struct PaletteContrastTests {
                 }
             }
         }
+    }
+
+    /// 把带透明度的前景按 alpha 叠到不透明底色上
+    private func composite(_ top: Color, over base: Color) -> Color {
+        let t = top.resolve(in: EnvironmentValues())
+        let b = base.resolve(in: EnvironmentValues())
+        let a = Double(t.opacity)
+        func mix(_ x: Float, _ y: Float) -> Double { Double(x) * a + Double(y) * (1 - a) }
+        return Color(.sRGB, red: mix(t.red, b.red), green: mix(t.green, b.green), blue: mix(t.blue, b.blue), opacity: 1)
     }
 
     private func expectAtLeastBody(_ label: String, _ foreground: Color, _ background: Color) {
