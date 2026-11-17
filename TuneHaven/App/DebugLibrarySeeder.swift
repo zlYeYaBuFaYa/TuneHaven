@@ -43,7 +43,7 @@ enum DebugLibrarySeeder {
 }
 
 /// 仅调试构建：`TUNEHAVEN_DEBUG_ROUTE` 指定启动后落到的页面，供模拟器截图检查。
-/// 取值：library、library.artist、library.album、playlist、settings、player
+/// 取值：library、library.artist、library.album、playlist、settings、player、player.lyrics
 enum DebugLaunchRoute {
     static var raw: String? { ProcessInfo.processInfo.environment["TUNEHAVEN_DEBUG_ROUTE"] }
 
@@ -60,7 +60,7 @@ enum DebugLaunchRoute {
         switch raw {
         case "playlist": router.selectedTab = .playlist
         case "settings": router.selectedTab = .settings
-        case "player": router.openPlayer()
+        case "player", "player.lyrics": router.openPlayer()
         default: break
         }
     }

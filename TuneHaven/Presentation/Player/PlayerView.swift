@@ -39,7 +39,11 @@ struct PlayerView: View {
     @State private var dragDirection: DragDirection? = nil
     @State private var showDeleteLyricsConfirm = false
     @State private var showLyricsImporter = false
+    #if DEBUG
+    @State private var showLyricsPage = DebugLaunchRoute.raw == "player.lyrics"
+    #else
     @State private var showLyricsPage = false
+    #endif
     @State private var pendingSheetTask: Task<Void, Never>?
     @State private var losslessPaywallTask: Task<Void, Never>?
 
@@ -72,6 +76,7 @@ struct PlayerView: View {
                                 switchSheet(to: .lyricsSearch(song))
                             }
                         },
+                        onImportLyrics: { showLyricsImporter = true },
                         onOpenQueue: {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                                 showLyricsPage = false
