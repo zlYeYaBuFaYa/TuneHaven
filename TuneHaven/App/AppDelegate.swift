@@ -36,10 +36,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     private func configureAudioSession() {
-        var success = AudioSessionManager.shared.configure()
+        // 只设类别不激活：真正开始播放时由 AudioEngine.play() 激活
+        var success = AudioSessionManager.shared.configureCategory()
         if !success {
             AppLogger.shared.error("[AppDelegate] Audio session FAILED, retrying...")
-            success = AudioSessionManager.shared.configure()
+            success = AudioSessionManager.shared.configureCategory()
         }
         AppLogger.shared.info("[AppDelegate] Audio session \(success ? "OK" : "FAILED after retry")")
     }

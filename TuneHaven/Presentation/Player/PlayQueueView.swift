@@ -69,7 +69,7 @@ struct PlayQueueView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparatorTint(palette.progressBackground)
                     }
-                    .onDelete { offsets in playback.queue.removeFromQueue(at: offsets) }
+                    .onDelete { offsets in playback.removeFromQueue(at: offsets) }
                     .onMove { src, dst in playback.queue.moveInQueue(from: src, to: dst) }
                 }
                 .listStyle(.plain)
@@ -85,7 +85,7 @@ struct PlayQueueView: View {
                     }
                     Spacer()
                     Button {
-                        playback.queue.clearQueue()
+                        playback.clearQueue()
                     } label: {
                         Label("清空队列", systemImage: "trash")
                             .font(.subheadline)

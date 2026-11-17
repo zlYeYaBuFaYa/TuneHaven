@@ -11,6 +11,8 @@ final class MusicLibraryService: ObservableObject {
     private let songRepo: SongRepository
     let imageCache: ImageCacheManaging
     private var pendingUndoTokens: [UndoToken] = []
+    /// 软删除成功后发出被删歌曲 id，播放服务据此同步队列与当前歌曲
+    let songsDeleted = PassthroughSubject<Set<UUID>, Never>()
     private var undoTimers: [UUID: Timer] = [:]
 
     init(songRepo: SongRepository, imageCache: ImageCacheManaging) {
@@ -64,6 +66,7 @@ final class MusicLibraryService: ObservableObject {
         pendingUndoTokens.append(token)
         let idSet = Set(songIds)
         songs.removeAll { idSet.contains($0.id) }
+        songsDeleted.send(idSet)
         scheduleCommit(token: token)
         return token
     }

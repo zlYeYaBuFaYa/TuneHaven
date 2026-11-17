@@ -117,7 +117,8 @@ final class MockNowPlayingManaging: NowPlayingManaging {
         lastCoverPath = coverPath
     }
     func updateElapsedTime(currentTime: TimeInterval, duration: TimeInterval, speed: Float) {}
-    func clear() {}
+    var clearCalled = false
+    func clear() { clearCalled = true }
     func setupRemoteCommands(
         onPlay: @escaping @Sendable () -> Void,
         onPause: @escaping @Sendable () -> Void,

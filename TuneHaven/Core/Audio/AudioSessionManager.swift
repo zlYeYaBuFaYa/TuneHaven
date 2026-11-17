@@ -9,6 +9,19 @@ final class AudioSessionManager: AudioSessionManaging {
 
     private init() {}
 
+    /// 启动时调用：只设置类别，不激活会话，打开 App 不会打断其他 App 的音频。
+    /// 不改 `isConfigured`，第一次 `ensureActive()` 仍走完整的 `configure()`。
+    @discardableResult
+    func configureCategory() -> Bool {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+            return true
+        } catch {
+            log.error("configureCategory failed: \(error)")
+            return false
+        }
+    }
+
     @discardableResult
     func configure() -> Bool {
         let session = AVAudioSession.sharedInstance()

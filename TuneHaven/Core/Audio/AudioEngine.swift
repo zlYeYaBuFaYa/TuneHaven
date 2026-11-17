@@ -24,6 +24,21 @@ final class AudioEngine: ObservableObject, AudioEngineProtocol {
         return false
     }
 
+    /// 每次 load 递增。load 中途有新的 load 发起时，旧的在 await 之后放弃，避免快速切歌时把旧 item 换回来
+    private var loadGeneration = 0
+    /// 中断开始时是否在播放。中断结束只在原来播放时才恢复
+    private var wasPlayingBeforeInterruption = false
+
+    #if DEBUG
+    /// 测试用：在读取资源前插入延迟，确定性地制造「先发起的加载后完成」
+    var beforeAssetLoadForTesting: ((URL) async -> Void)?
+    #endif
+
+    /// 当前 item 的文件地址
+    var currentItemURL: URL? {
+        (player.currentItem?.asset as? AVURLAsset)?.url
+    }
+
     private var interruptionObserver: Any?
     private var routeChangeObserver: Any?
     private var playbackEndedObserver: Any?
@@ -46,6 +61,8 @@ final class AudioEngine: ObservableObject, AudioEngineProtocol {
     }
 
     func load(url: URL) async {
+        loadGeneration += 1
+        let generation = loadGeneration
         stop()
         state = .loading
         log.info("加载音频: \(url.lastPathComponent)")
@@ -63,22 +80,22 @@ final class AudioEngine: ObservableObject, AudioEngineProtocol {
             return
         }
 
-        guard AudioSessionManager.shared.ensureActive() else {
-            state = .error(AppError.playbackSessionFailed)
-            log.error("音频会话激活失败，无法加载: \(url.lastPathComponent)")
-            return
-        }
-
+        // 只加载不激活音频会话，激活留给 play()，否则只是预备一首歌也会打断其他 App 的音频
         let asset = AVURLAsset(url: url)
+        #if DEBUG
+        await beforeAssetLoadForTesting?(url)
+        #endif
 
         do {
             let isPlayable = try await asset.load(.isPlayable)
+            guard generation == loadGeneration else { return }
             guard isPlayable else {
                 state = .error(AppError.playbackLoadFailed(url.lastPathComponent))
                 log.error("音频资源不可播放: \(url.lastPathComponent)")
                 return
             }
         } catch {
+            guard generation == loadGeneration else { return }
             state = .error(AppError.playbackLoadFailed(error.localizedDescription))
             log.error(error, context: "音频资源加载失败: \(url.lastPathComponent)")
             return
@@ -118,6 +135,7 @@ final class AudioEngine: ObservableObject, AudioEngineProtocol {
 
         do {
             let dur = try await asset.load(.duration)
+            guard generation == loadGeneration else { return }
             duration = dur.seconds.isNaN ? 0 : dur.seconds
         } catch {
             log.info("duration 加载失败，将从 playerItem 补充获取: \(error.localizedDescription)")
@@ -248,12 +266,16 @@ final class AudioEngine: ObservableObject, AudioEngineProtocol {
               let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
         switch type {
         case .began:
+            wasPlayingBeforeInterruption = isPlaying
             state = .paused
             log.info("音频中断开始")
         case .ended:
+            let wasPlaying = wasPlayingBeforeInterruption
+            wasPlayingBeforeInterruption = false
             if let optValue = info[AVAudioSessionInterruptionOptionKey] as? UInt {
                 let options = AVAudioSession.InterruptionOptions(rawValue: optValue)
-                if options.contains(.shouldResume) {
+                // 中断前用户已暂停的，不因 shouldResume 自行开始播放
+                if options.contains(.shouldResume) && wasPlaying {
                     guard AudioSessionManager.shared.ensureActive() else {
                         log.error("音频中断恢复失败：无法激活音频会话")
                         return

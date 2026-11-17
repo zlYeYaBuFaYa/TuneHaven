@@ -432,8 +432,10 @@ struct AppURLTests {
 // MARK: - Harness
 
 @MainActor
-private struct PlaybackHarness {
+struct PlaybackHarness {
     let playback: PlaybackService
+    let library: MusicLibraryService
+    let audioSession: MockAudioSessionManaging
     let engine: MockAudioEngine
     let nowPlaying: MockNowPlayingManaging
     let preferences: MockUserPreferences
@@ -443,7 +445,7 @@ private struct PlaybackHarness {
 }
 
 @MainActor
-private func makeHarness(premium: Bool) async -> PlaybackHarness {
+func makeHarness(premium: Bool) async -> PlaybackHarness {
     let provider = MockSubscriptionProvider()
     if premium {
         provider.entitlementState = EntitlementState(
@@ -460,13 +462,15 @@ private func makeHarness(premium: Bool) async -> PlaybackHarness {
     let nowPlaying = MockNowPlayingManaging()
     let preferences = MockUserPreferences()
     let songs = MockSongRepository()
+    let library = MusicLibraryService(songRepo: songs, imageCache: MockImageCacheManaging())
+    let audioSession = MockAudioSessionManaging()
     let playback = PlaybackService(
         playlistRepo: MockPlaylistRepository(),
         songRepo: songs,
         queueService: PlayQueueService(),
-        libraryService: MusicLibraryService(songRepo: songs, imageCache: MockImageCacheManaging()),
+        libraryService: library,
         engine: engine,
-        audioSession: MockAudioSessionManaging(),
+        audioSession: audioSession,
         nowPlaying: nowPlaying,
         fileStorage: MockFileStorageProviding(),
         preferences: preferences,
@@ -475,6 +479,8 @@ private func makeHarness(premium: Bool) async -> PlaybackHarness {
     )
     return PlaybackHarness(
         playback: playback,
+        library: library,
+        audioSession: audioSession,
         engine: engine,
         nowPlaying: nowPlaying,
         preferences: preferences,
@@ -516,7 +522,7 @@ private func waitUntil(_ predicate: () -> Bool) async {
     }
 }
 
-private func makeFormatSong(format: String, title: String) -> Song {
+func makeFormatSong(format: String, title: String) -> Song {
     Song(
         id: UUID(),
         title: title,

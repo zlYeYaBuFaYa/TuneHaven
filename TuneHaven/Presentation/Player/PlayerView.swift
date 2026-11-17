@@ -177,9 +177,9 @@ struct PlayerView: View {
             if newValue == nil {
                 router.closePlayer()
             }
-            Task { await loadLyrics() }
         }
-        .task { await loadLyrics() }
+        // 按歌曲 id 绑定：切歌时 SwiftUI 取消上一首的加载
+        .task(id: playback.currentSong?.id) { await loadLyrics() }
     }
 
     private var playerDismissGesture: some Gesture {
@@ -483,7 +483,10 @@ struct PlayerView: View {
 
     private func loadLyrics() async {
         guard let song = playback.currentSong else { lyricsData = nil; return }
-        lyricsData = await lyricsService.loadLyrics(for: song)
+        let data = await lyricsService.loadLyrics(for: song)
+        // 在线匹配可能很慢：期间已切歌就丢弃，避免旧歌词覆盖新歌曲
+        guard !Task.isCancelled, playback.currentSong?.id == song.id else { return }
+        lyricsData = data
     }
 
     private func switchSheet(to newSheet: ActiveSheet, delay: TimeInterval = 0.3) {

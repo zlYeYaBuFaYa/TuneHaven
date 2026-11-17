@@ -214,6 +214,68 @@ final class PlaybackService: ObservableObject {
         }
     }
 
+    // MARK: - Queue Editing
+
+    /// 从队列移除条目。移除了当前歌曲时按队列顺序接到其后一首：原来在播放就继续播放，
+    /// 原来暂停就切过去保持暂停；其后没有歌曲则停止并清空当前歌曲。
+    func removeFromQueue(at offsets: IndexSet) {
+        guard !offsets.isEmpty else { return }
+        let items = queueService.queue
+        let currentIdx = queueService.currentIndex
+        let removingCurrent = currentIdx.map { offsets.contains($0) } ?? false
+        let wasPlaying = isPlaying
+        let successorId = currentIdx.flatMap { idx -> UUID? in
+            guard removingCurrent else { return nil }
+            return items.indices
+                .first { $0 > idx && !offsets.contains($0) }
+                .map { items[$0].id }
+        }
+
+        queueService.removeFromQueue(at: offsets)
+        guard removingCurrent else { return }
+
+        guard let successorId,
+              let next = queueService.queue.first(where: { $0.id == successorId }) else {
+            stopAndClearCurrent()
+            return
+        }
+        queueService.advanceToCurrent(next)
+        guard ensureCanPlay(next.song) else {
+            parkOnBlockedSong(next.song)
+            return
+        }
+        startLoadAndPlay(song: next.song, autoPlay: wasPlaying)
+    }
+
+    /// 音乐库删除歌曲后同步队列；当前歌曲不在队列里但被删除时停止并清空
+    func removeSongsFromQueue(ids: Set<UUID>) {
+        let offsets = IndexSet(queueService.queue.indices.filter { ids.contains(queueService.queue[$0].song.id) })
+        // 当前歌曲若是队列里的当前项，由 removeFromQueue 接到下一首（currentSong 在加载后才更新，不能再按它判断）
+        let currentHandledByQueue = queueService.currentIndex.map { offsets.contains($0) } ?? false
+        removeFromQueue(at: offsets)
+        if !currentHandledByQueue, let current = currentSong, ids.contains(current.id) {
+            stopAndClearCurrent()
+        }
+    }
+
+    /// 清空队列时保留当前歌曲，播放不中断
+    func clearQueue() {
+        if let current = currentSong {
+            queueService.replaceQueue(with: [current], startAt: 0)
+        } else {
+            queueService.clearQueue()
+        }
+    }
+
+    private func stopAndClearCurrent() {
+        loadTask?.cancel()
+        engine.stop()
+        isPlaying = false
+        currentSong = nil
+        currentCoverPath = nil
+        nowPlaying.clear()
+    }
+
     func toggleCurrentSongFavorite() async {
         guard let song = currentSong else { return }
         do {
@@ -355,8 +417,7 @@ final class PlaybackService: ObservableObject {
         currentSong = song
         preferences.lastPlayedSongId = song.id.uuidString
 
-        audioSession.ensureActive()
-
+        // 不在这里激活音频会话：只预备不播放时不应打断其他 App，开播时 engine.play() 会激活
         await engine.load(url: fileURL)
 
         guard !Task.isCancelled, currentSong?.id == song.id else { return }
@@ -454,6 +515,14 @@ final class PlaybackService: ObservableObject {
                 Task { @MainActor [weak self] in
                     guard let self, self.isPlaying, self.currentSong != nil else { return }
                     self.nowPlaying.updateElapsedTime(currentTime: currentTime, duration: duration, speed: self.playbackSpeed)
+                }
+            }
+            .store(in: &cancellables)
+
+        libraryService.songsDeleted
+            .sink { [weak self] ids in
+                Task { @MainActor [weak self] in
+                    self?.removeSongsFromQueue(ids: ids)
                 }
             }
             .store(in: &cancellables)
