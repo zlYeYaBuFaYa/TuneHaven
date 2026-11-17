@@ -52,6 +52,21 @@ final class AudioMetadataParser: AudioMetadataParsing {
         channels = trackResult.channels
         if trackResult.isIncomplete { isIncomplete = true }
 
+        // AVFoundation does not consistently expose native FLAC Vorbis tags.
+        if ext == "flac", let flac = FLACMetadataReader.read(url: url) {
+            title = flac.tags["TITLE"] ?? title
+            artist = flac.tags["ARTIST"] ?? flac.tags["ALBUMARTIST"] ?? artist
+            album = flac.tags["ALBUM"] ?? album
+            coverImageData = flac.coverImageData ?? coverImageData
+            trackNumber = flac.tags["TRACKNUMBER"].flatMap { Int($0.split(separator: "/").first ?? "") }.flatMap { (0...Int(Int16.max)).contains($0) ? $0 : nil } ?? trackNumber
+            year = (flac.tags["DATE"] ?? flac.tags["YEAR"]).flatMap { Int($0.prefix(4)) }.flatMap { (1...Int(Int16.max)).contains($0) ? $0 : nil } ?? year
+            genre = flac.tags["GENRE"] ?? genre
+            encoder = flac.tags["ENCODER"] ?? encoder
+            sampleRate = flac.sampleRate ?? sampleRate
+            channels = flac.channels ?? channels
+            if duration <= 0 || !duration.isFinite { duration = flac.duration ?? 0 }
+        }
+
         if title == fileName && artist == SongDefaults.unknownArtist { isIncomplete = true }
 
         return ParsedMetadata(
