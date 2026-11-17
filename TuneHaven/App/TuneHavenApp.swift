@@ -180,7 +180,7 @@ struct TuneHavenApp: App {
             #endif
             isReady = true
             #if DEBUG
-            DebugLaunchRoute.apply(router: container.router)
+            DebugLaunchRoute.apply(router: container.router, playlists: container.playlistService.playlists)
             #endif
             Task { await container.subscriptionService.initialize() }
             AppLogger.shared.info("[App] initialize done — isReady=true")

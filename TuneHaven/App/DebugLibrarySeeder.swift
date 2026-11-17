@@ -44,7 +44,8 @@ enum DebugLibrarySeeder {
 
 /// 仅调试构建：`TUNEHAVEN_DEBUG_ROUTE` 指定启动后落到的页面，供模拟器截图检查。
 /// 取值：library、library.artist、library.album、playlist、settings、player、player.lyrics、
-/// album:<专辑名>|<艺术家>、artist:<艺术家>、search:<关键词>
+/// album:<专辑名>|<艺术家>、artist:<艺术家>、search:<关键词>、
+/// playlist.detail（第一个自建歌单）、playlist.favorites、playlist.recent、playlist.groups、playlist.batchAdd
 enum DebugLaunchRoute {
     static var raw: String? { ProcessInfo.processInfo.environment["TUNEHAVEN_DEBUG_ROUTE"] }
 
@@ -63,7 +64,8 @@ enum DebugLaunchRoute {
     }
 
     @MainActor
-    static func apply(router: AppRouter) {
+    static func apply(router: AppRouter, playlists: [Playlist] = []) {
+        let firstUserPlaylist = playlists.first { !$0.isSystem }
         if let raw, raw.hasPrefix("album:") {
             let parts = raw.dropFirst("album:".count).split(separator: "|", maxSplits: 1).map(String.init)
             if parts.count == 2 { router.navigate(to: .albumDetail(album: parts[0], artist: parts[1]), in: .library) }
@@ -75,6 +77,14 @@ enum DebugLaunchRoute {
         }
         switch raw {
         case "playlist": router.selectedTab = .playlist
+        case "playlist.detail", "playlist.batchAdd":
+            if let id = firstUserPlaylist?.id { router.navigate(to: .playlistDetail(id: id), in: .playlist) }
+        case "playlist.favorites":
+            router.navigate(to: .songList(title: "我喜欢", context: .favorites), in: .playlist)
+        case "playlist.recent":
+            router.navigate(to: .songList(title: "最近播放", context: .recentlyPlayed), in: .playlist)
+        case "playlist.groups":
+            router.selectedTab = .playlist
         case "settings": router.selectedTab = .settings
         case "player", "player.lyrics": router.openPlayer()
         default: break

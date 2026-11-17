@@ -13,12 +13,25 @@ extension EnvironmentValues {
     }
 }
 
+/// 已有外层主题背景（Tab 根）时透明；否则（sheet、独立容器）自己画柔光，避免纯色底上的半透明卡片消失。
+/// 不依赖 ThemeManager 环境对象，sheet 里也能安全使用
 struct AdaptiveBackgroundModifier: ViewModifier {
     @Environment(\.hasCustomBackground) private var hasCustomBg
     @Environment(\.themePalette) private var palette
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     func body(content: Content) -> some View {
-        content.background(hasCustomBg ? Color.clear : palette.background)
+        content.background {
+            if hasCustomBg {
+                Color.clear
+            } else if reduceTransparency {
+                palette.background.ignoresSafeArea()
+            } else {
+                SoftGlowBackground(palette: palette)
+                    .ignoresSafeArea()
+                    .accessibilityHidden(true)
+            }
+        }
     }
 }
 
@@ -29,6 +42,12 @@ extension View {
 
     func themeContainerBackground() -> some View {
         modifier(ThemeContainerBackgroundModifier())
+    }
+
+    /// sheet 内容：sheet 会继承呈现方的 `hasCustomBackground = true`，但身后没有柔光，
+    /// 这里复位让 `adaptiveBackground()` 自己绘制
+    func sheetBackground() -> some View {
+        environment(\.hasCustomBackground, false)
     }
 }
 

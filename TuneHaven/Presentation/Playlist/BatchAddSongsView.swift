@@ -24,7 +24,6 @@ struct BatchAddSongsView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 fixedHeader
-                Divider().background(palette.separator)
 
                 if isLoading {
                     Spacer()
@@ -34,12 +33,12 @@ struct BatchAddSongsView: View {
                     Spacer()
                     VStack(spacing: 12) {
                         Image(systemName: "music.note")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 48, height: 48)
-                            .foregroundColor(palette.iconSecondary)
+                            .font(.system(size: 40, weight: .light))
+                            .foregroundColor(palette.accent)
+                            .accessibilityHidden(true)
                         Text("音乐库中暂无歌曲")
-                            .foregroundColor(palette.textSecondary)
+                            .font(.headline)
+                            .foregroundColor(palette.textPrimary)
                     }
                     Spacer()
                 } else {
@@ -52,7 +51,7 @@ struct BatchAddSongsView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
@@ -61,10 +60,11 @@ struct BatchAddSongsView: View {
                         if isSaving {
                             ProgressView()
                         } else {
-                            Text("添加 (\(selectedIds.count))")
+                            Text(selectedIds.isEmpty ? "添加" : "添加 \(selectedIds.count) 首")
+                                .fontWeight(.semibold)
                         }
                     }
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
                     .disabled(selectedIds.isEmpty || isSaving)
                 }
             }
@@ -84,9 +84,8 @@ struct BatchAddSongsView: View {
         recomputeFilteredToken += 1
         let token = recomputeFilteredToken
         let songs = allSongs
-        let excluded = existingSongIds
         Task.detached {
-            let available = songs.filter { !excluded.contains($0.id) }
+            let available = songs
             let filtered: [Song]
             if query.isEmpty {
                 filtered = available
@@ -112,108 +111,125 @@ struct BatchAddSongsView: View {
         SearchBar(text: $searchText, placeholder: "搜索歌曲、艺术家、专辑")
     }
 
+    /// 可选择的歌曲（已在歌单中的不计入全选与数量）
+    private func selectableIds(_ songs: [Song]) -> Set<UUID> {
+        Set(songs.lazy.map(\.id).filter { !existingSongIds.contains($0) })
+    }
+
     private var songList: some View {
         List {
             if !filteredSongs.isEmpty {
-                selectAllSection
+                selectAllRow
+                    .plainListRow(insets: EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 12))
+            } else if !searchText.isEmpty {
+                Text("没有找到匹配的歌曲")
+                    .font(.subheadline)
+                    .foregroundColor(palette.textSecondary)
+                    .frame(maxWidth: .infinity, minHeight: 80)
+                    .plainListRow()
             }
 
             ForEach(groupedByArtist, id: \.0) { artist, songs in
-                Section {
-                    ForEach(songs) { song in
-                        songSelectRow(song)
-                    }
-                } header: {
-                    let sectionIds = Set(songs.map(\.id))
-                    let sectionAllSelected = sectionIds.isSubset(of: selectedIds)
-                    HStack {
-                        Text(artist)
-                            .foregroundColor(palette.textSecondary)
-                        Spacer()
-                        Button {
+                let sectionIds = selectableIds(songs)
+                let sectionAllSelected = !sectionIds.isEmpty && sectionIds.isSubset(of: selectedIds)
+                HStack {
+                    ListSectionTitle(title: artist, count: songs.count)
+                    if !sectionIds.isEmpty {
+                        Button(sectionAllSelected ? "取消全选" : "全选") {
                             if sectionAllSelected {
                                 selectedIds.subtract(sectionIds)
                             } else {
                                 selectedIds.formUnion(sectionIds)
                             }
-                        } label: {
-                            Text(sectionAllSelected ? "取消全选" : "全选")
-                                .font(.caption)
-                                .foregroundColor(palette.primary)
                         }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(palette.accent)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(sectionAllSelected ? "取消全选" : "全选")\(artist)")
                     }
+                }
+                .plainListRow(insets: EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 12))
+
+                ForEach(songs) { song in
+                    songSelectRow(song)
+                        .clearListRow(insets: EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowSeparatorTint(palette.separator)
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        .listStyle(.plain)
         .scrollContentBackground(.hidden)
     }
 
-    private var selectAllSection: some View {
-        let allFilteredIds = Set(filteredSongs.map(\.id))
-        let allSelected = allFilteredIds.isSubset(of: selectedIds)
-        return Section {
-            HStack(spacing: 0) {
-                Button {
-                    if allSelected {
-                        selectedIds.subtract(allFilteredIds)
-                    } else {
-                        selectedIds.formUnion(allFilteredIds)
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: allSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(allSelected ? palette.primary : palette.textTertiary)
-                            .font(.title3)
-                        Text(allSelected ? "取消全选" : "全选 (\(filteredSongs.count) 首)")
-                            .foregroundColor(palette.textPrimary)
-                    }
+    private var selectAllRow: some View {
+        let allFilteredIds = selectableIds(filteredSongs)
+        let allSelected = !allFilteredIds.isEmpty && allFilteredIds.isSubset(of: selectedIds)
+        return HStack(spacing: 12) {
+            Button {
+                if allSelected {
+                    selectedIds.subtract(allFilteredIds)
+                } else {
+                    selectedIds.formUnion(allFilteredIds)
                 }
-                .buttonStyle(.borderless)
-
-                Spacer()
-
-                Button {
-                    selectedIds.formSymmetricDifference(allFilteredIds)
-                } label: {
-                    Text("反选")
-                        .font(.subheadline)
-                        .foregroundColor(palette.primary)
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: allSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundColor(allSelected ? palette.accent : palette.textSecondary)
+                    Text(allSelected ? "取消全选" : "全选 \(allFilteredIds.count) 首")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(palette.textPrimary)
                 }
-                .buttonStyle(.borderless)
-
-                Spacer().frame(width: 16)
-
-                Text("已选 \(selectedIds.count) 首")
-                    .font(.caption)
-                    .foregroundColor(palette.textSecondary)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
-            .listRowBackground(palette.surface)
+            .buttonStyle(.plain)
+            .disabled(allFilteredIds.isEmpty)
+
+            Spacer()
+
+            Button("反选") {
+                selectedIds.formSymmetricDifference(allFilteredIds)
+            }
+            .font(.subheadline)
+            .foregroundColor(palette.accent)
+            .frame(minWidth: 44, minHeight: 44)
+            .buttonStyle(.plain)
+            .disabled(allFilteredIds.isEmpty)
+
+            Text("已选 \(selectedIds.count) 首")
+                .font(.footnote.monospacedDigit())
+                .foregroundColor(palette.textSecondary)
         }
     }
 
+    /// 已在歌单中的歌曲不可再选，并说明原因（交互设计文档 §5.3）
     private func songSelectRow(_ song: Song) -> some View {
-        Button {
-            if selectedIds.contains(song.id) {
+        let isExisting = existingSongIds.contains(song.id)
+        let isSelected = selectedIds.contains(song.id)
+        return Button {
+            if isSelected {
                 selectedIds.remove(song.id)
             } else {
                 selectedIds.insert(song.id)
             }
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: selectedIds.contains(song.id) ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(selectedIds.contains(song.id) ? palette.primary : palette.textTertiary)
+                Image(systemName: isExisting ? "checkmark.circle" : (isSelected ? "checkmark.circle.fill" : "circle"))
                     .font(.title3)
+                    .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
+                    .accessibilityHidden(true)
 
-                CoverImageView(path: song.coverImagePath, size: 44)
+                CoverImageView(path: song.coverImagePath, size: 44, cornerRadius: 10)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(song.title)
-                        .font(.subheadline.weight(.medium))
+                        .font(.body.weight(.medium))
                         .foregroundColor(palette.textPrimary)
                         .lineLimit(1)
-                    Text(song.artist)
-                        .font(.caption)
+                    Text(isExisting ? "已在歌单中" : "\(song.artist) · \(song.album)")
+                        .font(.footnote)
                         .foregroundColor(palette.textSecondary)
                         .lineLimit(1)
                 }
@@ -221,12 +237,18 @@ struct BatchAddSongsView: View {
                 Spacer()
 
                 Text(song.duration.formattedTime)
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(palette.textTertiary)
+                    .font(.footnote.monospacedDigit())
+                    .foregroundColor(palette.textSecondary)
             }
-            .padding(.vertical, 4)
+            .frame(minHeight: 56)
+            .opacity(isExisting ? 0.6 : 1)
+            .contentShape(Rectangle())
         }
-        .listRowBackground(palette.surface)
+        .buttonStyle(.plain)
+        .disabled(isExisting)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(song.title)，\(song.artist)\(isExisting ? "，已在歌单中" : "")")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     private func loadData() async {

@@ -11,7 +11,11 @@ struct PlaylistMainView: View {
     @Environment(\.themePalette) private var palette
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    #if DEBUG
+    @State private var showGroupManage = DebugLaunchRoute.raw == "playlist.groups"
+    #else
     @State private var showGroupManage = false
+    #endif
     @State private var searchText = ""
     @FocusState private var isSearchFocused: Bool
     @State private var editMode: EditMode = .inactive
@@ -135,6 +139,7 @@ struct PlaylistMainView: View {
         .sheet(isPresented: $showGroupManage) {
             NavigationStack {
                 PlaylistGroupView()
+                    .sheetBackground()
                     .environmentObject(groupService)
                     .environmentObject(playlistService)
                     .environmentObject(router)

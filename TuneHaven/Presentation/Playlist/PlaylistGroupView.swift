@@ -13,6 +13,9 @@ struct PlaylistGroupView: View {
     @State private var renameText = ""
     @State private var showMoveSheet = false
     @State private var movingPlaylist: Playlist? = nil
+    @State private var deleteTarget: PlaylistGroupDetail?
+
+    private var rowBackground: Color { palette.surface.opacity(0.72) }
 
     var body: some View {
         List {
@@ -43,10 +46,13 @@ struct PlaylistGroupView: View {
             // 未分组歌单
             let ungrouped = ungroupedPlaylists
             if !ungrouped.isEmpty {
-                Section("未分组") {
+                Section {
                     ForEach(ungrouped) { playlist in
                         ungroupedPlaylistRow(playlist)
                     }
+                } header: {
+                    ListSectionTitle(title: "未分组", count: ungrouped.count)
+                        .textCase(nil)
                 }
             }
         }
@@ -61,14 +67,34 @@ struct PlaylistGroupView: View {
                     showCreateGroup = true
                 } label: {
                     Image(systemName: "folder.badge.plus")
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
+                .accessibilityLabel("新建分组")
             }
             ToolbarItem(placement: .navigationBarLeading) {
-                EditButton().foregroundColor(palette.primary)
+                EditButton().foregroundColor(palette.accent)
             }
         }
         .task { await groupService.loadGroups() }
+        .confirmationDialog(
+            "删除分组「\(deleteTarget?.name ?? "")」？",
+            isPresented: Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("删除分组", role: .destructive) {
+                guard let target = deleteTarget else { return }
+                Task {
+                    do { try await groupService.deleteGroup(id: target.id) }
+                    catch { snackbar.show(message: "删除分组失败") }
+                }
+                deleteTarget = nil
+            }
+            Button("取消", role: .cancel) { deleteTarget = nil }
+        } message: {
+            Text("分组内的歌单会移回未分组，歌单本身不会删除")
+        }
         .alert("新建分组", isPresented: $showCreateGroup) {
             TextField("分组名称", text: $newGroupName)
             Button("创建") {
@@ -114,6 +140,7 @@ struct PlaylistGroupView: View {
                     }
                 }
             )
+            .sheetBackground()
             .environment(\.themePalette, palette)
         }
     }
@@ -129,33 +156,41 @@ struct PlaylistGroupView: View {
                 } label: {
                     PlaylistRow(playlist: playlist)
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(rowBackground)
                 .swipeActions(edge: .leading) {
                     Button {
                         movingPlaylist = playlist
                     } label: {
-                        Label("移出分组", systemImage: "folder.badge.minus")
+                        Label("移动分组", systemImage: "folder")
                     }
-                    .tint(SemanticColor.warning)
+                    .tint(palette.accent)
+                }
+                .contextMenu {
+                    Button { movingPlaylist = playlist } label: {
+                        Label("移动到其他分组", systemImage: "folder")
+                    }
                 }
             }
 
             if group.playlists.isEmpty {
-                Text("暂无歌单，可将歌单移入此分组")
-                    .font(.caption)
-                    .foregroundColor(palette.textTertiary)
-                    .listRowBackground(palette.surface)
+                Text("暂无歌单。在下方未分组歌单上长按或右滑即可移入")
+                    .font(.footnote)
+                    .foregroundColor(palette.textSecondary)
+                    .listRowBackground(rowBackground)
             }
         } header: {
-            HStack {
+            HStack(spacing: 8) {
                 Image(systemName: "folder.fill")
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
+                    .accessibilityHidden(true)
                 Text(group.name)
+                    .font(.headline)
+                    .foregroundColor(palette.textPrimary)
+                    .textCase(nil)
+                Text("\(group.playlists.count)")
+                    .font(.subheadline.monospacedDigit())
                     .foregroundColor(palette.textSecondary)
                 Spacer()
-                Text("\(group.playlists.count) 个歌单")
-                    .font(.caption)
-                    .foregroundColor(palette.textTertiary)
                 Menu {
                     Button {
                         renameTarget = group
@@ -164,19 +199,18 @@ struct PlaylistGroupView: View {
                         Label("重命名", systemImage: "pencil")
                     }
                     Button(role: .destructive) {
-                        Task {
-                            do { try await groupService.deleteGroup(id: group.id) }
-                            catch { snackbar.show(message: "删除分组失败") }
-                        }
+                        deleteTarget = group
                     } label: {
                         Label("删除分组", systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .font(.caption)
-                        .foregroundColor(palette.textTertiary)
-                        .padding(4)
+                        .font(.body.weight(.semibold))
+                        .foregroundColor(palette.textSecondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
+                .accessibilityLabel("分组「\(group.name)」操作")
             }
         }
     }
@@ -188,14 +222,19 @@ struct PlaylistGroupView: View {
         } label: {
             PlaylistRow(playlist: playlist)
         }
-        .listRowBackground(palette.surface)
+        .listRowBackground(rowBackground)
         .swipeActions(edge: .leading) {
             Button {
                 movingPlaylist = playlist
             } label: {
                 Label("移入分组", systemImage: "folder.badge.plus")
             }
-            .tint(palette.primary)
+            .tint(palette.accent)
+        }
+        .contextMenu {
+            Button { movingPlaylist = playlist } label: {
+                Label("移入分组", systemImage: "folder.badge.plus")
+            }
         }
     }
 
@@ -223,13 +262,13 @@ struct MoveToGroupSheet: View {
                     dismiss()
                 } label: {
                     HStack {
-                        Image(systemName: "xmark.circle")
-                            .foregroundColor(SemanticColor.danger)
-                        Text("移出所有分组")
+                        Image(systemName: "tray")
+                            .foregroundColor(palette.textSecondary)
+                        Text("不分组")
                             .foregroundColor(palette.textPrimary)
                     }
                 }
-                .listRowBackground(palette.surface)
+                .listRowBackground(palette.surface.opacity(0.72))
 
                 ForEach(groups) { group in
                     Button {
@@ -238,16 +277,22 @@ struct MoveToGroupSheet: View {
                     } label: {
                         HStack {
                             Image(systemName: "folder.fill")
-                                .foregroundColor(palette.primary)
+                                .foregroundColor(palette.accent)
                             Text(group.name)
                                 .foregroundColor(palette.textPrimary)
                             Spacer()
-                            Text("\(group.playlists.count) 个")
-                                .font(.caption)
-                                .foregroundColor(palette.textTertiary)
+                            if group.playlists.contains(where: { $0.id == playlist.id }) {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(palette.accent)
+                                    .accessibilityLabel("当前分组")
+                            } else {
+                                Text("\(group.playlists.count) 个")
+                                    .font(.footnote)
+                                    .foregroundColor(palette.textSecondary)
+                            }
                         }
                     }
-                    .listRowBackground(palette.surface)
+                    .listRowBackground(palette.surface.opacity(0.72))
                 }
             }
             .listStyle(.insetGrouped)
@@ -258,7 +303,7 @@ struct MoveToGroupSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
             }
         }

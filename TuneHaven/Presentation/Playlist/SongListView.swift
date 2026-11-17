@@ -17,22 +17,22 @@ struct SongListView: View {
 
     private var isFavorites: Bool { context == .favorites }
 
+    /// 我喜欢／最近播放（docs/UI设计文档.md §7.5 延伸规则）：图标头部 → 播放按钮 → 歌曲
     var body: some View {
         Group {
-            if isLoading {
+            if isLoading && songs.isEmpty {
                 ProgressView()
-            } else if songs.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "music.note")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 48, height: 48)
-                        .foregroundColor(palette.iconSecondary)
-                    Text("暂无歌曲")
-                        .foregroundColor(palette.textSecondary)
-                }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List {
+                    header
+                        .plainListRow(insets: EdgeInsets(top: 8, leading: 20, bottom: 12, trailing: 20))
+
+                    if songs.isEmpty {
+                        emptyState
+                            .plainListRow()
+                    }
+
                     ForEach(songs) { song in
                         SongRow(
                             song: song,
@@ -47,31 +47,102 @@ struct SongListView: View {
                             onFavorite: isFavorites ? {
                                 Task { await unfavorite(song) }
                             } : nil,
-                            onAddToPlaylist: isFavorites ? {
+                            onAddToPlaylist: {
                                 router.present(.addToPlaylist(songIds: [song.id]))
-                            } : nil,
-                            onInsertNext: isFavorites ? {
+                            },
+                            onInsertNext: {
                                 SongQueueHelper.insertNext(song: song, playback: playback, snackbar: snackbar)
-                            } : nil
+                            }
                         )
-                        .listRowBackground(palette.surface)
+                        .clearListRow()
+                        .listRowSeparatorTint(palette.separator)
                     }
 
                     Color.clear
                         .frame(height: MiniPlayerLayout.listBottomPadding)
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets())
+                        .plainListRow(insets: EdgeInsets())
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .adaptiveBackground()
             }
         }
+        .adaptiveBackground()
         .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .themeNavigationBarSurface()
         .task { await load() }
+    }
+
+    private var symbol: String {
+        isFavorites ? "heart.fill" : "clock.fill"
+    }
+
+    private var subtitle: String {
+        var parts = ["\(songs.count) 首"]
+        if context == .recentlyPlayed {
+            parts.insert(RecentPlayRange(rawValue: recentPlayRange)?.displayName ?? "最近 \(recentPlayRange) 天", at: 0)
+        }
+        let total = songs.reduce(0) { $0 + $1.duration }
+        if total > 0 { parts.append(DurationFormatter.spoken(total)) }
+        return parts.joined(separator: " · ")
+    }
+
+    private var header: some View {
+        VStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.system(size: 40, weight: .semibold))
+                .foregroundColor(palette.accent)
+                .frame(width: 112, height: 112)
+                .background(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(LinearGradient(colors: [palette.glowA, palette.glowB],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                )
+                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(palette.separator, lineWidth: 0.5))
+                .shadow(color: palette.cardShadow, radius: 16, y: 8)
+                .accessibilityHidden(true)
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.title2.weight(.bold))
+                    .foregroundColor(palette.textPrimary)
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundColor(palette.textSecondary)
+            }
+            .accessibilityElement(children: .combine)
+            if !songs.isEmpty {
+                DetailPlayButtons(
+                    isEnabled: true,
+                    onPlay: {
+                        guard let first = songs.first else { return }
+                        Task { await playSong(first) }
+                    },
+                    onShuffle: {
+                        guard let random = songs.randomElement() else { return }
+                        if playback.playMode != .shuffle {
+                            playback.setPlayMode(.shuffle)
+                        }
+                        Task { await playSong(random) }
+                    }
+                )
+                .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 6) {
+            Text(isFavorites ? "还没有喜欢的歌曲" : "最近没有播放记录")
+                .font(.headline)
+                .foregroundColor(palette.textPrimary)
+            Text(isFavorites ? "在歌曲菜单或播放页点亮心形即可收藏" : "播放过的歌曲会出现在这里")
+                .font(.subheadline)
+                .foregroundColor(palette.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 32)
     }
 
     private func load() async {
