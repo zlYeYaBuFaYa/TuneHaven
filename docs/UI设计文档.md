@@ -1,18 +1,18 @@
 # TuneHaven UI 设计文档
 
-> 版本：1.0 · 日期：2026-11-17 · 状态：设计规范，待原生实现。
-> 范围：云霞、晴屿、月晕三套候选方案及各自日间／黑夜模式，共 12 张代表页面。
+> 版本：1.1 · 日期：2026-11-17 · 状态：核心 UI 已实施，完整视觉与真机验收待完成。
+> 范围：云霞、晴屿、月晕三套已集成主题及各自日间／黑夜模式，共 12 张代表页面。
 > 配套文档：[交互设计文档](交互设计文档.md) · [产品需求](需求文档.md) · [效果稿说明](design/ui-concepts-2026-11-17/README.md)。
 
 ## 1. 文档定位与决策边界
 
-本文把已交付的效果图转成可供 SwiftUI 开发、视觉走查和验收使用的规格。文中的“应”表示本轮重设计的目标要求，不表示工程已经实现。
+本文把已交付的效果图转成可供 SwiftUI 开发、视觉走查和验收使用的规格。文中的“应”表示验收要求；当前实施状态见第 9 节和任务清单，不把目标规范等同于已完成验收。
 
-- 三套方案均为候选，用户尚未指定正式默认主题，也未决定是否全部上线；云霞优先只是设计建议。
+- 云霞、晴屿、月晕三套主题已集成，全部免费，默认云霞；色系与系统日夜外观分离。
 - 每套主题都应覆盖音乐库、歌单、设置、播放和业务弹层。效果图选择不同代表页面，不代表某套主题缺少其他功能。
 - 继续服务本地优先、无广告的音乐收藏与播放场景。颜色来自用户提供的截图；不引入截图中的社交操作、内容推荐或短视频导航。
-- 既有 Free／Premium 边界继续以产品需求为准。新主题的收费归属、旧主题迁移和最终默认主题尚未确定，不能从效果稿推导。
-- 本轮提供视觉与交互规范，不修改现有功能、订阅规则或数据模型。新增或调整的行为在交互文档中单独标明。
+- 既有 Free／Premium 边界继续以产品需求为准。无损、WebDAV、在线歌词仍为 Premium；主题已全部免费，旧 ID 按产品需求映射迁移。
+- 本轮同步原生视觉与交互实现；未完成的功能及验收继续记录在任务清单，不从效果稿推导数据模型能力。
 
 ### 1.1 来源及优先级
 
@@ -81,7 +81,7 @@
 | `accent` | `#316352` | `#C0DDC9` | 重点信息 |
 | `surfaceOpaque` | `#FFFFFF` | `#24352D` | 材质回退、弹层内容底 |
 
-落地时将日间歌单主按钮统一为 `actionFill`；效果稿里个别按钮使用通用炭黑，属于待统一的视觉细节。
+原生主操作统一使用 `actionFill / onAction`；效果稿中个别通用炭黑按钮以语义令牌实现为准。
 
 ![晴屿日间效果](design/ui-concepts-2026-11-17/b-board.png)
 ![晴屿黑夜效果](design/ui-concepts-2026-11-17/dark-b-board.png)
@@ -235,7 +235,7 @@ HTML 中的 `backdrop-filter`、透明度及阴影是视觉参考，不是原生
 
 ## 8. 日夜切换、无障碍与动效
 
-- 建议把“主题色系”与系统 `colorScheme` 分离，外观跟随系统；用户正在播放时切换日夜，不更换曲目、清空队列或改变页面位置。该机制与当前固定深浅主题不同，属于待落地调整。
+- 已把“主题色系”与系统 `colorScheme` 分离，外观跟随系统；播放中切换日夜保持曲目、队列与页面状态。
 - VoiceOver 可读出“播放／暂停”“已收藏”“播放模式：单曲循环”“播放进度：…”。装饰唱片与背景光晕不进入可访问树。
 - 滑动、长按、拖拽、捏合必须有可见按钮或菜单替代；焦点顺序按从上到下的视觉顺序。
 - Dynamic Type 到辅助功能字号时，目录卡改单列，播放器缩小封面，重要文字允许多行；按钮不能挤出安全区域。
@@ -245,9 +245,9 @@ HTML 中的 `backdrop-filter`、透明度及阴影是视觉参考，不是原生
 
 ## 9. 原生实现映射与待办
 
-| 目标 | 现有位置 | 本轮需处理 |
+| 目标 | 现有位置 | 已实施内容（完整验收另计） |
 | --- | --- | --- |
-| 主题色板 | [ThemeColorPalette.swift](../TuneHaven/App/Theme/ThemeColorPalette.swift) | 增加或映射语义令牌，提供六套外观值 |
+| 主题色板 | [ThemeColorPalette.swift](../TuneHaven/App/Theme/ThemeColorPalette.swift) | 已映射语义令牌，提供三套日夜配对外观 |
 | 背景／材质 | [ThemeVisualConfig.swift](../TuneHaven/App/Theme/ThemeVisualConfig.swift)、[ThemeBackgroundView.swift](../TuneHaven/App/Theme/ThemeBackgroundView.swift) | 柔光背景、系统材质与不透明回退 |
 | 一级导航 | [RootTabView.swift](../TuneHaven/Presentation/Root/RootTabView.swift) | 图标加文字、底部附件布局与安全区域 |
 | 曲库 | [LibraryMainView.swift](../TuneHaven/Presentation/Library/LibraryMainView.swift) | 导入快捷入口、分段样式、继续听卡 |
@@ -255,9 +255,9 @@ HTML 中的 `backdrop-filter`、透明度及阴影是视觉参考，不是原生
 | 迷你播放 | [MiniPlayerBar.swift](../TuneHaven/Presentation/Common/MiniPlayerBar.swift) | 精简视觉、保证收藏可达、保留进度 |
 | 播放器 | [PlayerView.swift](../TuneHaven/Presentation/Player/PlayerView.swift)、[PlayerControlsBar.swift](../TuneHaven/Presentation/Player/PlayerControlsBar.swift) | 大封面／唱片、主操作、元数据、输出控件 |
 | 歌词 | [LyricsView.swift](../TuneHaven/Presentation/Player/LyricsView.swift) | 左对齐、字号工具、回到当前句、明暗层级 |
-| 外观设置 | [SettingsAppearanceSection.swift](../TuneHaven/Presentation/Settings/SettingsAppearanceSection.swift) | 新主题预览与现有权限／迁移衔接 |
+| 外观设置 | [SettingsAppearanceSection.swift](../TuneHaven/Presentation/Settings/SettingsAppearanceSection.swift) | 三套免费主题预览、旧 ID 迁移、系统外观衔接 |
 
-新增正式主题 ID、默认主题、收费归属、旧主题去留与完整方形／唱片封面切换入口均待产品决策。本规范不预先删除既有主题或开放 Premium 权限。
+正式主题 ID 为 `cloud_haze`、`clear_isle`、`moon_halo`，默认 `cloud_haze`，全部免费。旧主题经 `ThemeRegistry.legacyThemeIDs` 迁移；方形／唱片封面切换已放入播放器更多菜单。导入、分享和付费墙已使用同一语义色与控件规范。
 
 ## 10. 视觉验收
 
@@ -266,4 +266,4 @@ HTML 中的 `backdrop-filter`、透明度及阴影是视觉参考，不是原生
 - 使用长中文曲名、长英文艺术家名、零歌曲、单首、无封面、缺失音频、未知采样率与大曲库数据。
 - 六套配色分别验证常态、增强对比度、减少透明度；实际材质上的正文与图标通过对比度检查。
 - 底栏不遮挡最后一首歌曲；播放页无不可达控件；sheet 的键盘、关闭按钮与主要动作均在可达范围。
-- 当前已验证的是 HTML 的图像加载、部分文字裁切、横向溢出和演示交互，以及黑夜令牌对比度。**原生运行、Dynamic Type、VoiceOver、iPad 与性能尚待实现后验证。**
+- HTML 图像与黑夜令牌对比度已验证；原生导入入口、文件选择器取消、来源页面返回及分享选择已有自动化测试。导入三主题日夜截图见 [7d 实施检查](design/implementation-7d/README.md)，付费墙与分享截图见 [7g／7f 实施检查](design/implementation-7gf/README.md)。**这不等于整套视觉验收：最大 Dynamic Type、VoiceOver、iPad、真机音频／相机与跨设备传输仍待专项验收。**

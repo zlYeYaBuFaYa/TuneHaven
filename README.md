@@ -42,11 +42,12 @@ App → Presentation → Domain ← Data
 ```bash
 # 构建
 xcodebuild -project TuneHaven.xcodeproj -scheme TuneHaven \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
+  -destination 'generic/platform=iOS Simulator'
 
-# 测试
+# 测试：先列出本机可用设备，将 <UDID> 替换为对应标识
+xcrun simctl list devices available
 xcodebuild test -project TuneHaven.xcodeproj -scheme TuneHaven \
-  -destination 'platform=iOS Simulator,name=iPhone 16'
+  -destination 'platform=iOS Simulator,id=<UDID>'
 ```
 
 也可以在 Xcode 中打开 `TuneHaven.xcodeproj`，用 Command + R 运行，Command + U 测试。
@@ -74,11 +75,11 @@ xcodebuild test -project TuneHaven.xcodeproj -scheme TuneHaven \
 
 ## 代码统计
 
-| 类型 | 行数 |
-|------|------|
-| 主项目 | 25,290 |
-| 测试 | 8,069 |
-| 合计 | 33,359（Swift 文件 234 个） |
+Swift 文件和测试数量持续变化，以仓库当前文件与实际测试报告为准：
+
+```bash
+rg --files TuneHaven TuneHavenTests TuneHavenUITests -g '*.swift'
+```
 
 ## 许可证
 
