@@ -767,3 +767,13 @@ struct PlayerQualityTagTests {
         #expect(PlayerQualityTag.spoken(for: song(format: "flac", sampleRate: 48_000)) == "无损，48 千赫")
     }
 }
+
+@Suite("PlaybackSpeedText")
+struct PlaybackSpeedTextTests {
+    @Test("倍速文字去掉多余的 0", arguments: [
+        (Float(0.5), "0.5×"), (0.75, "0.75×"), (1.0, "1×"), (1.25, "1.25×"), (2.0, "2×")
+    ])
+    func testSpeedText(speed: Float, expected: String) {
+        #expect(PlaybackSpeedSheet.speedText(speed) == expected)
+    }
+}

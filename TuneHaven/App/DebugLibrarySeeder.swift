@@ -45,7 +45,8 @@ enum DebugLibrarySeeder {
 /// 仅调试构建：`TUNEHAVEN_DEBUG_ROUTE` 指定启动后落到的页面，供模拟器截图检查。
 /// 取值：library、library.artist、library.album、playlist、settings、player、player.lyrics、
 /// album:<专辑名>|<艺术家>、artist:<艺术家>、search:<关键词>、
-/// playlist.detail（第一个自建歌单）、playlist.favorites、playlist.recent、playlist.groups、playlist.batchAdd
+/// playlist.detail（第一个自建歌单）、playlist.favorites、playlist.recent、playlist.groups、playlist.batchAdd、
+/// sheet.create、sheet.edit、sheet.addTo、toast、player.more、player.sleep、player.speed、player.lyricsSearch
 enum DebugLaunchRoute {
     static var raw: String? { ProcessInfo.processInfo.environment["TUNEHAVEN_DEBUG_ROUTE"] }
 
@@ -64,7 +65,7 @@ enum DebugLaunchRoute {
     }
 
     @MainActor
-    static func apply(router: AppRouter, playlists: [Playlist] = []) {
+    static func apply(router: AppRouter, playlists: [Playlist] = [], songs: [Song] = [], snackbar: SnackbarState? = nil) {
         let firstUserPlaylist = playlists.first { !$0.isSystem }
         if let raw, raw.hasPrefix("album:") {
             let parts = raw.dropFirst("album:".count).split(separator: "|", maxSplits: 1).map(String.init)
@@ -86,7 +87,15 @@ enum DebugLaunchRoute {
         case "playlist.groups":
             router.selectedTab = .playlist
         case "settings": router.selectedTab = .settings
-        case "player", "player.lyrics": router.openPlayer()
+        case "player", "player.lyrics", "player.more", "player.sleep", "player.speed", "player.lyricsSearch":
+            router.openPlayer()
+        case "sheet.create": router.present(.createPlaylist)
+        case "sheet.edit":
+            if let id = firstUserPlaylist?.id { router.present(.editPlaylist(id: id)) }
+        case "sheet.addTo":
+            if let id = songs.first?.id { router.present(.addToPlaylist(songIds: [id])) }
+        case "toast":
+            snackbar?.show(message: "已添加到「把日子调慢」", actionTitle: "撤销", action: {}, duration: 60)
         default: break
         }
     }

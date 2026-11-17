@@ -132,6 +132,7 @@ struct SongInfoEditView: View {
                 LyricsSearchView(song: song) {
                     Task { await reloadSong() }
                 }
+                .sheetBackground()
                 .environment(\.themePalette, palette)
             }
         }

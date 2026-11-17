@@ -6,6 +6,7 @@ struct LyricsSearchView: View {
 
     @EnvironmentObject private var lyricsService: LyricsService
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var subscriptionService: SubscriptionService
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -32,7 +33,6 @@ struct LyricsSearchView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 searchForm
-                Divider().foregroundColor(palette.separator)
                 resultContent
             }
             .adaptiveBackground()
@@ -42,7 +42,7 @@ struct LyricsSearchView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
             }
             .alert("保存失败", isPresented: .init(
@@ -66,7 +66,7 @@ struct LyricsSearchView: View {
         NavigationStack {
             VStack(spacing: 12) {
                 Text("粘贴 LRC 格式歌词或纯文本歌词")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundColor(palette.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
@@ -77,7 +77,8 @@ struct LyricsSearchView: View {
                     .scrollContentBackground(.hidden)
                     .padding(12)
                     .background(palette.surface)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(palette.separator, lineWidth: 0.5))
                     .padding(.horizontal, 16)
             }
             .padding(.top, 8)
@@ -88,11 +89,12 @@ struct LyricsSearchView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { showManualInput = false }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") { saveManualLyrics() }
-                        .foregroundColor(palette.primary)
+                        .fontWeight(.semibold)
+                        .foregroundColor(palette.accent)
                         .disabled(manualLyricsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                 }
             }
@@ -148,7 +150,8 @@ struct LyricsSearchView: View {
             }
             .padding(12)
             .background(palette.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(palette.separator, lineWidth: 0.5))
 
             HStack(spacing: 12) {
                 Button {
@@ -157,17 +160,23 @@ struct LyricsSearchView: View {
                     HStack {
                         if isSearching {
                             ProgressView()
-                                .tint(searchDisabled ? palette.textPrimary : palette.onPrimary)
+                                .tint(searchDisabled ? palette.textSecondary : palette.onAction)
                         }
-                        Text("搜索")
+                        Text("在线搜索")
+                        if !subscriptionService.canAccess(.onlineLyricsSearch) {
+                            Text("Premium")
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(palette.tagBackground))
+                                .foregroundColor(palette.accent)
+                        }
                     }
                     .font(.subheadline.weight(.semibold))
-                    .foregroundColor(searchDisabled ? palette.textPrimary : palette.onPrimary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                    .foregroundColor(searchDisabled ? palette.textSecondary : palette.onAction)
+                    .frame(maxWidth: .infinity, minHeight: 46)
                     .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(searchDisabled ? palette.textTertiary : palette.primary)
+                        Capsule().fill(searchDisabled ? palette.progressBackground : palette.actionFill)
                     )
                 }
                 .disabled(searchDisabled)
@@ -179,14 +188,11 @@ struct LyricsSearchView: View {
                         Image(systemName: "square.and.pencil")
                         Text("手动输入")
                     }
-                    .font(.subheadline.weight(.medium))
-                    .foregroundColor(palette.primary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(palette.primary, lineWidth: 1)
-                    )
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(palette.textPrimary)
+                    .frame(maxWidth: .infinity, minHeight: 46)
+                    .background(Capsule().fill(palette.surface))
+                    .overlay(Capsule().stroke(palette.separator, lineWidth: 0.5))
                 }
             }
         }
@@ -211,14 +217,14 @@ struct LyricsSearchView: View {
             VStack(spacing: 12) {
                 Image(systemName: "wifi.slash")
                     .font(.largeTitle)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
                 Text(error)
                     .font(.subheadline)
                     .foregroundColor(palette.textSecondary)
                     .multilineTextAlignment(.center)
                 Button("重试") { performSearch() }
                     .font(.subheadline)
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
             }
             Spacer()
         } else if hasSearched && results.isEmpty {
@@ -226,13 +232,13 @@ struct LyricsSearchView: View {
             VStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .font(.largeTitle)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
                 Text("未找到匹配歌词")
                     .font(.subheadline)
                     .foregroundColor(palette.textSecondary)
                 Text("请尝试修改关键词重新搜索")
                     .font(.caption)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
             }
             Spacer()
         } else if !results.isEmpty {
@@ -258,7 +264,7 @@ struct LyricsSearchView: View {
             VStack(spacing: 8) {
                 Image(systemName: "text.magnifyingglass")
                     .font(.largeTitle)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
                 Text("输入歌曲信息搜索歌词")
                     .font(.subheadline)
                     .foregroundColor(palette.textSecondary)
@@ -281,7 +287,7 @@ struct LyricsSearchView: View {
                     HStack(spacing: 4) {
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                             .font(.caption2)
-                            .foregroundColor(palette.textTertiary)
+                            .foregroundColor(palette.textSecondary)
                         Text(track.trackName)
                             .font(.subheadline.weight(.medium))
                             .foregroundColor(palette.textPrimary)
@@ -297,12 +303,12 @@ struct LyricsSearchView: View {
                     HStack(spacing: 6) {
                         Text(track.durationText)
                             .font(.caption)
-                            .foregroundColor(palette.textTertiary)
+                            .foregroundColor(palette.textSecondary)
 
                         if track.instrumental {
                             Label("器乐曲（无歌词）", systemImage: "music.note")
                                 .font(.caption)
-                                .foregroundColor(palette.textTertiary)
+                                .foregroundColor(palette.textSecondary)
                         } else if track.hasSyncedLyrics {
                             Label("有时间轴歌词", systemImage: "checkmark")
                                 .font(.caption)
@@ -314,7 +320,7 @@ struct LyricsSearchView: View {
                         } else {
                             Text("无可用歌词")
                                 .font(.caption)
-                                .foregroundColor(palette.textTertiary)
+                                .foregroundColor(palette.textSecondary)
                         }
                     }
                     .padding(.leading, 18)
@@ -341,17 +347,19 @@ struct LyricsSearchView: View {
                             if isSaving {
                                 ProgressView()
                                     .scaleEffect(0.7)
-                                    .tint(palette.onPrimary)
+                                    .tint(palette.onAction)
                             }
                             Text("使用此歌词")
-                                .font(.caption.weight(.medium))
+                                .font(.footnote.weight(.semibold))
                         }
-                        .foregroundColor(palette.onPrimary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(palette.primary)
-                        .clipShape(Capsule())
+                        .foregroundColor(palette.onAction)
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 36)
+                        .background(Capsule().fill(palette.actionFill))
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                     .disabled(isSaving)
                     .padding(.trailing, 16)
                     .padding(.bottom, 8)
@@ -375,7 +383,7 @@ struct LyricsSearchView: View {
             if nonEmptyLines.count > 6 {
                 Text("...")
                     .font(.caption2)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
             }
         }
         .padding(10)

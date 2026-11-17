@@ -24,6 +24,19 @@ struct SleepTimerSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                if let remaining = playback.sleepTimerRemaining {
+                    Section {
+                        HStack {
+                            Image(systemName: "moon.zzz.fill")
+                                .foregroundColor(palette.accent)
+                                .accessibilityHidden(true)
+                            Text("剩余 \(remaining.formattedTime)")
+                                .font(.body.monospacedDigit())
+                                .foregroundColor(palette.textPrimary)
+                        }
+                        .listRowBackground(palette.surface)
+                    }
+                }
                 ForEach(options) { option in
                     let label = option.label
                     let minutes = option.minutes
@@ -36,9 +49,9 @@ struct SleepTimerSheet: View {
                                 .foregroundColor(palette.textPrimary)
                             Spacer()
                             if minutes == nil && playback.sleepTimerOriginalMinutes == nil {
-                                Image(systemName: "checkmark").foregroundColor(palette.primary)
+                                Image(systemName: "checkmark").foregroundColor(palette.accent).accessibilityLabel("当前选择")
                             } else if let m = minutes, playback.sleepTimerOriginalMinutes == m {
-                                Image(systemName: "checkmark").foregroundColor(palette.primary)
+                                Image(systemName: "checkmark").foregroundColor(palette.accent).accessibilityLabel("当前选择")
                             }
                         }
                     }
@@ -53,7 +66,7 @@ struct SleepTimerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
             }
         }
@@ -67,6 +80,14 @@ struct PlaybackSpeedSheet: View {
 
     private let speeds: [Float] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
 
+    /// 0.5×、0.75×、1×、1.25×：去掉多余的 0
+    static func speedText(_ speed: Float) -> String {
+        var text = String(format: "%.2f", speed)
+        while text.hasSuffix("0") { text.removeLast() }
+        if text.hasSuffix(".") { text.removeLast() }
+        return text + "×"
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -76,17 +97,18 @@ struct PlaybackSpeedSheet: View {
                         dismiss()
                     } label: {
                         HStack {
-                            Text(String(format: "%.2fx", speed))
+                            Text(Self.speedText(speed))
                                 .foregroundColor(palette.textPrimary)
                             if speed == 1.0 {
                                 Text("（默认）")
                                     .font(.caption)
-                                    .foregroundColor(palette.textTertiary)
+                                    .foregroundColor(palette.textSecondary)
                             }
                             Spacer()
                             if playback.playbackSpeed == speed {
                                 Image(systemName: "checkmark")
-                                    .foregroundColor(palette.primary)
+                                    .foregroundColor(palette.accent)
+                                    .accessibilityLabel("当前选择")
                             }
                         }
                     }
@@ -101,7 +123,7 @@ struct PlaybackSpeedSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
             }
         }
@@ -149,7 +171,7 @@ struct PlaylistCoverPickerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
             }
             .onChange(of: selectedPhotoItem) { newItem in

@@ -12,8 +12,8 @@ struct SnackbarView: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(message)
-                .font(.subheadline)
-                .foregroundColor(palette.textPrimary)
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(palette.onAction)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -21,26 +21,28 @@ struct SnackbarView: View {
                 Button(action: action) {
                     Text(actionTitle)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundColor(palette.textPrimary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(palette.surface.opacity(0.2))
-                        .clipShape(Capsule())
+                        .foregroundColor(palette.onAction)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 32)
+                        .background(Capsule().stroke(palette.onAction.opacity(0.5), lineWidth: 1))
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.leading, 18)
+        .padding(.trailing, 10)
+        .padding(.vertical, 6)
+        .frame(minHeight: 52)
+        // 反色提示：主操作色底 + onAction 文字，三套主题日夜都满足对比度
         .background(
-            LinearGradient(
-                colors: [palette.gradientStart, palette.gradientEnd],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(palette.actionFill)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .shadow(color: palette.gradientStart.opacity(0.3), radius: 8, y: 2)
-        .padding(.horizontal, 16)
+        .shadow(color: palette.cardShadow, radius: 14, y: 6)
+        .padding(.horizontal, 20)
+        .accessibilityElement(children: .contain)
     }
 }
 
@@ -90,7 +92,8 @@ final class SnackbarState: ObservableObject {
 
 struct SnackbarModifier: ViewModifier {
     @ObservedObject var state: SnackbarState
-    var bottomPadding: CGFloat = 90
+    /// 悬浮底栏 + 迷你播放器之上
+    var bottomPadding: CGFloat = 150
 
     func body(content: Content) -> some View {
         ZStack(alignment: .bottom) {
@@ -106,11 +109,15 @@ struct SnackbarModifier: ViewModifier {
                 .zIndex(999)
             }
         }
+        .onChange(of: state.isShowing) { showing in
+            guard showing else { return }
+            AccessibilityNotification.Announcement(state.message).post()
+        }
     }
 }
 
 extension View {
-    func snackbar(_ state: SnackbarState, bottomPadding: CGFloat = 90) -> some View {
+    func snackbar(_ state: SnackbarState, bottomPadding: CGFloat = 150) -> some View {
         modifier(SnackbarModifier(state: state, bottomPadding: bottomPadding))
     }
 }

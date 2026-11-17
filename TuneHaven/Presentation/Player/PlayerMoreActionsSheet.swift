@@ -27,11 +27,11 @@ struct PlayerMoreActionsSheet: View {
                         HStack(spacing: 12) {
                             Image(systemName: playback.sleepTimerRemaining != nil ? "moon.zzz.fill" : "moon.zzz")
                                 .font(.body)
-                                .foregroundColor(palette.primary)
+                                .foregroundColor(palette.accent)
                                 .frame(width: 28)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("定时关闭")
-                                    .font(.subheadline)
+                                    .font(.body)
                                     .foregroundColor(palette.textPrimary)
                                 if let remaining = playback.sleepTimerRemaining {
                                     Text(remaining.formattedTime)
@@ -42,7 +42,7 @@ struct PlayerMoreActionsSheet: View {
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.caption2)
-                                .foregroundColor(palette.textTertiary)
+                                .foregroundColor(palette.textSecondary)
                         }
                     }
                     .listRowBackground(palette.surface)
@@ -51,20 +51,20 @@ struct PlayerMoreActionsSheet: View {
                         HStack(spacing: 12) {
                             Image(systemName: "speedometer")
                                 .font(.body)
-                                .foregroundColor(palette.primary)
+                                .foregroundColor(palette.accent)
                                 .frame(width: 28)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("倍速播放")
-                                    .font(.subheadline)
+                                    .font(.body)
                                     .foregroundColor(palette.textPrimary)
-                                Text("\(String(format: "%.1f", playback.playbackSpeed))x")
+                                Text(PlaybackSpeedSheet.speedText(playback.playbackSpeed))
                                     .font(.caption)
                                     .foregroundColor(palette.textSecondary)
                             }
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.caption2)
-                                .foregroundColor(palette.textTertiary)
+                                .foregroundColor(palette.textSecondary)
                         }
                     }
                     .listRowBackground(palette.surface)
@@ -119,8 +119,8 @@ struct PlayerMoreActionsSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成", action: onDismiss)
-                        .font(.subheadline)
-                        .foregroundColor(palette.primary)
+                        .fontWeight(.semibold)
+                        .foregroundColor(palette.accent)
                 }
             }
         }
@@ -130,12 +130,14 @@ struct PlayerMoreActionsSheet: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.body)
-                .foregroundColor(destructive ? SemanticColor.danger : palette.primary)
+                .foregroundColor(destructive ? SemanticColor.danger : palette.accent)
                 .frame(width: 28)
             Text(title)
-                .font(.subheadline)
+                .font(.body)
                 .foregroundColor(destructive ? SemanticColor.danger : palette.textPrimary)
             Spacer()
         }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
     }
 }

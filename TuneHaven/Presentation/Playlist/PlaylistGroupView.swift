@@ -15,7 +15,7 @@ struct PlaylistGroupView: View {
     @State private var movingPlaylist: Playlist? = nil
     @State private var deleteTarget: PlaylistGroupDetail?
 
-    private var rowBackground: Color { palette.surface.opacity(0.72) }
+    private var rowBackground: Color { palette.surface }
 
     var body: some View {
         List {
@@ -268,7 +268,7 @@ struct MoveToGroupSheet: View {
                             .foregroundColor(palette.textPrimary)
                     }
                 }
-                .listRowBackground(palette.surface.opacity(0.72))
+                .listRowBackground(palette.surface)
 
                 ForEach(groups) { group in
                     Button {
@@ -292,7 +292,7 @@ struct MoveToGroupSheet: View {
                             }
                         }
                     }
-                    .listRowBackground(palette.surface.opacity(0.72))
+                    .listRowBackground(palette.surface)
                 }
             }
             .listStyle(.insetGrouped)

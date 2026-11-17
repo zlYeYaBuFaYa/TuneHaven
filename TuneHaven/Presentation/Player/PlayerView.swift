@@ -101,6 +101,15 @@ struct PlayerView: View {
             dragOffset = 0
             dragOffsetX = 0
             scheduleLosslessPaywall()
+            #if DEBUG
+            switch DebugLaunchRoute.raw {
+            case "player.more": activeSheet = .moreActions
+            case "player.sleep": activeSheet = .sleepTimer
+            case "player.speed": activeSheet = .speedPicker
+            case "player.lyricsSearch": if let song = playback.currentSong { activeSheet = .lyricsSearch(song) }
+            default: break
+            }
+            #endif
         }
         .onChange(of: router.playerModalReset) { _ in
             pendingSheetTask?.cancel()
@@ -136,6 +145,7 @@ struct PlayerView: View {
                         .environmentObject(router)
                 }
             }
+            .sheetBackground()
             .environment(\.themePalette, palette)
             .environmentObject(playlistService)
             .environmentObject(subscriptionService)

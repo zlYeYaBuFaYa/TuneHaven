@@ -70,6 +70,7 @@ struct RootTabView: View {
         .sheet(item: $router.sheet) { destination in
             injectPresentedEnvironment(
                 sheetView(for: destination)
+                    .sheetBackground()
                     .themeSheetPresentationBackground(
                         elevated: themeManager.palette.elevatedSurface,
                         hasCustomBackground: hasCustomBg
@@ -86,6 +87,7 @@ struct RootTabView: View {
             }
         )) { presentation in
             BackupCenterView(presentation: presentation)
+                .sheetBackground()
                 .environmentObject(backupService)
                 .environment(\.themePalette, themeManager.palette)
         }

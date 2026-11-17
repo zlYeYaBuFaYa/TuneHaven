@@ -127,6 +127,7 @@ struct SettingsView: View {
                     ShareReceiveView()
                 }
             }
+            .sheetBackground()
             .environment(\.themePalette, palette)
             .environmentObject(importService)
             .environmentObject(libraryService)
