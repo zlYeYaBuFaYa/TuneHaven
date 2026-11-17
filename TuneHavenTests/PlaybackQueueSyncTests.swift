@@ -49,6 +49,7 @@ struct PlaybackQueueSyncTests {
         #expect(harness.playback.isPlayingOutsideQueue)
         #expect(harness.playback.queue.currentIndex == nil)
         #expect(harness.playback.queue.queue.map(\.song.id) == [list[1].id, list[2].id])
+        #expect(harness.playback.outOfQueueSuccessor?.id == list[1].id)
 
         finishCurrentSong(harness)
         await waitUntil { harness.playback.currentSong?.id == list[1].id && harness.engine.playCalled }
@@ -66,6 +67,7 @@ struct PlaybackQueueSyncTests {
 
         harness.playback.removeFromQueue(at: [2])
         #expect(harness.playback.isPlayingOutsideQueue)
+        #expect(harness.playback.outOfQueueSuccessor == nil)
         #expect(harness.engine.stopCalled == false)
 
         finishCurrentSong(harness)

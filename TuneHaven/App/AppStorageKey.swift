@@ -18,6 +18,8 @@ enum AppStorageKey {
     static let hasCompletedOnboarding = "has_completed_onboarding"
     static let songSortOption = "song_sort_option"
     static let songSortAscending = "song_sort_ascending"
+    /// 播放器封面样式：auto（晴屿用唱片，其他方形）、square、disc
+    static let playerCoverStyle = "player_cover_style"
     static let lyricsCooldown = "lyrics_match_cooldown"
     /// App 首次启动日期（AppTransaction 获取失败时的兜底）
     static let appFirstLaunchDate = "app_first_launch_date"

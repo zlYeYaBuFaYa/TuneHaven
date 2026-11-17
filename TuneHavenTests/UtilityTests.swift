@@ -740,3 +740,30 @@ struct PlaylistNameFilterTests {
         #expect(PlaylistNameFilter.filter(list, query: "  ").count == 2)
     }
 }
+
+@Suite("PlayerQualityTag")
+struct PlayerQualityTagTests {
+    private func song(format: String, sampleRate: Int?) -> Song {
+        let base = makeSong(title: "t")
+        return Song(
+            id: base.id, title: base.title, artist: base.artist, album: base.album, duration: base.duration,
+            fileHash: base.fileHash, fileRelativePath: "x.\(format)", coverImagePath: nil, lyricsPath: nil, lyricsSource: nil,
+            metadata: Metadata(format: format, sampleRate: sampleRate, bitRate: nil, channels: 2, encoder: nil,
+                               trackNumber: nil, year: nil, genre: nil),
+            importDate: Date(), fileSize: 1, playCount: 0, isFavorite: false, favoriteDate: nil, lastPlayedDate: nil
+        )
+    }
+
+    @Test("无损与采样率来自真实数据，不显示位深")
+    func testTags() {
+        #expect(PlayerQualityTag.tags(for: song(format: "flac", sampleRate: 48_000)) == ["LOSSLESS", "48 kHz"])
+        #expect(PlayerQualityTag.tags(for: song(format: "mp3", sampleRate: 44_100)) == ["44.1 kHz"])
+        #expect(PlayerQualityTag.tags(for: song(format: "mp3", sampleRate: nil)) == [])
+        #expect(PlayerQualityTag.tags(for: song(format: "flac", sampleRate: 96_000)).allSatisfy { !$0.contains("BIT") })
+    }
+
+    @Test("VoiceOver 读法")
+    func testSpoken() {
+        #expect(PlayerQualityTag.spoken(for: song(format: "flac", sampleRate: 48_000)) == "无损，48 千赫")
+    }
+}

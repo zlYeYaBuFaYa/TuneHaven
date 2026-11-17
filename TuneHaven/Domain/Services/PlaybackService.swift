@@ -238,6 +238,12 @@ final class PlaybackService: ObservableObject {
     /// 队列外播放结束后接着播放的条目（QueueItem id）；为 nil 表示播完即停止
     private var outOfQueueSuccessorId: UUID?
 
+    /// 队列外播放结束后接着播放的歌曲，供队列页说明「播完后继续：…」；nil 表示播完即停止
+    var outOfQueueSuccessor: Song? {
+        guard isPlayingOutsideQueue, let id = outOfQueueSuccessorId else { return nil }
+        return queueService.queue.first { $0.id == id }?.song
+    }
+
     /// 用户编辑队列时移除条目。移除当前项不切断音频：进入队列外播放，记住原后继项。
     func removeFromQueue(at offsets: IndexSet) {
         guard !offsets.isEmpty else { return }

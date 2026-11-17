@@ -63,14 +63,8 @@ struct RootTabView: View {
         )) {
             injectPresentedEnvironment(
                 PlayerView()
-                    // 播放器文字落在色板渐变上。玻璃路径也保留这块不透明底，避免曲库透出来。
-                    .presentationBackground(
-                        LinearGradient(
-                            colors: [themeManager.palette.background, themeManager.palette.surfaceSecondary, themeManager.palette.highlight],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
+                    // 播放器自己绘制柔光背景；这里保留不透明底，避免曲库透出来
+                    .presentationBackground(themeManager.palette.background)
             )
         }
         .sheet(item: $router.sheet) { destination in

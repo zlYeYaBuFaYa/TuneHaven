@@ -44,16 +44,16 @@ struct PlayerView: View {
     @State private var losslessPaywallTask: Task<Void, Never>?
 
     @AppStorage(AppStorageKey.lyricsPreferSimplified) private var lyricsPreferSimplified: Bool = true
+    @AppStorage(AppStorageKey.playerCoverStyle) private var coverStyleRaw = PlayerCoverStyle.auto.rawValue
+
+    private var coverStyle: PlayerCoverStyle {
+        (PlayerCoverStyle(rawValue: coverStyleRaw) ?? .auto).resolved(themeID: themeManager.currentStyle.id)
+    }
 
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [palette.background, palette.surfaceSecondary, palette.highlight],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            ThemeBackgroundView()
 
             Group {
                 if showLyricsPage {
@@ -238,60 +238,68 @@ struct PlayerView: View {
 
     // MARK: - Main Content
 
+    /// 顺序：收起／来源／更多 → 封面 → 曲名／艺术家／收藏 → 真实音质 → 歌词预览 → 进度 → 五项控制 → 音频输出
+    /// （docs/UI设计文档.md §7.3）。上半部分可下拖收起；控制区固定在下方便于触达。
     private var mainPlayerContent: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
-                dragIndicator
                 header
-                    .padding(.bottom, 4)
-                Spacer(minLength: 20)
+                    .padding(.bottom, 8)
                 coverSection
-                Spacer(minLength: 16)
+                    .padding(.vertical, 12)
+                    .frame(maxHeight: .infinity)
                 songInfo
+                qualityTags
                 currentLyricsPreview
+                    .padding(.top, 14)
             }
-            .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
             .gesture(playerDismissGesture)
 
             progressBar
+                .padding(.top, 12)
             controls
+            AudioOutputButton()
+                .padding(.top, 2)
         }
         .padding(.horizontal, 24)
-        .padding(.top, 12)
-        .padding(.bottom, 36)
-    }
-
-    private var dragIndicator: some View {
-        Capsule()
-            .fill(palette.textTertiary.opacity(0.4))
-            .frame(width: 36, height: 5)
-            .padding(.bottom, 8)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
     }
 
     private var header: some View {
         HStack {
             Button { router.closePlayer() } label: {
                 Image(systemName: "chevron.down")
-                    .font(.title3)
-                    .foregroundColor(palette.textPrimary)
-            }
-            Spacer()
-            if let song = playback.currentSong {
-                Text(song.album.isEmpty || song.album == SongDefaults.unknownAlbum ? "正在播放" : song.album)
-                    .font(.subheadline)
-                    .foregroundColor(palette.textSecondary)
-            }
-            Spacer()
-            Button { activeSheet = .moreActions } label: {
-                Image(systemName: "ellipsis")
-                    .font(.title3)
+                    .font(.title3.weight(.semibold))
                     .foregroundColor(palette.textPrimary)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
+            .accessibilityLabel("收起播放器")
+            Spacer()
+            VStack(spacing: 2) {
+                Text("正在播放")
+                    .font(.caption)
+                    .foregroundColor(palette.textSecondary)
+                if let song = playback.currentSong {
+                    Text(song.album.isEmpty || song.album == SongDefaults.unknownAlbum ? "音乐库" : song.album)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(palette.textPrimary)
+                        .lineLimit(1)
+                }
+            }
+            .accessibilityElement(children: .combine)
+            Spacer()
+            Button { activeSheet = .moreActions } label: {
+                Image(systemName: "ellipsis")
+                    .font(.title3.weight(.semibold))
+                    .foregroundColor(palette.textPrimary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("更多操作")
         }
-        .padding(.horizontal, 4)
     }
 
     // MARK: - More Action Sheet
@@ -311,109 +319,126 @@ struct PlayerView: View {
 
     // MARK: - Cover / Info / Progress / Controls
 
+    /// 大封面：宽高共同约束，小高度设备自动缩小（docs/UI设计文档.md §6、§7.3）
     private var coverSection: some View {
         GeometryReader { geo in
-            let coverSize = geo.size.width * 0.75
-            ZStack(alignment: .bottom) {
-                albumCoverImage(size: coverSize)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                if let song = playback.currentSong {
-                    let hasLyrics = lyricsData.map { !$0.lines.isEmpty || !$0.rawText.isEmpty } ?? false
-                    if !hasLyrics {
-                        Button {
-                            activeSheet = .lyricsSearch(song)
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "magnifyingglass")
-                                Text("搜索歌词")
-                            }
-                            .font(.caption.weight(.medium))
-                            .foregroundColor(palette.textPrimary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
-                        }
-                        .padding(.bottom, 8)
-                    }
-                }
-            }
+            let side = min(geo.size.width, geo.size.height, 320)
+            PlayerCoverArt(path: playback.currentSong?.coverImagePath, style: coverStyle, size: side)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .aspectRatio(1, contentMode: .fit)
-    }
-
-    @ViewBuilder
-    private func albumCoverImage(size: CGFloat) -> some View {
-        CoverImageView(path: playback.currentSong?.coverImagePath, size: size, cornerRadius: 16)
-            .shadow(color: palette.cardShadow, radius: 20, y: 10)
+        .frame(minHeight: 160)
+        .accessibilityHidden(true)
     }
 
     private var songInfo: some View {
-        HStack(alignment: .center) {
+        HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(playback.currentSong?.title ?? "未在播放")
-                    .font(.title3.bold())
+                    .font(.title2.weight(.semibold))
                     .foregroundColor(palette.textPrimary)
-                    .lineLimit(1)
+                    .lineLimit(2)
                 Text(playback.currentSong?.artist ?? "—")
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundColor(palette.textSecondary)
                     .lineLimit(1)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+
+            let isFavorite = playback.currentSong?.isFavorite == true
             Button {
-                Task {
-                    await playback.toggleCurrentSongFavorite()
-                }
+                Task { await playback.toggleCurrentSongFavorite() }
             } label: {
-                Image(systemName: playback.currentSong?.isFavorite == true ? "heart.fill" : "heart")
-                    .font(.title2)
-                    .foregroundColor(playback.currentSong?.isFavorite == true ? SemanticColor.danger : palette.textSecondary)
+                Image(systemName: isFavorite ? "heart.fill" : "heart")
+                    .font(.title3.weight(.semibold))
+                    .foregroundColor(isFavorite ? palette.accent : palette.textPrimary)
+                    .frame(width: 48, height: 48)
+                    .background(Circle().fill(palette.surface.opacity(0.7)))
+                    .overlay(Circle().stroke(palette.separator, lineWidth: 0.5))
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isFavorite ? "已收藏" : "收藏")
         }
-        .padding(.vertical, 12)
     }
 
-    private var currentLyricsPreview: some View {
-        Group {
-            if let data = lyricsData, !data.lines.isEmpty {
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                        showLyricsPage = true
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Text(currentLyricsText(from: data) ?? " ")
-                            .font(.subheadline)
+    /// 只展示真实已知的音质：无损来自 Song.isLossless，采样率来自元数据；当前没有位深字段，不显示
+    @ViewBuilder
+    private var qualityTags: some View {
+        if let song = playback.currentSong {
+            let tags = PlayerQualityTag.tags(for: song)
+            if !tags.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(tags, id: \.self) { tag in
+                        Text(tag)
+                            .font(.caption2.weight(.semibold))
                             .foregroundColor(palette.textSecondary)
-                            .lineLimit(1)
-                        Image(systemName: "chevron.right")
-                            .font(.caption2)
-                            .foregroundColor(palette.textTertiary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(palette.separator, lineWidth: 1))
                     }
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Rectangle())
+                    Spacer()
                 }
-                .padding(.top, 8)
-            } else if let data = lyricsData, !data.rawText.isEmpty {
-                Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                        showLyricsPage = true
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Text("查看歌词")
-                            .font(.subheadline)
-                            .foregroundColor(palette.textTertiary)
-                        Image(systemName: "chevron.right")
-                            .font(.caption2)
-                            .foregroundColor(palette.textTertiary)
-                    }
-                }
-                .padding(.top, 8)
+                .padding(.top, 10)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("音质：\(PlayerQualityTag.spoken(for: song))")
             }
         }
+    }
+
+    /// 歌词预览：有歌词点击进入歌词页；没有时给出添加歌词入口（交互设计文档 §7.3）
+    @ViewBuilder
+    private var currentLyricsPreview: some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        Group {
+            if let data = lyricsData, !data.lines.isEmpty || !data.rawText.isEmpty {
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                        showLyricsPage = true
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(data.lines.isEmpty ? "查看歌词" : "「\(currentLyricsText(from: data) ?? "")」")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(palette.accent)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(palette.textSecondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 48)
+                    .contentShape(shape)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("歌词")
+                .accessibilityHint("打开歌词页")
+            } else if let song = playback.currentSong {
+                Menu {
+                    Button { activeSheet = .lyricsSearch(song) } label: {
+                        Label("搜索歌词", systemImage: "magnifyingglass")
+                    }
+                    Button { showLyricsImporter = true } label: {
+                        Label("导入 LRC 文件", systemImage: "doc.text")
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Text("暂无歌词")
+                            .font(.subheadline)
+                            .foregroundColor(palette.textSecondary)
+                        Spacer(minLength: 0)
+                        Label("添加歌词", systemImage: "plus")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(palette.accent)
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 48)
+                    .contentShape(shape)
+                }
+            }
+        }
+        .background(shape.fill(palette.surface.opacity(0.5)))
+        .overlay(shape.stroke(palette.separator, lineWidth: 0.5))
     }
 
     private func currentLyricsText(from data: LyricsData) -> String? {
@@ -434,18 +459,17 @@ struct PlayerView: View {
     }
 
     private var progressBar: some View {
-        PlayerProgressBar(barHeight: 6, touchHeight: 24, timeFont: .caption.monospacedDigit())
-            .padding(.bottom, 8)
+        PlayerProgressBar(barHeight: 5, touchHeight: 44, timeFont: .caption.monospacedDigit())
     }
 
     private var controls: some View {
         PlayerControlsBar(
             playButtonSize: 68,
-            navFont: .title,
+            navFont: .title2,
             modeFont: .title3,
             onQueueTap: { withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { showQueue = true } }
         )
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
     }
 
     /// 全屏播放器盖住 RootTabView 的 sheet。等封面稳定后再把软墙挂到播放器自己的 sheet 上。

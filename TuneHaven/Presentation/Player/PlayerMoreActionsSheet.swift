@@ -11,7 +11,13 @@ struct PlayerMoreActionsSheet: View {
     let onDismiss: () -> Void
 
     @EnvironmentObject private var playback: PlaybackService
+    @EnvironmentObject private var themeManager: ThemeManager
     @Environment(\.themePalette) private var palette
+    @AppStorage(AppStorageKey.playerCoverStyle) private var coverStyleRaw = PlayerCoverStyle.auto.rawValue
+
+    private var resolvedCoverStyle: PlayerCoverStyle {
+        (PlayerCoverStyle(rawValue: coverStyleRaw) ?? .auto).resolved(themeID: themeManager.currentStyle.id)
+    }
 
     var body: some View {
         NavigationStack {
@@ -60,6 +66,19 @@ struct PlayerMoreActionsSheet: View {
                                 .font(.caption2)
                                 .foregroundColor(palette.textTertiary)
                         }
+                    }
+                    .listRowBackground(palette.surface)
+                }
+
+                Section {
+                    // 唱片与完整方形封面之间切换，不修改原封面文件
+                    Button {
+                        coverStyleRaw = (resolvedCoverStyle == .disc ? PlayerCoverStyle.square : .disc).rawValue
+                    } label: {
+                        actionRow(
+                            icon: resolvedCoverStyle == .disc ? "square" : "opticaldisc",
+                            title: resolvedCoverStyle == .disc ? "显示完整方形封面" : "以唱片样式显示封面"
+                        )
                     }
                     .listRowBackground(palette.surface)
                 }
