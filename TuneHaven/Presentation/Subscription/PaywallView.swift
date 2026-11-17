@@ -9,7 +9,11 @@ struct PaywallView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedProduct: SubscriptionProduct?
+    @State private var selectedProductID: String?
+    @State private var isRestoring = false
+    private var selectedProduct: SubscriptionProduct? {
+        subscriptionService.products.first { $0.id == selectedProductID }
+    }
     @State private var purchaseError: String?
 
     var body: some View {
@@ -32,15 +36,26 @@ struct PaywallView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
             }
-            .onAppear {
-                if selectedProduct == nil {
-                    selectedProduct = subscriptionService.products.first { $0.type == .autoRenewable }
+            .task {
+                if subscriptionService.products.isEmpty { await subscriptionService.loadProducts() }
+                selectAvailableProduct()
+            }
+            .onChange(of: subscriptionService.products.map(\.id)) { _, _ in selectAvailableProduct() }
+            .onChange(of: subscriptionService.status) { _, status in
+                switch status {
+                case .lifetime, .subscribed: dismiss()
+                default: break
                 }
             }
         }
+    }
+
+    private func selectAvailableProduct() {
+        guard selectedProduct == nil else { return }
+        selectedProductID = (subscriptionService.products.first { $0.type == .autoRenewable } ?? subscriptionService.products.first)?.id
     }
 
     // MARK: - Header
@@ -48,17 +63,14 @@ struct PaywallView: View {
     private var headerSection: some View {
         VStack(spacing: 12) {
             Image(systemName: "crown.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [palette.primary, palette.primaryDark],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .font(.system(size: 32))
+                .foregroundColor(palette.accent)
+                .frame(width: 76, height: 76)
+                .background(palette.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 24))
+                .accessibilityHidden(true)
 
-            Text("解锁全部高级功能")
-                .font(.title3.weight(.semibold))
+            Text("解锁更多聆听方式")
+                .font(.title2.weight(.semibold))
                 .foregroundColor(palette.textPrimary)
 
             if let feature = triggerFeature {
@@ -68,10 +80,10 @@ struct PaywallView: View {
                     Text("\(feature.displayName) 需要 Premium")
                         .font(.subheadline)
                 }
-                .foregroundColor(palette.primary)
+                .foregroundColor(palette.accent)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(palette.primary.opacity(0.1))
+                .background(palette.accent.opacity(0.1))
                 .clipShape(Capsule())
             }
         }
@@ -89,8 +101,8 @@ struct PaywallView: View {
                 }
             }
         }
-        .background(palette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .background(palette.surface.opacity(0.76))
+        .clipShape(RoundedRectangle(cornerRadius: 22))
     }
 
     private func featureRow(_ feature: PremiumFeature) -> some View {
@@ -98,7 +110,7 @@ struct PaywallView: View {
         return HStack(spacing: 12) {
             Image(systemName: featureIcon(feature))
                 .font(.body)
-                .foregroundColor(isHighlighted ? palette.primary : palette.textSecondary)
+                .foregroundColor(isHighlighted ? palette.accent : palette.textSecondary)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -113,12 +125,12 @@ struct PaywallView: View {
             Spacer()
 
             Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(palette.primary)
+                .foregroundColor(palette.accent)
                 .font(.body)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(isHighlighted ? palette.primary.opacity(0.05) : Color.clear)
+        .background(isHighlighted ? palette.accent.opacity(0.05) : Color.clear)
     }
 
     private func featureIcon(_ feature: PremiumFeature) -> String {
@@ -143,17 +155,23 @@ struct PaywallView: View {
     private var productSection: some View {
         if subscriptionService.products.isEmpty {
             VStack(spacing: 12) {
-                Image(systemName: "wifi.slash")
-                    .font(.title2)
-                    .foregroundColor(palette.textTertiary)
-                Text("商品加载失败，请检查网络")
-                    .font(.subheadline)
-                    .foregroundColor(palette.textSecondary)
-                Button("重试") {
-                    Task { await subscriptionService.loadProducts() }
+                if subscriptionService.isLoadingProducts {
+                    ProgressView("正在获取购买方案…")
+                        .tint(palette.accent).foregroundColor(palette.textSecondary)
+                } else {
+                    Image(systemName: "wifi.slash")
+                        .font(.title2)
+                        .foregroundColor(palette.textSecondary)
+                    Text(subscriptionService.productLoadError ?? "暂时没有可用的购买方案")
+                        .font(.subheadline)
+                        .foregroundColor(palette.textSecondary)
+                    Button("重试") {
+                        Task { await subscriptionService.loadProducts() }
+                    }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(palette.accent)
+                    .frame(minHeight: 44)
                 }
-                .font(.subheadline.weight(.medium))
-                .foregroundColor(palette.primary)
             }
             .padding(.vertical, 20)
         } else {
@@ -168,7 +186,7 @@ struct PaywallView: View {
     private func productCard(_ product: SubscriptionProduct) -> some View {
         let isSelected = selectedProduct?.id == product.id
         return Button {
-            selectedProduct = product
+            selectedProductID = product.id
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
@@ -179,10 +197,10 @@ struct PaywallView: View {
                         if product.type == .nonConsumable {
                             Text("推荐")
                                 .font(.caption2.weight(.semibold))
-                                .foregroundColor(palette.onPrimary)
+                                .foregroundColor(palette.onAction)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(palette.primary)
+                                .background(palette.actionFill)
                                 .clipShape(Capsule())
                         }
                     }
@@ -195,17 +213,19 @@ struct PaywallView: View {
                 Spacer()
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
-                    .foregroundColor(isSelected ? palette.primary : palette.textTertiary)
+                    .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
             }
             .padding(16)
-            .background(palette.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .background(palette.surface.opacity(0.76))
+            .clipShape(RoundedRectangle(cornerRadius: 22))
             .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(isSelected ? palette.primary : palette.separator, lineWidth: isSelected ? 2 : 1)
+                RoundedRectangle(cornerRadius: 22)
+                    .stroke(isSelected ? palette.accent : palette.separator, lineWidth: isSelected ? 2 : 1)
             )
         }
         .buttonStyle(.plain)
+        .disabled(subscriptionService.isPurchasing || isRestoring)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     // MARK: - Purchase Button
@@ -217,8 +237,8 @@ struct PaywallView: View {
                 Task {
                     do {
                         purchaseError = nil
-                        try await subscriptionService.purchase(product)
-                        if subscriptionService.tier == .premium { dismiss() }
+                        let result = try await subscriptionService.purchase(product)
+                        if case .success = result, subscriptionService.tier == .premium { dismiss() }
                     } catch {
                         purchaseError = error.localizedDescription
                     }
@@ -227,23 +247,24 @@ struct PaywallView: View {
                 HStack {
                     if subscriptionService.isPurchasing {
                         ProgressView()
-                            .tint(palette.onPrimary)
+                            .tint(palette.onAction)
                     }
                     Text(subscriptionService.isPurchasing ? "处理中..." : buttonTitle)
                 }
                 .font(.headline)
-                .foregroundColor(palette.onPrimary)
+                .foregroundColor(palette.onAction)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(selectedProduct == nil || subscriptionService.isPurchasing
-                              ? palette.textTertiary
-                              : palette.primary)
-                )
+                .background(palette.actionFill, in: Capsule())
+                .opacity(selectedProduct == nil || subscriptionService.isPurchasing || isRestoring ? 0.5 : 1)
             }
-            .disabled(selectedProduct == nil || subscriptionService.isPurchasing)
+            .disabled(selectedProduct == nil || subscriptionService.isPurchasing || isRestoring || subscriptionService.pendingProductID != nil)
 
+            if subscriptionService.pendingProductID != nil {
+                Label("购买正在等待批准。批准后，Premium 权益会自动更新，无需重复购买。", systemImage: "clock")
+                    .font(.subheadline).foregroundColor(palette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if let error = purchaseError {
                 Text(error)
                     .font(.caption)
@@ -255,6 +276,7 @@ struct PaywallView: View {
 
     private var buttonTitle: String {
         guard let product = selectedProduct else { return "选择方案" }
+        if subscriptionService.pendingProductID != nil { return "等待批准" }
         return product.type == .autoRenewable ? "立即订阅" : "立即购买"
     }
 
@@ -262,14 +284,22 @@ struct PaywallView: View {
 
     private var footerSection: some View {
         VStack(spacing: 12) {
-            Button("恢复购买") {
+            Button(isRestoring ? "正在恢复购买…" : "恢复购买") {
+                guard !isRestoring else { return }
+                isRestoring = true
                 Task {
                     await subscriptionService.restorePurchases()
-                    if subscriptionService.tier == .premium { dismiss() }
+                    isRestoring = false
+                    switch subscriptionService.status {
+                    case .lifetime, .subscribed: dismiss()
+                    default: break
+                    }
                 }
             }
+            .frame(minHeight: 44)
+            .disabled(isRestoring || subscriptionService.isPurchasing)
             .font(.subheadline)
-            .foregroundColor(palette.primary)
+            .foregroundColor(palette.accent)
 
             if let error = subscriptionService.restoreError {
                 Text(error)
@@ -279,9 +309,9 @@ struct PaywallView: View {
 
             HStack(spacing: 16) {
                 Link("使用条款", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
-                Text("·").foregroundColor(palette.textTertiary)
+                Text("·").foregroundColor(palette.textSecondary)
                 Link("隐私政策", destination: AppURLs.privacyPolicy)
-                Text("·").foregroundColor(palette.textTertiary)
+                Text("·").foregroundColor(palette.textSecondary)
                 Link("管理订阅", destination: AppURLs.manageSubscriptions)
             }
             .font(.caption)
@@ -289,7 +319,7 @@ struct PaywallView: View {
 
             Text("订阅将在确认购买时从您的 Apple ID 账户收费。\n订阅到期前 24 小时内自动续费，除非在到期前关闭自动续费。")
                 .font(.caption2)
-                .foregroundColor(palette.textTertiary)
+                .foregroundColor(palette.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 8)
         }

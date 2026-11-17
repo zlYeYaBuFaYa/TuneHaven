@@ -10,6 +10,9 @@ final class SubscriptionService: ObservableObject {
     @Published private(set) var status: SubscriptionStatus = .expired
     @Published private(set) var products: [SubscriptionProduct] = []
     @Published private(set) var isPurchasing = false
+    @Published private(set) var isLoadingProducts = false
+    @Published private(set) var productLoadError: String?
+    @Published private(set) var pendingProductID: String?
     @Published private(set) var restoreError: String?
     /// `tier` 是否已由 StoreKit 确认。`loadLocalStatus()` 给出的只是本地推断，可能是临时 Free，
     /// 依据权益做不可逆的操作时要等它为 true。
@@ -59,6 +62,7 @@ final class SubscriptionService: ObservableObject {
     /// 权益优先级：终身买断 > 有效订阅 > 试用期 > Free
     private func apply(_ entitlements: EntitlementState, installDate: Date?) {
         if entitlements.hasLifetime {
+            pendingProductID = nil
             tier = .premium
             status = .lifetime
             log.info("[Subscription] 状态: 终身买断")
@@ -66,6 +70,7 @@ final class SubscriptionService: ObservableObject {
         }
 
         if entitlements.hasActiveSubscription {
+            pendingProductID = nil
             tier = .premium
             status = .subscribed(expiresDate: entitlements.subscriptionExpirationDate ?? Date.distantFuture)
             log.info("[Subscription] 状态: 年度订阅有效")
@@ -94,17 +99,23 @@ final class SubscriptionService: ObservableObject {
     // MARK: - Products
 
     func loadProducts() async {
+        guard !isLoadingProducts else { return }
+        isLoadingProducts = true
+        productLoadError = nil
+        defer { isLoadingProducts = false }
         do {
             products = try await provider.fetchProducts()
             log.debug("[Subscription] 加载商品: \(products.count) 个")
         } catch {
+            productLoadError = "暂时无法获取购买方案，请检查网络后重试"
             log.error("[Subscription] 商品加载失败: \(error.localizedDescription)")
         }
     }
 
     // MARK: - Purchase
 
-    func purchase(_ product: SubscriptionProduct) async throws {
+    @discardableResult
+    func purchase(_ product: SubscriptionProduct) async throws -> PurchaseResult {
         isPurchasing = true
         defer { isPurchasing = false }
 
@@ -114,10 +125,12 @@ final class SubscriptionService: ObservableObject {
             await refreshStatus()
             log.info("[Subscription] 购买成功: \(product.id)")
         case .pending:
+            pendingProductID = product.id
             log.info("[Subscription] 购买等待审批: \(product.id)")
         case .cancelled:
             log.info("[Subscription] 用户取消购买: \(product.id)")
         }
+        return result
     }
 
     // MARK: - Restore
