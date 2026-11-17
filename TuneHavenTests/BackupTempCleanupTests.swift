@@ -238,6 +238,38 @@ struct BackupTempCleanupTests {
         #expect(!FileManager.default.fileExists(atPath: second.path))
     }
 
+    @Test("关闭导出页后，再打开恢复页可以正常预览")
+    func testInspectAfterClosingExportPage() async throws {
+        let fixture = try BackupTempFixture()
+        defer { fixture.cleanup() }
+        fixture.service.presentExport()
+        fixture.service.handlePresentationChange(to: nil)
+
+        let staged = try #require(fixture.service.stageExternalPackage(try fixture.makePackage()))
+        fixture.service.presentRestore(url: staged)
+
+        await #expect(throws: Never.self) {
+            _ = try await fixture.service.inspect(url: staged)
+        }
+    }
+
+    @Test("关闭恢复页后再次打开另一个备份，可以正常预览")
+    func testInspectAfterClosingRestorePage() async throws {
+        let fixture = try BackupTempFixture()
+        defer { fixture.cleanup() }
+        let first = try #require(fixture.service.stageExternalPackage(try fixture.makePackage()))
+        fixture.service.presentRestore(url: first)
+        _ = try await fixture.service.inspect(url: first)
+        fixture.service.handlePresentationChange(to: nil)
+
+        let second = try #require(fixture.service.stageExternalPackage(try fixture.makePackage()))
+        fixture.service.presentRestore(url: second)
+
+        await #expect(throws: Never.self) {
+            _ = try await fixture.service.inspect(url: second)
+        }
+    }
+
     @Test("关闭导出页不会删除 incoming 副本")
     func testDismissExportKeepsIncoming() throws {
         let fixture = try BackupTempFixture()

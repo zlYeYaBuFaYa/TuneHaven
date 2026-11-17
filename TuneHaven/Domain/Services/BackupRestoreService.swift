@@ -149,6 +149,11 @@ final class BackupRestoreService: ObservableObject {
     }
 
     func inspect(url: URL) async throws -> BackupPreview {
+        // 关闭备份页会置取消标志，原来只有导出/恢复开始时才复位，关过页面后预览总是「已取消」。
+        // 只在空闲时复位：页面关闭时仍在进行的恢复要保持取消。
+        if !isBusy && extractInFlight == 0 {
+            cancelFlag.reset()
+        }
         let catalog = try await withSecurityScope(url) {
             try await self.catalog(for: url)
         }
