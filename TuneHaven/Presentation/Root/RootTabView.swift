@@ -201,6 +201,8 @@ struct RootTabView: View {
             PlaybackSpeedSheet()
         case .importFromFiles:
             ImportFilesView()
+        case .importFromSource(let source):
+            ImportFilesView(initialSource: source)
         case .playlistCoverPicker(let id):
             PlaylistCoverPickerSheet(playlistId: id)
         case .batchAddSongs(let id):

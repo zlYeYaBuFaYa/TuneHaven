@@ -52,12 +52,17 @@ struct WebDAVAccountEditView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    ImportIntro(symbol: "externaldrive.badge.wifi", title: "保存一个音乐来源", message: "填写服务器地址和登录信息。密码安全保存在本机钥匙串中。")
+                        .plainListRow()
+                }
                 serverConfigSection
                 advancedSection
                 testConnectionSection
                 presetSection
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
             .scrollContentBackground(.hidden)
             .adaptiveBackground()
             .navigationTitle(title)
@@ -66,12 +71,12 @@ struct WebDAVAccountEditView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") { save() }
-                        .foregroundColor(palette.primary)
-                        .disabled(!canSave)
+                        .foregroundColor(palette.accent)
+                        .disabled(!canSave || isTesting || isHTTPPublicAddress)
                 }
             }
             .onAppear { loadExisting() }
@@ -89,7 +94,7 @@ struct WebDAVAccountEditView: View {
                     .foregroundColor(palette.textPrimary)
                     .multilineTextAlignment(.trailing)
             }
-            .listRowBackground(palette.surface)
+            .importRowSurface()
 
             HStack {
                 Text("服务器地址")
@@ -101,7 +106,7 @@ struct WebDAVAccountEditView: View {
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
             }
-            .listRowBackground(palette.surface)
+            .importRowSurface()
 
             if isHTTPPublicAddress {
                 HStack(spacing: 8) {
@@ -112,7 +117,7 @@ struct WebDAVAccountEditView: View {
                         .font(.caption)
                         .foregroundColor(SemanticColor.danger)
                 }
-                .listRowBackground(palette.surfaceSecondary)
+                .importRowSurface(secondary: true)
             } else if isHTTPAddress {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -122,7 +127,7 @@ struct WebDAVAccountEditView: View {
                         .font(.caption)
                         .foregroundColor(palette.textSecondary)
                 }
-                .listRowBackground(palette.surfaceSecondary)
+                .importRowSurface(secondary: true)
             }
 
             HStack {
@@ -134,7 +139,7 @@ struct WebDAVAccountEditView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
-            .listRowBackground(palette.surface)
+            .importRowSurface()
 
             HStack {
                 Text("密码")
@@ -143,7 +148,7 @@ struct WebDAVAccountEditView: View {
                     .foregroundColor(palette.textPrimary)
                     .multilineTextAlignment(.trailing)
             }
-            .listRowBackground(palette.surface)
+            .importRowSurface()
         } header: {
             Text("服务器配置")
                 .foregroundColor(palette.textSecondary)
@@ -156,8 +161,8 @@ struct WebDAVAccountEditView: View {
                 Text("信任自签证书")
                     .foregroundColor(palette.textPrimary)
             }
-            .tint(palette.primary)
-            .listRowBackground(palette.surface)
+            .tint(palette.accent)
+            .importRowSurface()
         } header: {
             Text("高级选项")
                 .foregroundColor(palette.textSecondary)
@@ -173,18 +178,18 @@ struct WebDAVAccountEditView: View {
                     Spacer()
                     if isTesting {
                         ProgressView()
-                            .tint(palette.primary)
+                            .tint(palette.accent)
                         Text("测试中...")
                             .foregroundColor(palette.textSecondary)
                     } else {
                         Text("测试连接")
-                            .foregroundColor(canSave ? palette.primary : palette.textTertiary)
+                            .foregroundColor(canSave ? palette.accent : palette.textSecondary)
                     }
                     Spacer()
                 }
             }
             .disabled(!canSave || isTesting)
-            .listRowBackground(palette.surface)
+            .importRowSurface()
 
             if let result = testResult {
                 switch result {
@@ -192,12 +197,12 @@ struct WebDAVAccountEditView: View {
                     Label("连接成功", systemImage: "checkmark.circle.fill")
                         .foregroundColor(SemanticColor.success)
                         .font(.subheadline)
-                        .listRowBackground(palette.surface)
+                        .importRowSurface()
                 case .failure(let msg):
                     Label(msg, systemImage: "xmark.circle.fill")
                         .foregroundColor(SemanticColor.danger)
                         .font(.subheadline)
-                        .listRowBackground(palette.surface)
+                        .importRowSurface()
                 }
             }
         }
@@ -225,10 +230,10 @@ struct WebDAVAccountEditView: View {
                     .foregroundColor(palette.textPrimary)
                 Text(url)
                     .font(.caption)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
             }
         }
-        .listRowBackground(palette.surface)
+        .importRowSurface()
     }
 
     // MARK: - Logic

@@ -27,6 +27,7 @@ enum SheetDestination: Identifiable {
     case setSleepTimer
     case playbackSpeedPicker
     case importFromFiles
+    case importFromSource(MusicImportSource)
     case batchAddSongs(playlistId: UUID)
     case paywall(feature: PremiumFeature? = nil)
 
@@ -39,6 +40,7 @@ enum SheetDestination: Identifiable {
         case .setSleepTimer: return "sleepTimer"
         case .playbackSpeedPicker: return "speedPicker"
         case .importFromFiles: return "importFromFiles"
+        case .importFromSource(let source): return "import_\(source.rawValue)"
         case .batchAddSongs(let id): return "batchAddSongs_\(id)"
         case .paywall(let feature): return "paywall_\(feature?.rawValue ?? "general")"
         }

@@ -13,6 +13,7 @@ struct WebDAVDownloadView: View {
 
     @State private var result: WebDAVImportResult?
     @State private var isProcessing = true
+    @State private var isCancelling = false
 
     var body: some View {
         NavigationStack {
@@ -21,10 +22,16 @@ struct WebDAVDownloadView: View {
                     progressSection
                     taskListSection
                 } else if let result {
-                    resultSection(result)
+                    if let imported = result.importResult {
+                        ImportResultSection(result: imported, wasCancelled: isCancelling)
+                    }
+                    if isCancelling || result.downloadFailedCount > 0 || result.skippedOversizeCount > 0 || !result.errors.isEmpty {
+                        resultSection(result)
+                    }
                 }
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
             .scrollContentBackground(.hidden)
             .adaptiveBackground()
             .navigationTitle("下载与导入")
@@ -33,10 +40,12 @@ struct WebDAVDownloadView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     if isProcessing {
-                        Button("取消") {
+                        Button(isCancelling ? "正在停止…" : "停止下载") {
+                            isCancelling = true
                             webDAVService.cancelDownload()
                         }
-                        .foregroundColor(SemanticColor.danger)
+                        .foregroundColor(palette.accent)
+                        .disabled(isCancelling || webDAVService.overallProgress >= 1)
                     }
                 }
                 if !isProcessing {
@@ -45,12 +54,13 @@ struct WebDAVDownloadView: View {
                             onComplete()
                             dismiss()
                         }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.accent)
                     }
                 }
             }
             .task { await startDownload() }
         }
+        .interactiveDismissDisabled(isProcessing)
     }
 
     // MARK: - Progress
@@ -59,7 +69,7 @@ struct WebDAVDownloadView: View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("整体进度")
+                    Text(webDAVService.overallProgress >= 1 && importService.isImporting ? "正在保存到音乐库" : "下载进度")
                         .font(.subheadline)
                         .foregroundColor(palette.textPrimary)
                     Spacer()
@@ -74,10 +84,10 @@ struct WebDAVDownloadView: View {
                         .foregroundColor(palette.textSecondary)
                 }
                 ProgressView(value: webDAVService.overallProgress)
-                    .tint(palette.primary)
+                    .tint(palette.accent)
             }
             .padding(.vertical, 4)
-            .listRowBackground(palette.surface)
+            .importRowSurface()
         }
     }
 
@@ -100,12 +110,12 @@ struct WebDAVDownloadView: View {
                 Spacer()
                 Text(task.file.formattedSize)
                     .font(.caption)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
             }
 
             if case .downloading = task.status {
                 ProgressView(value: task.progress)
-                    .tint(palette.primary)
+                    .tint(palette.accent)
             }
 
             if let error = task.error {
@@ -115,7 +125,7 @@ struct WebDAVDownloadView: View {
             }
         }
         .padding(.vertical, 2)
-        .listRowBackground(palette.surface)
+        .importRowSurface()
     }
 
     @ViewBuilder
@@ -123,7 +133,7 @@ struct WebDAVDownloadView: View {
         switch status {
         case .waiting:
             Image(systemName: "clock")
-                .foregroundColor(palette.textTertiary)
+                .foregroundColor(palette.textSecondary)
                 .font(.caption)
         case .downloading:
             ProgressView()
@@ -146,18 +156,10 @@ struct WebDAVDownloadView: View {
     // MARK: - Result
 
     private func resultSection(_ result: WebDAVImportResult) -> some View {
-        Section("导入结果") {
-            if let importResult = result.importResult {
-                resultRow("成功导入", count: importResult.successCount,
-                          color: palette.primary, icon: "checkmark.circle")
-                if importResult.skippedDuplicateCount > 0 {
-                    resultRow("已跳过（重复）", count: importResult.skippedDuplicateCount,
-                              color: palette.textSecondary, icon: "arrow.2.circlepath")
-                }
-                if importResult.failedCount > 0 {
-                    resultRow("导入失败", count: importResult.failedCount,
-                              color: SemanticColor.danger, icon: "xmark.circle")
-                }
+        Section("下载结果") {
+            if isCancelling {
+                Label("已停止，已导入的音乐会保留", systemImage: "stop.circle")
+                    .foregroundColor(palette.textPrimary).importRowSurface()
             }
             if result.downloadFailedCount > 0 {
                 resultRow("下载失败", count: result.downloadFailedCount,
@@ -166,6 +168,9 @@ struct WebDAVDownloadView: View {
             if result.skippedOversizeCount > 0 {
                 resultRow("文件过大（已跳过）", count: result.skippedOversizeCount,
                           color: SemanticColor.warning, icon: "exclamationmark.triangle")
+            }
+            ForEach(Array(result.errors.filter { $0 != "已取消" }.enumerated()), id: \.offset) { _, message in
+                Text(message).font(.footnote).foregroundColor(palette.textSecondary).importRowSurface()
             }
         }
     }
@@ -181,7 +186,7 @@ struct WebDAVDownloadView: View {
                 .font(.subheadline.bold())
                 .foregroundColor(color)
         }
-        .listRowBackground(palette.surface)
+        .importRowSurface()
     }
 
     // MARK: - Logic

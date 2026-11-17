@@ -9,12 +9,17 @@ struct WiFiTransferView: View {
     @StateObject private var server = WiFiTransferServer()
     @AppStorage(AppStorageKey.wifiPasswordEnabled) private var passwordEnabled = true
     @State private var showAlert = false
+    @State private var didCopyAddress = false
     @State private var alertMessage = ""
     @StateObject private var importQueue = WiFiImportQueue()
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    ImportIntro(symbol: "wifi", title: "让电脑里的音乐，来到手机", message: "手机和电脑连接同一 WiFi 后，开启服务并在电脑浏览器上传文件。")
+                        .plainListRow()
+                }
                 serverStatusSection
                 if server.isRunning {
                     connectionInfoSection
@@ -25,16 +30,18 @@ struct WiFiTransferView: View {
                 securitySection
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
             .scrollContentBackground(.hidden)
             .adaptiveBackground()
             .navigationTitle("WiFi 传输")
             .navigationBarTitleDisplayMode(.inline)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") {
                         dismiss()
                     }
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
                 }
             }
         }
@@ -75,14 +82,14 @@ struct WiFiTransferView: View {
                       systemImage: "wifi.circle")
                     .foregroundColor(palette.textPrimary)
             }
-            .tint(palette.primary)
-            .listRowBackground(palette.surface)
+            .tint(palette.accent)
+            .importRowSurface()
 
             if !server.isRunning {
                 Toggle("启用密码保护", isOn: $passwordEnabled)
                     .foregroundColor(palette.textPrimary)
-                    .tint(palette.primary)
-                    .listRowBackground(palette.surface)
+                    .tint(palette.accent)
+                    .importRowSurface()
             }
         } header: {
             Text("服务状态")
@@ -107,23 +114,28 @@ struct WiFiTransferView: View {
                     Spacer()
                 }
                 .padding(.vertical, 8)
-                .listRowBackground(palette.surface)
+                .importRowSurface()
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("电脑访问地址")
                         .font(.caption)
                         .foregroundColor(palette.textSecondary)
-                    Text(address)
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundColor(palette.primary)
-                        .onTapGesture {
-                            UIPasteboard.general.string = address
-                        }
-                    Text("点击复制地址")
+                    Button {
+                        UIPasteboard.general.string = address
+                        didCopyAddress = true
+                    } label: {
+                        Label(address, systemImage: didCopyAddress ? "checkmark" : "doc.on.doc")
+                            .font(.system(.subheadline, design: .monospaced))
+                            .foregroundColor(palette.accent)
+                            .frame(minHeight: 44)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .accessibilityLabel(didCopyAddress ? "地址已复制" : "复制电脑访问地址")
+                    Text(didCopyAddress ? "地址已复制" : "点击复制地址")
                         .font(.caption)
-                        .foregroundColor(palette.textTertiary)
+                        .foregroundColor(palette.textSecondary)
                 }
-                .listRowBackground(palette.surface)
+                .importRowSurface()
             }
             if passwordEnabled, let pwd = server.password {
                 HStack {
@@ -141,17 +153,19 @@ struct WiFiTransferView: View {
                         _ = server.regeneratePassword()
                     } label: {
                         Image(systemName: "arrow.clockwise")
-                            .foregroundColor(palette.primary)
+                            .foregroundColor(palette.accent)
+                            .frame(width: 44, height: 44)
                     }
+                    .accessibilityLabel("重新生成访问密码")
                 }
-                .listRowBackground(palette.surface)
+                .importRowSurface()
             }
         } header: {
             Text("连接信息")
                 .foregroundColor(palette.textSecondary)
         } footer: {
             Text("确保手机和电脑在同一 WiFi 网络下，在电脑浏览器中输入以上地址后上传音乐文件。")
-                .foregroundColor(palette.textTertiary)
+                .foregroundColor(palette.textSecondary)
         }
     }
 
@@ -172,7 +186,7 @@ struct WiFiTransferView: View {
                             .lineLimit(2)
                     }
                 }
-                .listRowBackground(palette.surface)
+                .importRowSurface()
             }
         }
     }
@@ -191,7 +205,7 @@ struct WiFiTransferView: View {
                         .foregroundColor(palette.textSecondary)
                 }
             }
-            .listRowBackground(palette.surfaceSecondary)
+            .importRowSurface(secondary: true)
         }
     }
 
@@ -200,13 +214,13 @@ struct WiFiTransferView: View {
         switch status {
         case .waiting:
             Image(systemName: "clock")
-                .foregroundColor(palette.textTertiary)
+                .foregroundColor(palette.textSecondary)
         case .importing:
             ProgressView()
                 .controlSize(.small)
         case .imported:
             Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(palette.primary)
+                .foregroundColor(palette.accent)
         case .duplicate:
             Image(systemName: "equal.circle.fill")
                 .foregroundColor(palette.textSecondary)

@@ -2,163 +2,78 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ImportFilesView: View {
+    var initialSource: MusicImportSource? = nil
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
-    @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var subscriptionService: SubscriptionService
-    @EnvironmentObject private var webDAVService: WebDAVService
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
+    private enum Destination: Identifiable {
+        case source(MusicImportSource), premium
+        var id: String {
+            switch self {
+            case .source(let source): return source.rawValue
+            case .premium: return "premium"
+            }
+        }
+    }
+
+    @State private var destination: Destination?
     @State private var showDocumentPicker = false
-    @State private var showWifiTransfer = false
-    @State private var showAppleMusicImport = false
-    @State private var showCloudDriveImport = false
-    @State private var showWebDAV = false
     @State private var importResult: ImportResult?
     @State private var isImporting = false
     @State private var progress: ImportProgress?
     @State private var filePickerError: String?
-    @State private var showResultAlert = false
+    @State private var didSelectInitialSource = false
+    @State private var didCancelImport = false
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    Button {
-                        showDocumentPicker = true
-                    } label: {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("从文件导入")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundColor(palette.textPrimary)
-                                Text("支持 MP3, M4A, AAC, WAV, FLAC, ALAC, AIFF, CAF，单文件不超过 500MB")
-                                    .font(.caption)
-                                    .foregroundColor(palette.textSecondary)
-                            }
-                        } icon: {
-                            Image(systemName: "folder")
-                                .foregroundColor(palette.primary)
+                    ImportIntro(symbol: "square.and.arrow.down", title: "把喜欢的音乐带进来", message: "选择一种导入方式，音乐将保存在这台设备上，随时离线聆听。")
+                        .plainListRow()
+                }
+                Section {
+                    ForEach(MusicImportSource.allCases) { source in
+                        Button { select(source) } label: {
+                            ImportSourceLabel(source: source, locked: source == .webDAV && !subscriptionService.canAccess(.webDAVImport))
                         }
+                        .buttonStyle(.plain)
+                        .importRowSurface()
+                        .disabled(importService.isImporting || isImporting)
+                        .accessibilityIdentifier("import.source.\(source.rawValue)")
                     }
-                    .listRowBackground(palette.surface)
-
-                    Button {
-                        showAppleMusicImport = true
-                    } label: {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("从 Apple Music 资料库导入")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundColor(palette.textPrimary)
-                                Text("扫描并导入设备上已下载的本地音乐文件")
-                                    .font(.caption)
-                                    .foregroundColor(palette.textSecondary)
-                            }
-                        } icon: {
-                            Image(systemName: "music.note.house")
-                                .foregroundColor(palette.primary)
-                        }
-                    }
-                    .listRowBackground(palette.surface)
-
-                    Button {
-                        showCloudDriveImport = true
-                    } label: {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("云盘导入")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundColor(palette.textPrimary)
-                                Text("从百度网盘等云盘服务导入音乐文件")
-                                    .font(.caption)
-                                    .foregroundColor(palette.textSecondary)
-                            }
-                        } icon: {
-                            Image(systemName: "cloud")
-                                .foregroundColor(palette.primary)
-                        }
-                    }
-                    .listRowBackground(palette.surface)
-
-                    Button {
-                        showWifiTransfer = true
-                    } label: {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("WiFi 传输")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundColor(palette.textPrimary)
-                                Text("通过浏览器从电脑无线传输音乐")
-                                    .font(.caption)
-                                    .foregroundColor(palette.textSecondary)
-                            }
-                        } icon: {
-                            Image(systemName: "wifi")
-                                .foregroundColor(palette.primary)
-                        }
-                    }
-                    .listRowBackground(palette.surface)
-
-                    // 与设置页导入入口一致：无权限时先打开权益说明（交互设计文档 §10）
-                    Button {
-                        if subscriptionService.canAccess(.webDAVImport) {
-                            showWebDAV = true
-                        } else {
-                            router.present(.paywall(feature: .webDAVImport))
-                        }
-                    } label: {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 4) {
-                                    Text("WebDAV 导入")
-                                        .font(.subheadline.weight(.medium))
-                                        .foregroundColor(palette.textPrimary)
-                                    if !subscriptionService.canAccess(.webDAVImport) {
-                                        Image(systemName: "lock.fill")
-                                            .font(.caption2)
-                                            .foregroundColor(palette.textSecondary)
-                                            .accessibilityLabel("Premium")
-                                    }
-                                }
-                                Text(subscriptionService.canAccess(.webDAVImport)
-                                     ? "从坚果云、NAS 等 WebDAV 服务器导入"
-                                     : "Premium 专属功能")
-                                    .font(.caption)
-                                    .foregroundColor(palette.textSecondary)
-                            }
-                        } icon: {
-                            Image(systemName: "server.rack")
-                                .foregroundColor(palette.primary)
-                        }
-                    }
-                    .listRowBackground(palette.surface)
                 } header: {
-                    Text("导入方式")
+                    Text("导入方式").foregroundColor(palette.textSecondary)
+                } footer: {
+                    Text("支持 MP3、M4A、AAC、ALAC、WAV、FLAC、AIFF、CAF，单文件不超过 500 MB。重复文件会自动跳过。")
                         .foregroundColor(palette.textSecondary)
                 }
-
-                if isImporting, let p = progress {
-                    ImportProgressSection(progress: p) {
+                if isImporting {
+                    ImportProgressSection(progress: progress ?? ImportProgress(currentFileName: "准备文件…", completedCount: 0, totalCount: 0, percentage: 0, estimatedRemainingSeconds: nil), isCancelling: didCancelImport) {
+                        didCancelImport = true
                         importService.cancelImport()
                     }
+                } else if importService.isImporting {
+                    Section {
+                        Label("已有导入任务正在进行，请稍后再试", systemImage: "clock")
+                            .font(.subheadline).foregroundColor(palette.textSecondary).importRowSurface()
+                    }
                 }
-
+                if let result = importResult {
+                    ImportResultSection(result: result, wasCancelled: didCancelImport)
+                }
                 if let error = filePickerError {
                     Section {
-                        HStack(spacing: 10) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(SemanticColor.warning)
-                            Text(error)
-                                .font(.subheadline)
-                                .foregroundColor(palette.textPrimary)
-                        }
-                        .listRowBackground(palette.surface)
+                        Label(error, systemImage: "exclamationmark.circle")
+                            .font(.subheadline).foregroundColor(palette.textPrimary).importRowSurface()
                     }
                 }
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
             .scrollContentBackground(.hidden)
             .adaptiveBackground()
             .navigationTitle("导入音乐")
@@ -166,102 +81,66 @@ struct ImportFilesView: View {
             .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("关闭") { dismiss() }
-                        .foregroundColor(palette.primary)
+                    Button("关闭") { dismiss() }.foregroundColor(palette.textPrimary)
                 }
             }
         }
-        .fileImporter(
-            isPresented: $showDocumentPicker,
-            allowedContentTypes: UTType.allSupportedAudio,
-            allowsMultipleSelection: true
-        ) { result in
+        .tint(palette.accent)
+        .fileImporter(isPresented: $showDocumentPicker, allowedContentTypes: UTType.allSupportedAudio, allowsMultipleSelection: true) { result in
             switch result {
             case .success(let urls):
+                guard !urls.isEmpty else { return }
                 filePickerError = nil
                 startImport(urls: urls)
             case .failure(let error):
-                AppLogger.shared.error("[ImportFiles] fileImporter failure: \(error.localizedDescription)")
-                filePickerError = "文件选择失败：\(error.localizedDescription)"
+                filePickerError = ImportPickerFailure.message(for: error)
             }
         }
-        .sheet(isPresented: $showWifiTransfer) {
-            WiFiTransferView()
-                .environment(\.themePalette, palette)
-                .environmentObject(importService)
-                .environmentObject(libraryService)
-        }
-        .sheet(isPresented: $showAppleMusicImport) {
-            AppleMusicImportView()
-                .environment(\.themePalette, palette)
-                .environmentObject(importService)
-                .environmentObject(libraryService)
-        }
-        .sheet(isPresented: $showWebDAV) {
-            WebDAVAccountListView()
-                .environment(\.themePalette, palette)
-                .environmentObject(importService)
-                .environmentObject(libraryService)
-                .environmentObject(webDAVService)
-                .environmentObject(subscriptionService)
-        }
-        .sheet(isPresented: $showCloudDriveImport) {
-            CloudDriveImportView()
-                .environment(\.themePalette, palette)
-                .environmentObject(importService)
-                .environmentObject(libraryService)
-        }
-        .alert(resultAlertTitle, isPresented: $showResultAlert) {
-            Button("好的") {}
-        } message: {
-            if let result = importResult {
-                Text(resultAlertMessage(result))
+        .sheet(item: $destination) { destination in
+            Group {
+                switch destination {
+                case .source(.appleMusic): AppleMusicImportView()
+                case .source(.cloudDrive): CloudDriveImportView()
+                case .source(.wifi): WiFiTransferView()
+                case .source(.webDAV): WebDAVAccountListView()
+                case .source(.files): EmptyView()
+                case .premium: PaywallView(triggerFeature: .webDAVImport)
+                }
             }
+            .sheetBackground()
+            .environment(\.themePalette, palette)
+        }
+        .task {
+            guard !didSelectInitialSource, let initialSource else { return }
+            didSelectInitialSource = true
+            do { try await Task.sleep(for: .milliseconds(450)) } catch { return }
+            select(initialSource)
+        }
+    }
+
+    private func select(_ source: MusicImportSource) {
+        guard !isImporting, !importService.isImporting else { return }
+        filePickerError = nil
+        if source == .files {
+            showDocumentPicker = true
+        } else if source == .webDAV && !subscriptionService.canAccess(.webDAVImport) {
+            destination = .premium
+        } else {
+            destination = .source(source)
         }
     }
 
     private func startImport(urls: [URL]) {
+        guard !isImporting else { return }
         isImporting = true
+        didCancelImport = false
         importResult = nil
+        progress = nil
         Task {
-            let result = await importService.importFromFiles(urls: urls) { p in
-                progress = p
-            }
+            let result = await importService.importFromFiles(urls: urls) { progress = $0 }
             isImporting = false
             importResult = result
-            showResultAlert = true
             await libraryService.loadSongs()
         }
     }
-
-    private var resultAlertTitle: String {
-        guard let result = importResult else { return "导入完成" }
-        if result.failedCount > 0 && result.successCount == 0 { return "导入失败" }
-        if result.successCount > 0 { return "导入成功" }
-        return "导入完成"
-    }
-
-    private func resultAlertMessage(_ result: ImportResult) -> String {
-        var parts: [String] = []
-        if result.successCount > 0 {
-            parts.append("成功导入 \(result.successCount) 首")
-        }
-        if result.skippedDuplicateCount > 0 {
-            parts.append("跳过重复 \(result.skippedDuplicateCount) 首")
-        }
-        if result.skippedFormatCount > 0 {
-            parts.append("格式不支持 \(result.skippedFormatCount) 首")
-        }
-        if result.skippedOversizeCount > 0 {
-            parts.append("超过大小限制 \(result.skippedOversizeCount) 首")
-        }
-        if result.failedCount > 0 {
-            parts.append("失败 \(result.failedCount) 首")
-        }
-        if result.incompleteMetadataCount > 0 {
-            parts.append("其中 \(result.incompleteMetadataCount) 首元数据不完整")
-        }
-        return parts.isEmpty ? "没有可导入的文件" : parts.joined(separator: "，")
-    }
-
 }

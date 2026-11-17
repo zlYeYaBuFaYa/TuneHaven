@@ -14,6 +14,10 @@ struct WebDAVAccountListView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    ImportIntro(symbol: "server.rack", title: "连接你的私人音乐收藏", message: "添加 NAS 或 WebDAV 服务器，再选择需要保存到本机的音乐。")
+                        .plainListRow()
+                }
                 if webDAVService.accounts.isEmpty {
                     emptySection
                 } else {
@@ -22,6 +26,7 @@ struct WebDAVAccountListView: View {
                 guideSection
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
             .scrollContentBackground(.hidden)
             .adaptiveBackground()
             .navigationTitle("WebDAV 导入")
@@ -30,13 +35,14 @@ struct WebDAVAccountListView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button { showAddAccount = true } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: "plus").frame(width: 44, height: 44)
                     }
-                    .foregroundColor(palette.primary)
+                    .accessibilityLabel("添加 WebDAV 服务器")
+                    .foregroundColor(palette.accent)
                 }
             }
             .navigationDestination(isPresented: Binding(
@@ -62,17 +68,22 @@ struct WebDAVAccountListView: View {
             VStack(spacing: 12) {
                 Image(systemName: "server.rack")
                     .font(.system(size: 40))
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
                 Text("暂无 WebDAV 服务器")
                     .font(.headline)
                     .foregroundColor(palette.textPrimary)
-                Text("点击右上角 + 添加")
+                Button("添加服务器") { showAddAccount = true }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(palette.onAction)
+                    .padding(.horizontal, 20).frame(minHeight: 44)
+                    .background(palette.actionFill, in: Capsule())
+                Text("也可以从右上角添加")
                     .font(.subheadline)
                     .foregroundColor(palette.textSecondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
-            .listRowBackground(palette.surface)
+            .importRowSurface()
         }
     }
 
@@ -110,7 +121,7 @@ struct WebDAVAccountListView: View {
                     if let lastConnected = account.lastConnectedAt {
                         Text("上次连接: \(lastConnected.relativeDescription)")
                             .font(.caption2)
-                            .foregroundColor(palette.textTertiary)
+                            .foregroundColor(palette.textSecondary)
                     }
                 }
 
@@ -118,11 +129,11 @@ struct WebDAVAccountListView: View {
 
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
             }
             .padding(.vertical, 4)
         }
-        .listRowBackground(palette.surface)
+        .importRowSurface()
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
                 try? webDAVService.deleteAccount(id: account.id)
@@ -131,7 +142,7 @@ struct WebDAVAccountListView: View {
             Button { editingAccount = account } label: {
                 Label("编辑", systemImage: "pencil")
             }
-            .tint(palette.primary)
+            .tint(palette.accent)
         }
     }
 
@@ -150,7 +161,7 @@ struct WebDAVAccountListView: View {
                     .font(.caption)
                     .foregroundColor(palette.textSecondary)
             }
-            .listRowBackground(palette.surfaceSecondary)
+            .importRowSurface(secondary: true)
         } header: {
             Text("使用说明")
                 .foregroundColor(palette.textSecondary)

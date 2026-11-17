@@ -24,17 +24,19 @@ struct AppleMusicImportView: View {
             .adaptiveBackground()
             .navigationTitle("Apple Music 资料库")
             .navigationBarTitleDisplayMode(.inline)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
                 if vm.authStatus == .authorized && !vm.selectedIds.isEmpty && !vm.isImporting {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("导入 (\(vm.selectedIds.count))") {
                             Task { await vm.startImport(importService: importService, libraryService: libraryService) }
                         }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.accent)
+                        .disabled(importService.isImporting || vm.isImporting)
                     }
                 }
             }
@@ -53,7 +55,7 @@ struct AppleMusicImportView: View {
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 48, height: 48)
                     .foregroundColor(palette.iconSecondary)
-                Text("未找到本地音乐文件")
+                Text("还没有可导入的本地音乐")
                     .font(.headline)
                     .foregroundColor(palette.textPrimary)
                 Text("Apple Music 资料库中没有可导入的本地音乐\n（DRM 保护的流媒体歌曲无法导入）")
@@ -64,14 +66,6 @@ struct AppleMusicImportView: View {
             .padding()
         } else {
             VStack(spacing: 0) {
-                if vm.isImporting {
-                    importingBanner
-                }
-
-                if let result = vm.importResult {
-                    importResultBanner(result)
-                }
-
                 searchBar
                 selectionToolbar
                 songList
@@ -87,28 +81,54 @@ struct AppleMusicImportView: View {
         HStack {
             Text("\(vm.filteredTracks.count) 首可导入")
                 .font(.caption)
-                .foregroundColor(palette.textTertiary)
+                .foregroundColor(palette.textSecondary)
             Spacer()
             Button {
                 vm.toggleSelectAll()
             } label: {
                 Text(vm.selectedIds.count == vm.filteredTracks.count ? "取消全选" : "全选")
                     .font(.caption)
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
+        .disabled(vm.isImporting)
     }
 
     private var songList: some View {
         List {
-            ForEach(vm.filteredTracks) { track in
-                trackRow(track)
-                    .listRowBackground(palette.surface)
+            if vm.isImporting {
+                Section {
+                    importingBanner.importRowSurface()
+                } footer: {
+                    Text("关闭页面后，导入仍会继续。").foregroundColor(palette.textSecondary)
+                }
+            }
+            if let result = vm.importResult {
+                ImportResultSection(result: result)
+                if vm.transcodedCount > 0 {
+                    Text("\(vm.transcodedCount) 首无法原样导出，已转码为 AAC")
+                        .font(.footnote).foregroundColor(palette.textSecondary).plainListRow()
+                }
+            }
+            Section {
+                if vm.filteredTracks.isEmpty {
+                    Text("没有找到相关音乐，请试试其他关键词。")
+                        .font(.subheadline).foregroundColor(palette.textSecondary).plainListRow()
+                }
+                ForEach(vm.filteredTracks) { track in
+                    Button { vm.toggleSelection(track.id) } label: { trackRow(track) }
+                        .buttonStyle(.plain)
+                        .disabled(vm.isImporting)
+                        .importRowSurface()
+                        .accessibilityLabel("\(track.title)，\(track.artist)")
+                        .accessibilityValue(vm.selectedIds.contains(track.id) ? "已选择" : "未选择")
+                }
             }
         }
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
         .scrollContentBackground(.hidden)
     }
 
@@ -116,7 +136,7 @@ struct AppleMusicImportView: View {
         let isSelected = vm.selectedIds.contains(track.id)
         return HStack(spacing: 12) {
             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                .foregroundColor(isSelected ? palette.primary : palette.textTertiary)
+                .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
                 .font(.title3)
 
             ArtworkThumbnail(artwork: vm.artwork(for: track.id))
@@ -136,12 +156,9 @@ struct AppleMusicImportView: View {
 
             Text(track.duration.formattedTime)
                 .font(.caption.monospacedDigit())
-                .foregroundColor(palette.textTertiary)
+                .foregroundColor(palette.textSecondary)
         }
         .contentShape(Rectangle())
-        .onTapGesture {
-            vm.toggleSelection(track.id)
-        }
     }
 
     private var importingBanner: some View {
@@ -157,36 +174,7 @@ struct AppleMusicImportView: View {
             }
             Spacer()
         }
-        .padding()
-        .background(palette.surface)
-    }
-
-    private func importResultBanner(_ result: ImportResult) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(palette.primary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("导入完成：成功 \(result.successCount) 首")
-                    .font(.subheadline)
-                    .foregroundColor(palette.textPrimary)
-                ForEach(resultDetailLines(result), id: \.self) { line in
-                    Text(line)
-                        .font(.caption)
-                        .foregroundColor(palette.textSecondary)
-                }
-            }
-            Spacer()
-        }
-        .padding()
-        .background(palette.surface)
-    }
-
-    private func resultDetailLines(_ result: ImportResult) -> [String] {
-        var lines: [String] = []
-        if result.skippedDuplicateCount > 0 { lines.append("跳过 \(result.skippedDuplicateCount) 首重复") }
-        if result.failedCount > 0 { lines.append("失败 \(result.failedCount) 首") }
-        if vm.transcodedCount > 0 { lines.append("\(vm.transcodedCount) 首无法原样导出，已转码为 AAC") }
-        return lines
+        .padding(.vertical, 6)
     }
 
     private struct ArtworkThumbnail: View {
@@ -207,7 +195,7 @@ struct AppleMusicImportView: View {
                         .frame(width: 44, height: 44)
                         .overlay {
                             Image(systemName: "music.note")
-                                .foregroundColor(palette.textTertiary)
+                                .foregroundColor(palette.textSecondary)
                         }
                 }
             }
@@ -235,7 +223,7 @@ struct AppleMusicImportView: View {
                     UIApplication.shared.open(url)
                 }
             }
-            .foregroundColor(palette.primary)
+            .foregroundColor(palette.accent)
         }
         .padding()
     }

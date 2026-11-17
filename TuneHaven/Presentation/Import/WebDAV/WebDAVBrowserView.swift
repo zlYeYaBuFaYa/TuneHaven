@@ -36,7 +36,7 @@ struct WebDAVBrowserView: View {
                         Text("导入 (\(selectedFiles.count))")
                             .font(.subheadline.bold())
                     }
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
                 }
             }
         }
@@ -88,12 +88,13 @@ struct WebDAVBrowserView: View {
                     navigateToParent()
                 } label: {
                     Image(systemName: "chevron.left")
-                        .foregroundColor(palette.primary)
-                        .font(.caption)
+                        .foregroundColor(palette.accent)
+                        .font(.body).frame(width: 44, height: 44)
                 }
+                .accessibilityLabel("返回上级文件夹")
             }
             Image(systemName: "folder.fill")
-                .foregroundColor(palette.primary)
+                .foregroundColor(palette.accent)
                 .font(.caption)
             Text(currentPath)
                 .font(.caption)
@@ -116,7 +117,7 @@ struct WebDAVBrowserView: View {
             VStack(spacing: 8) {
                 Image(systemName: "music.note.list")
                     .font(.title2)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
                 Text("此目录下没有音频文件")
                     .font(.subheadline)
                     .foregroundColor(palette.textSecondary)
@@ -124,7 +125,7 @@ struct WebDAVBrowserView: View {
             .padding(.vertical, 24)
             Spacer()
         }
-        .listRowBackground(palette.surface)
+        .importRowSurface()
     }
 
     private func directoryRow(_ file: WebDAVFile) -> some View {
@@ -136,7 +137,7 @@ struct WebDAVBrowserView: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "folder.fill")
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
                     .frame(width: 24)
                 Text(file.fileName)
                     .font(.subheadline)
@@ -145,11 +146,11 @@ struct WebDAVBrowserView: View {
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption2)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
             }
             .padding(.vertical, 4)
         }
-        .listRowBackground(palette.surface)
+        .importRowSurface()
     }
 
     private func audioFileRow(_ file: WebDAVFile) -> some View {
@@ -163,7 +164,7 @@ struct WebDAVBrowserView: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? palette.primary : palette.textTertiary)
+                    .foregroundColor(isSelected ? palette.accent : palette.textSecondary)
                     .frame(width: 24)
                 Image(systemName: "music.note")
                     .foregroundColor(palette.textSecondary)
@@ -175,13 +176,13 @@ struct WebDAVBrowserView: View {
                         .lineLimit(1)
                     Text(file.formattedSize)
                         .font(.caption)
-                        .foregroundColor(palette.textTertiary)
+                        .foregroundColor(palette.textSecondary)
                 }
                 Spacer()
             }
             .padding(.vertical, 4)
         }
-        .listRowBackground(isSelected ? palette.primary.opacity(0.08) : palette.surface)
+        .listRowBackground(isSelected ? palette.accent.opacity(0.08) : palette.surface)
     }
 
     private var selectionBar: some View {
@@ -200,10 +201,10 @@ struct WebDAVBrowserView: View {
             Button { showDownloadView = true } label: {
                 Text("下载导入")
                     .font(.subheadline.bold())
-                    .foregroundColor(palette.onPrimary)
+                    .foregroundColor(palette.onAction)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(palette.primary))
+                    .frame(minHeight: 44)
+                    .background(Capsule().fill(palette.actionFill))
             }
         }
         .padding(.horizontal)
@@ -217,7 +218,7 @@ struct WebDAVBrowserView: View {
         VStack(spacing: 16) {
             Image(systemName: "wifi.exclamationmark")
                 .font(.system(size: 40))
-                .foregroundColor(palette.textTertiary)
+                .foregroundColor(palette.textSecondary)
             Text(message)
                 .font(.subheadline)
                 .foregroundColor(palette.textSecondary)
@@ -226,7 +227,7 @@ struct WebDAVBrowserView: View {
             Button("重试") {
                 Task { await connect() }
             }
-            .foregroundColor(palette.primary)
+            .foregroundColor(palette.accent)
         }
     }
 

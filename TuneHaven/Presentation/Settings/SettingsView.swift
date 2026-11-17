@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import UserNotifications
 
 struct SettingsView: View {
@@ -44,11 +43,10 @@ struct SettingsView: View {
     @State private var expandedStorage = false
     @State private var expandedAbout = false
 
-    @State private var showDocumentPicker = false
     @State private var activeSheet: SettingsSheet?
 
     enum SettingsSheet: Identifiable {
-        case wifiTransfer, appleMusicImport, cloudDriveImport, webDAVImport, shareSend, shareReceive
+        case shareSend, shareReceive
         var id: Self { self }
     }
 
@@ -64,11 +62,7 @@ struct SettingsView: View {
         List {
             SettingsSubscriptionSection(isExpanded: $expandedSubscription)
 
-            SettingsImportSection(
-                isExpanded: $expandedImport,
-                showDocumentPicker: $showDocumentPicker,
-                activeSheet: $activeSheet
-            )
+            SettingsImportSection(isExpanded: $expandedImport)
 
             SettingsShareSection(
                 isExpanded: $expandedShare,
@@ -112,32 +106,9 @@ struct SettingsView: View {
             await calculateCacheSize()
             await checkNotificationPermission()
         }
-        .fileImporter(
-            isPresented: $showDocumentPicker,
-            allowedContentTypes: UTType.allSupportedAudio,
-            allowsMultipleSelection: true
-        ) { result in
-            switch result {
-            case .success(let urls):
-                Task {
-                    _ = await importService.importFromFiles(urls: urls) { _ in }
-                    await libraryService.loadSongs()
-                }
-            case .failure(let error):
-                AppLogger.shared.error("[Settings] fileImporter failure: \(error.localizedDescription)")
-            }
-        }
         .sheet(item: $activeSheet) { sheet in
             Group {
                 switch sheet {
-                case .wifiTransfer:
-                    WiFiTransferView()
-                case .appleMusicImport:
-                    AppleMusicImportView()
-                case .cloudDriveImport:
-                    CloudDriveImportView()
-                case .webDAVImport:
-                    WebDAVAccountListView()
                 case .shareSend:
                     ShareSendView()
                 case .shareReceive:

@@ -89,6 +89,10 @@ enum DebugLaunchRoute {
         case "settings", "settings.open", "settings.open2": router.selectedTab = .settings
         case "player", "player.lyrics", "player.more", "player.sleep", "player.speed", "player.lyricsSearch":
             router.openPlayer()
+        case "import": router.present(.importFromFiles)
+        case "import.wifi": router.present(.importFromSource(.wifi))
+        case "import.cloud": router.present(.importFromSource(.cloudDrive))
+        case "import.webdav": router.present(.importFromSource(.webDAV))
         case "sheet.create": router.present(.createPlaylist)
         case "sheet.edit":
             if let id = firstUserPlaylist?.id { router.present(.editPlaylist(id: id)) }

@@ -11,25 +11,26 @@ struct CloudDriveImportView: View {
     @State private var isImporting = false
     @State private var progress: ImportProgress?
     @State private var importResult: ImportResult?
-    @State private var selectedProvider: (any CloudDriveProvider)?
     @State private var showBaiduGuide = false
     @State private var filePickerError: String?
+    @State private var didCancelImport = false
 
     private let providers = CloudDriveRegistry.allProviders
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    ImportIntro(symbol: "cloud", title: "从云端，回到你的曲库", message: "通过系统文件选择器，或在网盘 App 中把已下载的音频分享给 TuneHaven。")
+                        .plainListRow()
+                }
+                if isImporting, let p = progress { importingSection(p) }
+                if let result = importResult { importResultSection(result) }
                 providersSection
                 guideSection
-                if isImporting, let p = progress {
-                    importingSection(p)
-                }
-                if let result = importResult {
-                    importResultSection(result)
-                }
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
             .scrollContentBackground(.hidden)
             .adaptiveBackground()
             .navigationTitle("云盘导入")
@@ -38,7 +39,7 @@ struct CloudDriveImportView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
             }
         }
@@ -49,9 +50,11 @@ struct CloudDriveImportView: View {
         ) { result in
             switch result {
             case .success(let urls):
+                guard !urls.isEmpty else { return }
+                filePickerError = nil
                 startImport(urls: urls)
             case .failure(let error):
-                filePickerError = "文件选择失败：\(error.localizedDescription)"
+                filePickerError = ImportPickerFailure.message(for: error)
             }
         }
         .alert("提示", isPresented: .init(
@@ -76,6 +79,14 @@ struct CloudDriveImportView: View {
 
     private var providersSection: some View {
         Section {
+            Button {
+                showDocumentPicker = true
+            } label: {
+                ImportSourceLabel(source: .files)
+            }
+            .buttonStyle(.plain)
+            .disabled(isImporting || importService.isImporting)
+            .importRowSurface()
             ForEach(providers, id: \.id) { provider in
                 providerRow(provider)
             }
@@ -90,7 +101,6 @@ struct CloudDriveImportView: View {
             if provider.id == "baidu_netdisk" {
                 showBaiduGuide = true
             } else {
-                selectedProvider = provider
                 showDocumentPicker = true
             }
         } label: {
@@ -111,16 +121,17 @@ struct CloudDriveImportView: View {
                 if CloudDriveInstallChecker.isInstalled(provider) {
                     Label("已安装", systemImage: "checkmark.circle.fill")
                         .font(.caption)
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.accent)
                 } else {
                     Text("未检测到")
                         .font(.caption)
-                        .foregroundColor(palette.textTertiary)
+                        .foregroundColor(palette.textSecondary)
                 }
             }
             .padding(.vertical, 4)
         }
-        .listRowBackground(palette.surface)
+        .disabled(isImporting || importService.isImporting)
+        .importRowSurface()
     }
 
     // MARK: - Guide Section
@@ -140,17 +151,17 @@ struct CloudDriveImportView: View {
                     .font(.caption)
                     .foregroundColor(palette.textSecondary)
             }
-            .listRowBackground(palette.surfaceSecondary)
+            .importRowSurface(secondary: true)
 
             HStack(spacing: 8) {
                 Image(systemName: "lightbulb.fill")
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
                     .font(.caption)
                 Text("也支持从微信、QQ、AirDrop 等 App 直接分享音频文件到本 App")
                     .font(.caption)
                     .foregroundColor(palette.textSecondary)
             }
-            .listRowBackground(palette.surfaceSecondary)
+            .importRowSurface(secondary: true)
         } header: {
             Text("操作步骤")
                 .foregroundColor(palette.textSecondary)
@@ -161,7 +172,8 @@ struct CloudDriveImportView: View {
     // MARK: - Importing Section
 
     private func importingSection(_ p: ImportProgress) -> some View {
-        ImportProgressSection(progress: p) {
+        ImportProgressSection(progress: p, isCancelling: didCancelImport) {
+            didCancelImport = true
             importService.cancelImport()
         }
     }
@@ -170,13 +182,16 @@ struct CloudDriveImportView: View {
 
     @ViewBuilder
     private func importResultSection(_ result: ImportResult) -> some View {
-        ImportResultSection(result: result)
+        ImportResultSection(result: result, wasCancelled: didCancelImport)
     }
 
     // MARK: - Import Logic
 
     private func startImport(urls: [URL]) {
+        guard !isImporting else { return }
         isImporting = true
+        didCancelImport = false
+        progress = nil
         importResult = nil
         Task {
             let result = await importService.importFromFiles(urls: urls) { p in
