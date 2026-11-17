@@ -205,6 +205,15 @@ final class CoreDataPlaylistRepository: PlaylistRepository, @unchecked Sendable 
 
     func reorderSongs(in playlistId: UUID, orderedSongIds: [UUID]) async throws {
         try await stack.performBackground { ctx in
+            let playlist = try self.fetchPlaylistEntity(id: playlistId, context: ctx)
+            let currentIDs = try self.fetchLinkedSongs(playlistId: playlistId, context: ctx).map(\.id)
+            let requestedIDs = Set(orderedSongIds)
+            guard playlist?.isSystem == false,
+                  requestedIDs.count == orderedSongIds.count,
+                  requestedIDs == Set(currentIDs) else {
+                throw AppError.databaseError(NSError(domain: "PlaylistOrder", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "歌单内容已变化，请重新打开排序"]))
+            }
             let request = PlaylistSongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "playlistId == %@", playlistId as CVarArg)
             let links = try ctx.fetch(request)
@@ -212,12 +221,16 @@ final class CoreDataPlaylistRepository: PlaylistRepository, @unchecked Sendable 
                 guard let sid = l.songId else { return nil }
                 return (sid, l)
             })
-            for (i, songId) in orderedSongIds.enumerated() {
+            // Keep soft-deleted links after visible songs, so undo does not create tied ranks.
+            let hiddenIDs = links.sorted { $0.sortOrder < $1.sortOrder }.compactMap(\.songId)
+                .filter { !requestedIDs.contains($0) }
+            for (i, songId) in (orderedSongIds + hiddenIDs).enumerated() {
                 if idToLink[songId] == nil {
                     self.log.debug("reorderSongs: 未找到歌曲链接 songId=\(songId) in playlist=\(playlistId)")
                 }
                 idToLink[songId]?.sortOrder = Int32(i)
             }
+            playlist?.updatedAt = Date()
         }
     }
 

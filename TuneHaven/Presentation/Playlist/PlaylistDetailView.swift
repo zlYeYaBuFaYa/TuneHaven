@@ -17,6 +17,8 @@ struct PlaylistDetailView: View {
     #else
     @State private var showBatchAdd = false
     #endif
+    @State private var showSongOrder = false
+    @State private var usePlaylistOrder = true
     @State private var isDeleted = false
     @State private var searchText = ""
     @State private var sortOption: SongSortOption = .title
@@ -33,6 +35,7 @@ struct PlaylistDetailView: View {
                         searchText: searchText,
                         sortOption: sortOption,
                         isAscending: isAscending,
+                        usePlaylistOrder: usePlaylistOrder,
                         onAddSongs: { showBatchAdd = true },
                         sortMenu: { AnyView(sortMenu) }
                     )
@@ -60,6 +63,10 @@ struct PlaylistDetailView: View {
                         Button { showBatchAdd = true } label: {
                             Label("批量添加歌曲", systemImage: "text.badge.plus")
                         }
+                        Button { showSongOrder = true } label: {
+                            Label("调整歌曲顺序", systemImage: "arrow.up.arrow.down")
+                        }
+                        .disabled((detail?.songs.count ?? 0) < 2)
                         Divider()
                         Button(role: .destructive) { showDeleteConfirm = true } label: {
                             Label("删除歌单", systemImage: "trash")
@@ -99,6 +106,14 @@ struct PlaylistDetailView: View {
             guard !isDeleted else { return }
             Task { detail = await playlistService.fetchDetail(playlistId: playlistId) }
         }
+        .sheet(isPresented: $showSongOrder) {
+            PlaylistSongOrderView(playlistId: playlistId) {
+                usePlaylistOrder = true
+                Task { detail = await playlistService.fetchDetail(playlistId: playlistId) }
+            }
+            .environmentObject(playlistService)
+            .environment(\.themePalette, palette)
+        }
         .sheet(isPresented: $showBatchAdd) {
             BatchAddSongsView(playlistId: playlistId)
                 .sheetBackground()
@@ -113,16 +128,21 @@ struct PlaylistDetailView: View {
 
     private var sortMenu: some View {
         Menu {
+            Button { usePlaylistOrder = true } label: {
+                if usePlaylistOrder { Label("歌单顺序", systemImage: "checkmark") }
+                else { Text("歌单顺序") }
+            }
             ForEach(SongSortOption.allCases, id: \.self) { opt in
                 Button {
-                    if sortOption == opt {
+                    if !usePlaylistOrder && sortOption == opt {
                         isAscending.toggle()
                     } else {
                         sortOption = opt
                         isAscending = true
                     }
+                    usePlaylistOrder = false
                 } label: {
-                    if sortOption == opt {
+                    if !usePlaylistOrder && sortOption == opt {
                         Label(opt.displayName, systemImage: isAscending ? "chevron.up" : "chevron.down")
                     } else {
                         Text(opt.displayName)
@@ -131,7 +151,7 @@ struct PlaylistDetailView: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Text(sortOption.displayName)
+                Text(usePlaylistOrder ? "歌单顺序" : sortOption.displayName)
                 Image(systemName: "line.3.horizontal.decrease")
             }
             .font(.subheadline)
@@ -139,7 +159,7 @@ struct PlaylistDetailView: View {
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        .accessibilityLabel("排序：\(sortOption.displayName)\(isAscending ? "升序" : "降序")")
+        .accessibilityLabel(usePlaylistOrder ? "排序：歌单顺序" : "排序：\(sortOption.displayName)\(isAscending ? "升序" : "降序")")
     }
 }
 
@@ -149,6 +169,7 @@ private struct PlaylistContentView: View {
     let searchText: String
     let sortOption: SongSortOption
     let isAscending: Bool
+    let usePlaylistOrder: Bool
     let onAddSongs: () -> Void
     let sortMenu: () -> AnyView
 
@@ -175,7 +196,8 @@ private struct PlaylistContentView: View {
     }
 
     private func applySorting(_ songs: [Song]) -> [Song] {
-        songs.sorted { a, b in
+        guard !usePlaylistOrder else { return songs }
+        return songs.sorted { a, b in
             let result: Bool
             switch sortOption {
             case .title:

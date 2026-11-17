@@ -96,6 +96,7 @@ final class PlaylistService: ObservableObject {
 
     func reorderSongs(in playlistId: UUID, orderedSongIds: [UUID]) async throws {
         try await repo.reorderSongs(in: playlistId, orderedSongIds: orderedSongIds)
+        await loadPlaylists()
     }
 
     func initializeSystemPlaylists() async throws {

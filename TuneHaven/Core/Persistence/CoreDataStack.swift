@@ -39,6 +39,17 @@ final class CoreDataStack: @unchecked Sendable {
         try await stack.load()
         return stack
     }
+
+    /// Integration tests for grouped SQLite fetches, which NSInMemoryStoreType cannot execute.
+    static func makeSQLiteForTesting(at url: URL) async throws -> CoreDataStack {
+        let container = NSPersistentContainer(name: "MusicPlayer", managedObjectModel: shared.container.managedObjectModel)
+        let description = NSPersistentStoreDescription(url: url)
+        description.type = NSSQLiteStoreType
+        container.persistentStoreDescriptions = [description]
+        let stack = CoreDataStack(container: container)
+        try await stack.load()
+        return stack
+    }
     #endif
 
     func load() async throws {

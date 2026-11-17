@@ -19,6 +19,7 @@ struct PlaylistMainView: View {
     @State private var searchText = ""
     @FocusState private var isSearchFocused: Bool
     @State private var editMode: EditMode = .inactive
+    @State private var isReordering = false
     @State private var pendingDelete: Playlist?
     @State private var highlightDuration: TimeInterval?
 
@@ -82,13 +83,7 @@ struct PlaylistMainView: View {
                     .onMove { src, dst in
                         var sorted = userPlaylists
                         sorted.move(fromOffsets: src, toOffset: dst)
-                        Task {
-                            do {
-                                try await playlistService.reorderPlaylists(orderedIds: sorted.map { $0.id })
-                            } catch {
-                                snackbar.show(message: "调整顺序失败，请重试")
-                            }
-                        }
+                        savePlaylistOrder(sorted.map(\.id))
                     }
                 }
             }
@@ -288,7 +283,17 @@ struct PlaylistMainView: View {
                 PlaylistRow(playlist: playlist, groupName: groupName(for: playlist))
             }
             .buttonStyle(.plain)
-            if !editMode.isEditing {
+            if editMode.isEditing {
+                OrderMoveMenu(title: playlist.name, canMoveUp: userPlaylists.first?.id != playlist.id,
+                              canMoveDown: userPlaylists.last?.id != playlist.id) { offset in
+                    guard let index = userPlaylists.firstIndex(where: { $0.id == playlist.id }),
+                          userPlaylists.indices.contains(index + offset) else { return }
+                    var ids = userPlaylists.map(\.id)
+                    ids.swapAt(index, index + offset)
+                    savePlaylistOrder(ids)
+                }
+                .disabled(isReordering)
+            } else {
                 Menu {
                     Button {
                         router.present(.editPlaylist(id: playlist.id))
@@ -306,6 +311,7 @@ struct PlaylistMainView: View {
                 .accessibilityLabel("更多操作：\(playlist.name)")
             }
         }
+        .moveDisabled(!editMode.isEditing || isReordering)
         .listRowBackground(Color.clear)
         .listRowSeparatorTint(palette.separator)
         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 8))
@@ -323,6 +329,16 @@ struct PlaylistMainView: View {
     }
 
     // MARK: - Actions
+
+    private func savePlaylistOrder(_ ids: [UUID]) {
+        guard !isReordering else { return }
+        isReordering = true
+        Task {
+            defer { isReordering = false }
+            do { try await playlistService.reorderPlaylists(orderedIds: ids) }
+            catch { snackbar.show(message: "调整顺序失败，请重试") }
+        }
+    }
 
     private func groupName(for playlist: Playlist) -> String? {
         guard let gid = playlist.groupId else { return nil }
