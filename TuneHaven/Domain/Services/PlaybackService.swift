@@ -153,6 +153,23 @@ final class PlaybackService: ObservableObject {
     }
 
     func playNext() {
+        if isPlayingOutsideQueue {
+            // 队列外播放结束：从原后继项继续，没有后继就停止
+            let successorId = outOfQueueSuccessorId
+            exitOutOfQueue()
+            guard let successorId, let next = queueService.queue.first(where: { $0.id == successorId }) else {
+                log.info("队列外播放结束，无后继")
+                stop()
+                return
+            }
+            queueService.advanceToCurrent(next)
+            guard ensureCanPlay(next.song) else {
+                parkOnBlockedSong(next.song)
+                return
+            }
+            startLoadAndPlay(song: next.song)
+            return
+        }
         queueService.markCurrentAsPlayed()
         guard let nextItem = queueService.nextSong(for: playMode, dislikes: preferences.songDislikes) else {
             log.info("队列播放结束，无下一首")
@@ -216,26 +233,64 @@ final class PlaybackService: ObservableObject {
 
     // MARK: - Queue Editing
 
-    /// 从队列移除条目。移除了当前歌曲时按队列顺序接到其后一首：原来在播放就继续播放，
-    /// 原来暂停就切过去保持暂停；其后没有歌曲则停止并清空当前歌曲。
+    /// 当前歌曲已被移出队列但仍在播放（交互设计 §7.5「队列外播放」）。播完后从原后继项继续
+    @Published private(set) var isPlayingOutsideQueue = false
+    /// 队列外播放结束后接着播放的条目（QueueItem id）；为 nil 表示播完即停止
+    private var outOfQueueSuccessorId: UUID?
+
+    /// 用户编辑队列时移除条目。移除当前项不切断音频：进入队列外播放，记住原后继项。
     func removeFromQueue(at offsets: IndexSet) {
         guard !offsets.isEmpty else { return }
         let items = queueService.queue
-        let currentIdx = queueService.currentIndex
-        let removingCurrent = currentIdx.map { offsets.contains($0) } ?? false
-        let wasPlaying = isPlaying
-        let successorId = currentIdx.flatMap { idx -> UUID? in
-            guard removingCurrent else { return nil }
-            return items.indices
-                .first { $0 > idx && !offsets.contains($0) }
-                .map { items[$0].id }
+        if let idx = queueService.currentIndex, offsets.contains(idx) {
+            let successor = Self.firstItem(in: items, after: idx, excluding: offsets)
+            queueService.removeFromQueue(at: offsets)
+            queueService.detachCurrent()
+            enterOutOfQueue(successorId: successor)
+            return
+        }
+        if isPlayingOutsideQueue, let successorId = outOfQueueSuccessorId,
+           let successorIdx = items.firstIndex(where: { $0.id == successorId }),
+           offsets.contains(successorIdx) {
+            outOfQueueSuccessorId = Self.firstItem(in: items, after: successorIdx, excluding: offsets)
+        }
+        queueService.removeFromQueue(at: offsets)
+    }
+
+    /// 清空队列：当前音频继续到结束后停止，不重建列表
+    func clearQueue() {
+        queueService.clearQueue()
+        if currentSong != nil {
+            enterOutOfQueue(successorId: nil)
+        }
+    }
+
+    /// 音乐库删除歌曲后同步队列。文件已被移走无法继续播放，所以删到当前歌曲时立即切到后继项
+    /// （原来在播放就继续播放，否则保持暂停），没有后继则停止并清空当前歌曲。
+    func removeSongsFromQueue(ids: Set<UUID>) {
+        let items = queueService.queue
+        let offsets = IndexSet(items.indices.filter { ids.contains(items[$0].song.id) })
+        let deletesCurrent = currentSong.map { ids.contains($0.id) } ?? false
+        guard deletesCurrent else {
+            removeFromQueue(at: offsets)
+            return
         }
 
-        queueService.removeFromQueue(at: offsets)
-        guard removingCurrent else { return }
+        // 后继：队列中的当前项之后，或队列外播放记住的后继，跳过同样被删的条目
+        var successorId: UUID?
+        if let idx = queueService.currentIndex, items.indices.contains(idx), items[idx].song.id == currentSong?.id {
+            successorId = Self.firstItem(in: items, after: idx, excluding: offsets)
+        } else if isPlayingOutsideQueue, let pending = outOfQueueSuccessorId,
+                  let pendingIdx = items.firstIndex(where: { $0.id == pending }) {
+            successorId = offsets.contains(pendingIdx)
+                ? Self.firstItem(in: items, after: pendingIdx, excluding: offsets)
+                : pending
+        }
 
-        guard let successorId,
-              let next = queueService.queue.first(where: { $0.id == successorId }) else {
+        let wasPlaying = isPlaying
+        queueService.removeFromQueue(at: offsets)
+        exitOutOfQueue()
+        guard let successorId, let next = queueService.queue.first(where: { $0.id == successorId }) else {
             stopAndClearCurrent()
             return
         }
@@ -247,24 +302,18 @@ final class PlaybackService: ObservableObject {
         startLoadAndPlay(song: next.song, autoPlay: wasPlaying)
     }
 
-    /// 音乐库删除歌曲后同步队列；当前歌曲不在队列里但被删除时停止并清空
-    func removeSongsFromQueue(ids: Set<UUID>) {
-        let offsets = IndexSet(queueService.queue.indices.filter { ids.contains(queueService.queue[$0].song.id) })
-        // 当前歌曲若是队列里的当前项，由 removeFromQueue 接到下一首（currentSong 在加载后才更新，不能再按它判断）
-        let currentHandledByQueue = queueService.currentIndex.map { offsets.contains($0) } ?? false
-        removeFromQueue(at: offsets)
-        if !currentHandledByQueue, let current = currentSong, ids.contains(current.id) {
-            stopAndClearCurrent()
-        }
+    private static func firstItem(in items: [QueueItem], after index: Int, excluding offsets: IndexSet) -> UUID? {
+        items.indices.first { $0 > index && !offsets.contains($0) }.map { items[$0].id }
     }
 
-    /// 清空队列时保留当前歌曲，播放不中断
-    func clearQueue() {
-        if let current = currentSong {
-            queueService.replaceQueue(with: [current], startAt: 0)
-        } else {
-            queueService.clearQueue()
-        }
+    private func enterOutOfQueue(successorId: UUID?) {
+        isPlayingOutsideQueue = true
+        outOfQueueSuccessorId = successorId
+    }
+
+    private func exitOutOfQueue() {
+        isPlayingOutsideQueue = false
+        outOfQueueSuccessorId = nil
     }
 
     private func stopAndClearCurrent() {
@@ -400,6 +449,8 @@ final class PlaybackService: ObservableObject {
 
     private func loadAndPlay(song: Song, autoPlay: Bool = true) async {
         guard ensureCanPlay(song) else { return }
+        // 开始加载新歌曲即退出队列外播放（点歌、上一首、从其他列表播放）
+        exitOutOfQueue()
         let fileURL = fileStorage.musicFileURL(relativePath: song.fileRelativePath)
         guard fileStorage.fileExists(relativePath: song.fileRelativePath) else {
             log.error(AppError.playbackFileNotFound(song.id), context: "PlaybackService.loadAndPlay")

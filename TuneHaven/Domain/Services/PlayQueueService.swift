@@ -64,6 +64,11 @@ final class PlayQueueService: ObservableObject {
         }
     }
 
+    /// 当前歌曲已不在队列中（队列外播放）：取消当前索引，队列不再高亮任何条目
+    func detachCurrent() {
+        currentIndex = nil
+    }
+
     func clearQueue() {
         log.info("清空播放队列")
         queue = []

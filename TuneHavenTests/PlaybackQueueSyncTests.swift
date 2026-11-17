@@ -11,7 +11,7 @@ private func waitUntil(timeout: Duration = .seconds(2), _ condition: () -> Bool)
     }
 }
 
-// MARK: - 队列编辑与音乐库删除同步
+// MARK: - 队列编辑与音乐库删除同步（交互设计 §7.5）
 
 @Suite("播放队列与删除同步")
 @MainActor
@@ -33,47 +33,91 @@ struct PlaybackQueueSyncTests {
         return (harness, list)
     }
 
-    @Test("播放中移除当前项：接着播放后一首")
-    func testRemoveCurrentWhilePlaying() async {
+    private func finishCurrentSong(_ harness: PlaybackHarness) {
+        harness.engine.playbackEndedSubject.send()
+    }
+
+    @Test("移除当前项不切断音频：进入队列外播放，播完从原后继项继续")
+    func testRemoveCurrentContinuesThenSuccessor() async {
         let (harness, list) = await playingHarness()
 
         harness.playback.removeFromQueue(at: [0])
+
+        #expect(harness.engine.loadCalled == false)
+        #expect(harness.engine.stopCalled == false)
+        #expect(harness.playback.currentSong?.id == list[0].id)
+        #expect(harness.playback.isPlayingOutsideQueue)
+        #expect(harness.playback.queue.currentIndex == nil)
+        #expect(harness.playback.queue.queue.map(\.song.id) == [list[1].id, list[2].id])
+
+        finishCurrentSong(harness)
         await waitUntil { harness.playback.currentSong?.id == list[1].id && harness.engine.playCalled }
 
         #expect(harness.playback.currentSong?.id == list[1].id)
-        #expect(harness.engine.playCalled)
         #expect(harness.playback.queue.currentItem?.song.id == list[1].id)
-        #expect(harness.playback.queue.count == 2)
+        #expect(harness.playback.isPlayingOutsideQueue == false)
     }
 
-    @Test("暂停中移除当前项：切到后一首并保持暂停")
-    func testRemoveCurrentWhilePaused() async {
-        let harness = await makeHarness(premium: false)
-        let list = songs(["A", "B"])
-        harness.songs.songs = list
-        harness.playback.queue.replaceQueue(with: list, startAt: 0)
-        await harness.playback.prepare(song: list[0], in: .queue)
-        #expect(harness.playback.isPlaying == false)
-
-        harness.playback.removeFromQueue(at: [0])
-        await waitUntil { harness.playback.currentSong?.id == list[1].id }
-
-        #expect(harness.playback.currentSong?.id == list[1].id)
-        #expect(harness.engine.playCalled == false)
-    }
-
-    @Test("移除队尾的当前项：停止并清空当前歌曲")
-    func testRemoveLastCurrentStops() async {
+    @Test("移除队尾的当前项：播完后停止，不清空当前歌曲")
+    func testRemoveLastCurrentStopsAfterEnd() async {
         let (harness, list) = await playingHarness()
         harness.playback.queue.setCurrentIndex(to: 2)
         await harness.playback.play(song: list[2], in: .queue)
 
         harness.playback.removeFromQueue(at: [2])
+        #expect(harness.playback.isPlayingOutsideQueue)
+        #expect(harness.engine.stopCalled == false)
 
-        #expect(harness.playback.currentSong == nil)
-        #expect(harness.playback.isPlaying == false)
+        finishCurrentSong(harness)
+        await waitUntil { harness.engine.stopCalled }
+
         #expect(harness.engine.stopCalled)
-        #expect(harness.nowPlaying.clearCalled)
+        #expect(harness.playback.isPlaying == false)
+        #expect(harness.playback.currentSong?.id == list[2].id)
+        #expect(harness.playback.isPlayingOutsideQueue == false)
+    }
+
+    @Test("队列外播放期间原后继项也被移除：后继顺延")
+    func testSuccessorRemovedShiftsForward() async {
+        let (harness, list) = await playingHarness()
+        harness.playback.removeFromQueue(at: [0])   // 后继为 B，队列 [B, C]
+
+        harness.playback.removeFromQueue(at: [0])   // 再移除 B
+        finishCurrentSong(harness)
+        await waitUntil { harness.playback.currentSong?.id == list[2].id }
+
+        #expect(harness.playback.currentSong?.id == list[2].id)
+    }
+
+    @Test("Free 用户队列外播放结束、后继为无损：停在该首并给出软墙信号")
+    func testSuccessorLosslessBlocked() async {
+        let harness = await makeHarness(premium: false)
+        let mp3 = makeFormatSong(format: "mp3", title: "A")
+        let flac = makeFormatSong(format: "flac", title: "B")
+        harness.songs.songs = [mp3, flac]
+        harness.playback.queue.replaceQueue(with: [mp3, flac], startAt: 0)
+        await harness.playback.play(song: mp3, in: .queue)
+        harness.engine.playCalled = false
+
+        harness.playback.removeFromQueue(at: [0])
+        finishCurrentSong(harness)
+        await waitUntil { harness.playback.losslessBlockedSong != nil }
+
+        #expect(harness.playback.currentSong?.id == flac.id)
+        #expect(harness.playback.losslessBlockedSong?.id == flac.id)
+        #expect(harness.engine.playCalled == false)
+    }
+
+    @Test("队列外播放时点播队列中的歌曲：退出队列外状态")
+    func testPlayingQueueItemExitsOutOfQueue() async {
+        let (harness, list) = await playingHarness()
+        harness.playback.removeFromQueue(at: [0])
+
+        harness.playback.queue.setCurrentIndex(to: 1)
+        await harness.playback.play(song: list[2], in: .queue)
+
+        #expect(harness.playback.isPlayingOutsideQueue == false)
+        #expect(harness.playback.currentSong?.id == list[2].id)
     }
 
     @Test("移除非当前项：不影响当前播放，索引随之调整")
@@ -86,9 +130,28 @@ struct PlaybackQueueSyncTests {
         harness.playback.removeFromQueue(at: [0])
 
         #expect(harness.engine.loadCalled == false)
+        #expect(harness.playback.isPlayingOutsideQueue == false)
         #expect(harness.playback.currentSong?.id == list[1].id)
         #expect(harness.playback.queue.currentIndex == 0)
         #expect(harness.playback.queue.currentItem?.song.id == list[1].id)
+    }
+
+    @Test("清空队列：队列为空，当前音频继续，播完后停止")
+    func testClearQueue() async {
+        let (harness, list) = await playingHarness()
+
+        harness.playback.clearQueue()
+
+        #expect(harness.playback.queue.count == 0)
+        #expect(harness.engine.stopCalled == false)
+        #expect(harness.playback.isPlaying)
+        #expect(harness.playback.currentSong?.id == list[0].id)
+
+        finishCurrentSong(harness)
+        await waitUntil { harness.engine.stopCalled }
+
+        #expect(harness.playback.isPlaying == false)
+        #expect(harness.playback.queue.count == 0)
     }
 
     @Test("音乐库删除队列里的非当前歌曲：从队列消失")
@@ -102,7 +165,7 @@ struct PlaybackQueueSyncTests {
         #expect(harness.playback.currentSong?.id == list[0].id)
     }
 
-    @Test("音乐库删除当前歌曲：接着播放后一首，不被误停")
+    @Test("音乐库删除正在播放的歌曲：文件已移走，立即播放后一首")
     func testLibraryDeleteCurrentPlaysNext() async throws {
         let (harness, list) = await playingHarness()
 
@@ -114,6 +177,18 @@ struct PlaybackQueueSyncTests {
         #expect(harness.playback.queue.queue.map(\.song.id) == [list[1].id, list[2].id])
     }
 
+    @Test("队列外播放的歌曲被音乐库删除：立即播放原后继项")
+    func testLibraryDeleteOutOfQueueSong() async throws {
+        let (harness, list) = await playingHarness()
+        harness.playback.removeFromQueue(at: [0])
+
+        _ = try await harness.library.softDelete(songIds: [list[0].id])
+        await waitUntil { harness.playback.currentSong?.id == list[1].id && harness.engine.playCalled }
+
+        #expect(harness.playback.currentSong?.id == list[1].id)
+        #expect(harness.playback.isPlayingOutsideQueue == false)
+    }
+
     @Test("当前歌曲不在队列里但被音乐库删除：停止并清空")
     func testLibraryDeleteCurrentNotInQueue() async throws {
         let harness = await makeHarness(premium: false)
@@ -121,42 +196,12 @@ struct PlaybackQueueSyncTests {
         harness.songs.songs = [song]
         await harness.playback.prepare(song: song, in: .queue)
         #expect(harness.playback.queue.count == 0)
-        #expect(harness.playback.currentSong?.id == song.id)
 
         _ = try await harness.library.softDelete(songIds: [song.id])
         await waitUntil { harness.playback.currentSong == nil }
 
         #expect(harness.playback.currentSong == nil)
         #expect(harness.nowPlaying.clearCalled)
-    }
-
-    @Test("Free 用户移除当前项后，后一首是无损时停在该首并给出软墙信号")
-    func testRemoveCurrentSuccessorLosslessBlocked() async {
-        let harness = await makeHarness(premium: false)
-        let mp3 = makeFormatSong(format: "mp3", title: "A")
-        let flac = makeFormatSong(format: "flac", title: "B")
-        harness.songs.songs = [mp3, flac]
-        harness.playback.queue.replaceQueue(with: [mp3, flac], startAt: 0)
-        await harness.playback.play(song: mp3, in: .queue)
-        harness.engine.playCalled = false
-
-        harness.playback.removeFromQueue(at: [0])
-
-        #expect(harness.playback.currentSong?.id == flac.id)
-        #expect(harness.playback.losslessBlockedSong?.id == flac.id)
-        #expect(harness.engine.playCalled == false)
-    }
-
-    @Test("清空队列保留当前歌曲，播放不中断")
-    func testClearQueueKeepsCurrent() async {
-        let (harness, list) = await playingHarness()
-
-        harness.playback.clearQueue()
-
-        #expect(harness.playback.queue.queue.map(\.song.id) == [list[0].id])
-        #expect(harness.playback.queue.currentIndex == 0)
-        #expect(harness.engine.stopCalled == false)
-        #expect(harness.playback.isPlaying)
     }
 
     @Test("只预备不播放时不激活音频会话")
