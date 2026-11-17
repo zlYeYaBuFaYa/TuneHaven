@@ -1,7 +1,7 @@
 import Foundation
 
 @MainActor
-final class ImportService: ObservableObject, FileImporting {
+final class ImportService: ObservableObject, FileImporting, WiFiFileImporting {
     private let log = AppLogger.shared
 
     @Published private(set) var isImporting = false
@@ -386,6 +386,10 @@ final class ImportService: ObservableObject, FileImporting {
         } catch {
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: error.localizedDescription)
         }
+    }
+
+    var isImportBusy: Bool {
+        activityGate?.isBusy ?? false
     }
 
     private func estimateRemaining(start: Date, done: Int, total: Int) -> TimeInterval? {

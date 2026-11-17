@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import TuneHaven
 
 @Suite("WiFi 上传令牌")
@@ -37,5 +38,43 @@ struct WiFiTransferSessionTests {
         let token = session.issueUploadToken()
         session.invalidateUploadToken()
         #expect(session.allowsUpload(authorizationHeader: "Bearer \(token)") == false)
+    }
+}
+
+@Suite("WiFi 上传落盘")
+struct WiFiUploadFileTests {
+
+    @Test("同名文件两次落盘得到不同路径，都在目标目录内并保留原文件名")
+    func testUploadDestinationIsUnique() {
+        let dir = URL(fileURLWithPath: "/tmp/wifi_upload", isDirectory: true)
+
+        let first = WiFiTransferServer.uploadDestination(for: "01.mp3", in: dir)
+        let second = WiFiTransferServer.uploadDestination(for: "01.mp3", in: dir)
+
+        #expect(first != second)
+        #expect(first.deletingLastPathComponent().path == dir.path)
+        #expect(second.deletingLastPathComponent().path == dir.path)
+        #expect(first.lastPathComponent.hasSuffix("-01.mp3"))
+    }
+
+    @Test("文件名只取最后一段，非法名退回 uploaded_file")
+    func testSafeFilename() {
+        #expect(WiFiTransferServer.safeFilename("../x.mp3") == "x.mp3")
+        #expect(WiFiTransferServer.safeFilename("a/b/c.flac") == "c.flac")
+        #expect(WiFiTransferServer.safeFilename("..") == "uploaded_file")
+        #expect(WiFiTransferServer.safeFilename(".") == "uploaded_file")
+        #expect(WiFiTransferServer.safeFilename("") == "uploaded_file")
+    }
+
+    @Test("启动清理清空 wifi_upload 目录")
+    func testCleanupRemovesUploads() throws {
+        let dir = SandboxPathManager.wifiUploadURL
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let file = dir.appendingPathComponent("\(UUID().uuidString)-a.mp3")
+        try Data("x".utf8).write(to: file)
+
+        WiFiTransferServer.cleanupTempFiles()
+
+        #expect(!FileManager.default.fileExists(atPath: file.path))
     }
 }

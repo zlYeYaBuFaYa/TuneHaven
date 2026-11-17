@@ -1,10 +1,5 @@
 import SwiftUI
 
-private struct ReceivedFile: Identifiable {
-    let id = UUID()
-    let name: String
-}
-
 struct WiFiTransferView: View {
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
@@ -15,7 +10,7 @@ struct WiFiTransferView: View {
     @AppStorage(AppStorageKey.wifiPasswordEnabled) private var passwordEnabled = true
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @State private var receivedFiles: [ReceivedFile] = []
+    @StateObject private var importQueue = WiFiImportQueue()
 
     var body: some View {
         NavigationStack {
@@ -24,7 +19,7 @@ struct WiFiTransferView: View {
                 if server.isRunning {
                     connectionInfoSection
                 }
-                if !receivedFiles.isEmpty {
+                if !importQueue.items.isEmpty {
                     receivedSection
                 }
                 securitySection
@@ -45,7 +40,6 @@ struct WiFiTransferView: View {
         }
         .onDisappear {
             if server.isRunning { server.stop() }
-            receivedFiles.removeAll()
         }
         .onChange(of: server.securityAlert) { alert in
             if let alert {
@@ -163,15 +157,20 @@ struct WiFiTransferView: View {
 
     @ViewBuilder
     private var receivedSection: some View {
-        Section("已接收 \(receivedFiles.count) 个文件") {
-            ForEach(receivedFiles) { file in
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(palette.primary)
-                    Text(file.name)
-                        .font(.subheadline)
-                        .foregroundColor(palette.textPrimary)
-                        .lineLimit(1)
+        Section("已接收 \(importQueue.items.count) 个文件") {
+            ForEach(importQueue.items) { item in
+                HStack(spacing: 10) {
+                    statusIcon(item.status)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.fileName)
+                            .font(.subheadline)
+                            .foregroundColor(palette.textPrimary)
+                            .lineLimit(1)
+                        Text(statusText(item.status))
+                            .font(.caption)
+                            .foregroundColor(palette.textSecondary)
+                            .lineLimit(2)
+                    }
                 }
                 .listRowBackground(palette.surface)
             }
@@ -196,18 +195,48 @@ struct WiFiTransferView: View {
         }
     }
 
+    @ViewBuilder
+    private func statusIcon(_ status: WiFiImportQueue.Status) -> some View {
+        switch status {
+        case .waiting:
+            Image(systemName: "clock")
+                .foregroundColor(palette.textTertiary)
+        case .importing:
+            ProgressView()
+                .controlSize(.small)
+        case .imported:
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(palette.primary)
+        case .duplicate:
+            Image(systemName: "equal.circle.fill")
+                .foregroundColor(palette.textSecondary)
+        case .failed:
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundColor(SemanticColor.warning)
+        }
+    }
+
+    private func statusText(_ status: WiFiImportQueue.Status) -> String {
+        switch status {
+        case .waiting: return "等待导入"
+        case .importing: return "正在导入"
+        case .imported: return "已导入"
+        case .duplicate: return "曲库中已存在"
+        case .failed(let reason): return "导入失败：\(reason)"
+        }
+    }
+
     private func tryStart() {
+        let libraryService = libraryService
+        importQueue.configure(importer: importService) {
+            await libraryService.loadSongs()
+        }
+        let queue = importQueue
+        server.onFileReceived = { filename, url in
+            queue.enqueue(fileURL: url, originalFilename: filename)
+        }
         do {
             try server.start(passwordEnabled: passwordEnabled)
-            server.onFileReceived = { filename, url in
-                Task { @MainActor [url] in
-                    receivedFiles.append(ReceivedFile(name: filename))
-                    let result = await importService.processWiFiFile(tempURL: url, originalFilename: filename)
-                    if result.status == .success || result.status == .successIncompleteMetadata {
-                        await libraryService.loadSongs()
-                    }
-                }
-            }
         } catch {
             alertMessage = "服务启动失败：\(error.localizedDescription)"
             showAlert = true

@@ -16,6 +16,13 @@ final class BackupActivityGate: @unchecked Sendable {
         lock.unlock()
     }
 
+    /// 备份或导入正在进行。此时 `beginImport` / `beginBackup` 会失败
+    var isBusy: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return backupBusy || importBusy
+    }
+
     func beginImport() throws {
         try begin(asBackup: false)
     }

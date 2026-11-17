@@ -37,7 +37,7 @@ final class WiFiTransferServer: ObservableObject {
     @Published private(set) var securityAlert: WiFiSecurityAlert?
     private let log = AppLogger.shared
 
-    var onFileReceived: ((String, URL) -> Void)?
+    var onFileReceived: (@MainActor (String, URL) -> Void)?
 
     private var listener: NWListener?
     private var activeConnection: NWConnection?
@@ -112,13 +112,30 @@ final class WiFiTransferServer: ObservableObject {
         session.invalidateUploadToken()
     }
 
-    static func cleanupTempFiles() {
-        let tmpDir = FileManager.default.temporaryDirectory
-        let contents = (try? FileManager.default.contentsOfDirectory(
-            at: tmpDir, includingPropertiesForKeys: nil)) ?? []
+    /// 启动时调用：清掉流式上传的中间文件，以及上次进程没来得及导入的上传文件。
+    nonisolated static func cleanupTempFiles() {
+        let fm = FileManager.default
+        let tmpDir = fm.temporaryDirectory
+        let contents = (try? fm.contentsOfDirectory(at: tmpDir, includingPropertiesForKeys: nil)) ?? []
         for url in contents where url.lastPathComponent.hasPrefix("wifi_upload_") {
-            try? FileManager.default.removeItem(at: url)
+            try? fm.removeItem(at: url)
         }
+        let uploads = (try? fm.contentsOfDirectory(
+            at: SandboxPathManager.wifiUploadURL, includingPropertiesForKeys: nil)) ?? []
+        for url in uploads {
+            try? fm.removeItem(at: url)
+        }
+    }
+
+    /// 上传文件的落盘位置。加 UUID 前缀，同名文件排队导入时不会互相覆盖。
+    nonisolated static func uploadDestination(for rawFilename: String, in directory: URL) -> URL {
+        directory.appendingPathComponent("\(UUID().uuidString)-\(safeFilename(rawFilename))")
+    }
+
+    /// 只取最后一段路径；空串、`.`、`..` 退回 `uploaded_file`。
+    nonisolated static func safeFilename(_ rawFilename: String) -> String {
+        let name = (rawFilename as NSString).lastPathComponent
+        return (name.isEmpty || name == "." || name == ".." || name == "/") ? "uploaded_file" : name
     }
 
     // MARK: - Connection Handling
@@ -448,8 +465,8 @@ final class WiFiTransferServer: ObservableObject {
                   headerStr.contains("filename=") else { continue }
 
             let rawFilename = extractFilenameFromHeader(headerStr) ?? "uploaded_file"
-            let filename = URL(fileURLWithPath: rawFilename).lastPathComponent
-            let destURL = SandboxPathManager.wifiUploadURL.appendingPathComponent(filename)
+            let destURL = Self.uploadDestination(for: rawFilename, in: SandboxPathManager.wifiUploadURL)
+            let filename = Self.safeFilename(rawFilename)
             do {
                 try fileData.write(to: destURL)
                 savedFiles.append((name: filename, url: destURL))
