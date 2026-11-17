@@ -64,7 +64,8 @@ final class MockFileStorageProviding: FileStorageProviding, @unchecked Sendable 
     }
     func fileSize(at url: URL) -> Int64 { 1024 }
     func createDirectoryIfNeeded(at url: URL) throws {}
-    func removeItem(at url: URL) throws {}
+    private(set) var removedItems: [URL] = []
+    func removeItem(at url: URL) throws { removedItems.append(url) }
     func contentsOfDirectory(at url: URL) -> [URL] { [] }
     func musicFileURL(relativePath: String) -> URL {
         URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(relativePath)

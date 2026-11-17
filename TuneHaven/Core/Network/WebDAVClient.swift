@@ -1,7 +1,7 @@
 import Foundation
 
 actor WebDAVClient: WebDAVClientProtocol {
-    struct Configuration {
+    struct Configuration: Sendable {
         let baseURL: URL
         let username: String
         let password: String
@@ -21,15 +21,16 @@ actor WebDAVClient: WebDAVClientProtocol {
     private let config: Configuration
     private let session: URLSession
     private let sessionDelegate: WebDAVSessionDelegate
-    private var downloadTask: Task<URL, Error>?
-    private var isCancelled = false
+    /// 每个下载单独记录，取消时一并取消；多个下载之间互不影响
+    private var downloadTasks: [UUID: Task<URL, Error>] = [:]
 
-    init(configuration: Configuration) {
+    /// `sessionConfiguration` 仅供测试注入 URLProtocol 桩
+    init(configuration: Configuration, sessionConfiguration: URLSessionConfiguration = .default) {
         self.config = configuration
         let delegate = WebDAVSessionDelegate(trustSelfSignedCert: configuration.trustSelfSignedCert)
         self.sessionDelegate = delegate
 
-        let urlConfig = URLSessionConfiguration.default
+        let urlConfig = (sessionConfiguration.copy() as? URLSessionConfiguration) ?? .default
         urlConfig.timeoutIntervalForRequest = configuration.timeoutInterval
         self.session = URLSession(configuration: urlConfig, delegate: delegate, delegateQueue: nil)
     }
@@ -117,15 +118,17 @@ actor WebDAVClient: WebDAVClientProtocol {
         to destination: URL,
         progress: @escaping @Sendable (Int64, Int64) -> Void
     ) async throws -> URL {
-        isCancelled = false
-        downloadTask?.cancel()
-
+        let id = UUID()
         let task = Task<URL, Error> {
             try await self.performDownload(remotePath: remotePath, to: destination, progress: progress)
         }
-        downloadTask = task
-        defer { downloadTask = nil }
-        return try await task.value
+        downloadTasks[id] = task
+        defer { downloadTasks[id] = nil }
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     func fileInfo(path: String) async throws -> (size: Int64, etag: String?) {
@@ -149,18 +152,33 @@ actor WebDAVClient: WebDAVClientProtocol {
     }
 
     func cancelDownload() {
-        isCancelled = true
-        downloadTask?.cancel()
+        for task in downloadTasks.values {
+            task.cancel()
+        }
     }
 
     func cleanup() {
-        downloadTask?.cancel()
+        cancelDownload()
         session.invalidateAndCancel()
     }
 
     // MARK: - Private
 
-    private func performDownload(
+    /// 不需要 actor 隔离：只读不可变成员。放在 actor 上会让并发下载的字节循环排队执行。
+    private nonisolated func performDownload(
+        remotePath: String,
+        to destination: URL,
+        progress: @escaping @Sendable (Int64, Int64) -> Void
+    ) async throws -> URL {
+        do {
+            return try await streamDownload(remotePath: remotePath, to: destination, progress: progress)
+        } catch {
+            try? FileManager.default.removeItem(at: destination)
+            throw error
+        }
+    }
+
+    private nonisolated func streamDownload(
         remotePath: String,
         to destination: URL,
         progress: @escaping @Sendable (Int64, Int64) -> Void
@@ -192,9 +210,9 @@ actor WebDAVClient: WebDAVClientProtocol {
         buffer.reserveCapacity(bufferSize)
 
         for try await byte in asyncBytes {
-            if isCancelled { throw AppError.webdavDownloadFailed("下载已取消") }
             buffer.append(byte)
             if buffer.count >= bufferSize {
+                try Task.checkCancellation()
                 handle.write(buffer)
                 receivedBytes += Int64(buffer.count)
                 buffer.removeAll(keepingCapacity: true)
@@ -210,7 +228,7 @@ actor WebDAVClient: WebDAVClientProtocol {
         return destination
     }
 
-    private func addAuth(to request: inout URLRequest) {
+    private nonisolated func addAuth(to request: inout URLRequest) {
         guard !config.username.isEmpty else { return }
         let credentials = "\(config.username):\(config.password)"
         if let data = credentials.data(using: .utf8) {

@@ -151,8 +151,11 @@ final class WebDAVService: ObservableObject {
                                bytesReceived: 0, totalBytes: file.contentLength, error: nil)
         }
 
-        let tempDir = fileStorage.importTempURL
-        try? fileStorage.createDirectoryIfNeeded(at: tempDir)
+        // 每次下载一个临时根目录，每个文件一个序号子目录：同名文件不会互相覆盖，导入时仍用原文件名
+        let tempRoot = fileStorage.importTempURL
+            .appendingPathComponent("webdav-\(UUID().uuidString)", isDirectory: true)
+        try? fileStorage.createDirectoryIfNeeded(at: tempRoot)
+        defer { try? fileStorage.removeItem(at: tempRoot) }
 
         var downloadableIndices: [Int] = []
         for i in 0..<total {
@@ -174,12 +177,14 @@ final class WebDAVService: ObservableObject {
         var downloadResults: [(Int, Result<URL, Error>)] = []
 
         await withTaskGroup(of: (Int, Result<URL, Error>).self) { group in
-            for _ in 0..<min(Self.maxDownloadConcurrency, downloadableIndices.count) {
-                guard nextPos < downloadableIndices.count else { break }
+            func addNextDownload() {
+                guard nextPos < downloadableIndices.count else { return }
                 let i = downloadableIndices[nextPos]
                 nextPos += 1
                 let file = files[i]
-                let destURL = tempDir.appendingPathComponent(file.fileName)
+                let fileDir = tempRoot.appendingPathComponent("\(i)", isDirectory: true)
+                let destURL = fileDir.appendingPathComponent(file.fileName)
+                try? fileStorage.createDirectoryIfNeeded(at: fileDir)
                 group.addTask { [weak self] in
                     do {
                         _ = try await client.downloadFile(
@@ -199,34 +204,18 @@ final class WebDAVService: ObservableObject {
                 }
             }
 
+            for _ in 0..<Self.maxDownloadConcurrency where !isCancelRequested { addNextDownload() }
             for await result in group {
                 downloadResults.append(result)
-                if nextPos < downloadableIndices.count {
-                    let ni = downloadableIndices[nextPos]
-                    nextPos += 1
-                    let nextFile = files[ni]
-                    let destURL = tempDir.appendingPathComponent(nextFile.fileName)
-                    group.addTask { [weak self] in
-                        do {
-                            _ = try await client.downloadFile(
-                                remotePath: nextFile.href,
-                                to: destURL
-                            ) { [weak self] received, fileTotal in
-                                Task { @MainActor [weak self] in
-                                    guard let self, ni < self.downloadTasks.count else { return }
-                                    self.downloadTasks[ni].bytesReceived = received
-                                    self.downloadTasks[ni].totalBytes = fileTotal > 0 ? fileTotal : nextFile.contentLength
-                                }
-                            }
-                            return (ni, .success(destURL))
-                        } catch {
-                            return (ni, .failure(error))
-                        }
-                    }
+                if isCancelRequested {
+                    group.cancelAll()
+                } else {
+                    addNextDownload()
                 }
             }
         }
 
+        let cancelled = isCancelRequested
         for (i, result) in downloadResults {
             switch result {
             case .success(let url):
@@ -234,24 +223,35 @@ final class WebDAVService: ObservableObject {
                 downloadedURLs.append(url)
             case .failure(let error):
                 downloadTasks[i].status = .failed
-                downloadTasks[i].error = error.localizedDescription
+                downloadTasks[i].error = cancelled ? "已取消" : error.localizedDescription
                 failedCount += 1
-                errors.append("\(files[i].fileName): \(error.localizedDescription)")
-                log.error(error, context: "WebDAV 下载失败: \(files[i].fileName)")
+                if !cancelled {
+                    errors.append("\(files[i].fileName): \(error.localizedDescription)")
+                    log.error(error, context: "WebDAV 下载失败: \(files[i].fileName)")
+                }
             }
             onTaskUpdate(downloadTasks[i])
             overallProgress = Double(downloadedURLs.count + failedCount + oversizeCount) / Double(total)
         }
 
+        if cancelled {
+            // 取消时还没派发的下载也标为已取消
+            let finished = Set(downloadResults.map(\.0))
+            for i in downloadableIndices where !finished.contains(i) {
+                downloadTasks[i].status = .failed
+                downloadTasks[i].error = "已取消"
+                failedCount += 1
+                onTaskUpdate(downloadTasks[i])
+            }
+            errors.append("已取消")
+            log.info("[WebDAV] 用户取消下载，已下载 \(downloadedURLs.count) 个，不导入")
+        }
+
         overallProgress = 1.0
 
         var importResult: ImportResult?
-        if !downloadedURLs.isEmpty {
+        if !cancelled, !downloadedURLs.isEmpty {
             importResult = await importService.importFromFiles(urls: downloadedURLs) { _ in }
-
-            for url in downloadedURLs {
-                try? fileStorage.removeItem(at: url)
-            }
         }
 
         isDownloading = false
