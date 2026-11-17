@@ -89,6 +89,11 @@ struct LibraryMainView: View {
                 .accessibilityLabel("导入音乐")
             }
         }
+        #if DEBUG
+        .task {
+            if let query = DebugLaunchRoute.searchQuery, searchText.isEmpty { searchText = query }
+        }
+        #endif
         .onChange(of: searchDebouncer.debouncedQuery) { query in
             performSearch(query: query)
         }

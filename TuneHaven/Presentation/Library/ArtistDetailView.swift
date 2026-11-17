@@ -24,7 +24,7 @@ struct ArtistDetailView: View {
         }
         .adaptiveBackground()
         .navigationTitle(artistName)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .themeNavigationBarSurface()
         .task { await load() }
         .onChange(of: libraryService.songs.count) { _ in
@@ -32,99 +32,104 @@ struct ArtistDetailView: View {
         }
     }
 
+    /// 艺术家详情（docs/UI设计文档.md §7.5 延伸规则）：头像头部 → 播放按钮 → 专辑横排 → 全部歌曲
     @ViewBuilder
     private func content(detail: ArtistDetail) -> some View {
         List {
-            // 艺术家信息头部
-            Section {
-                HStack(spacing: 16) {
-                    ZStack {
-                        Circle()
-                            .fill(palette.primary.opacity(0.15))
-                            .frame(width: 72, height: 72)
-                        Text(String(artistName.prefix(1)))
-                            .font(.title.bold())
-                            .foregroundColor(palette.primary)
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(artistName)
-                            .font(.title2.bold())
-                            .foregroundColor(palette.textPrimary)
-                        Text("\(detail.albums.count) 张专辑 · \(detail.allSongs.count) 首歌曲")
-                            .font(.subheadline)
-                            .foregroundColor(palette.textSecondary)
-                    }
-                    Spacer()
-                    Button {
-                        if let first = detail.allSongs.first {
-                            Task { await playback.play(song: first, in: .artist(name: artistName)) }
-                        }
-                    } label: {
-                        Image(systemName: "play.circle.fill")
-                            .font(.title)
-                            .foregroundColor(palette.primary)
-                    }
-                }
-                .padding(.vertical, 8)
-                .listRowBackground(palette.surface)
-            }
+            header(detail: detail)
+                .plainListRow(insets: EdgeInsets(top: 8, leading: 20, bottom: 16, trailing: 20))
 
-            // 专辑列表
             if !detail.albums.isEmpty {
-                Section("专辑") {
-                    ForEach(detail.albums) { album in
-                        Button {
-                            router.navigate(to: .albumDetail(album: album.name, artist: artistName))
-                        } label: {
-                            AlbumRow(album: album)
+                ListSectionTitle(title: "专辑", count: detail.albums.count)
+                    .plainListRow(insets: EdgeInsets(top: 4, leading: 20, bottom: 8, trailing: 20))
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 16) {
+                        ForEach(detail.albums) { album in
+                            Button {
+                                router.navigate(to: .albumDetail(album: album.name, artist: artistName))
+                            } label: {
+                                AlbumGridCell(album: album)
+                                    .frame(width: 140)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .listRowBackground(palette.surface)
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .plainListRow(insets: EdgeInsets(top: 0, leading: 0, bottom: 16, trailing: 0))
+            }
+
+            ListSectionTitle(title: "全部歌曲", count: detail.allSongs.count)
+                .plainListRow(insets: EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
+
+            let currentSongId = playback.currentSong?.id
+            ForEach(detail.allSongs) { song in
+                SongRow(
+                    song: song,
+                    isPlaying: currentSongId == song.id,
+                    isPlaybackActive: playback.isPlaying,
+                    onTap: {
+                        Task {
+                            await playback.play(song: song, in: .artist(name: artistName))
+                            router.openPlayer()
+                        }
+                    },
+                    onFavorite: {
+                        Task {
+                            do { try await libraryService.toggleFavorite(songId: song.id) }
+                            catch { snackbar.show(message: "收藏操作失败") }
+                        }
+                    },
+                    onDelete: {
+                        SongDeletionHelper.softDelete(song: song, libraryService: libraryService, snackbar: snackbar)
+                    },
+                    onAddToPlaylist: { router.present(.addToPlaylist(songIds: [song.id])) },
+                    onInsertNext: { SongQueueHelper.insertNext(song: song, playback: playback, snackbar: snackbar) }
+                )
+                .clearListRow()
+                .listRowSeparatorTint(palette.separator)
+            }
+
+            Color.clear.frame(height: MiniPlayerLayout.listBottomPadding)
+                .plainListRow(insets: EdgeInsets())
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+    }
+
+    private func header(detail: ArtistDetail) -> some View {
+        VStack(spacing: 12) {
+            ArtistAvatar(name: artistName, size: 112)
+                .shadow(color: palette.cardShadow, radius: 16, y: 8)
+            VStack(spacing: 4) {
+                Text(artistName)
+                    .font(.title2.weight(.bold))
+                    .foregroundColor(palette.textPrimary)
+                    .multilineTextAlignment(.center)
+                Text("\(detail.albums.count) 张专辑 · \(detail.allSongs.count) 首歌曲")
+                    .font(.footnote)
+                    .foregroundColor(palette.textSecondary)
+            }
+            .accessibilityElement(children: .combine)
+            DetailPlayButtons(
+                isEnabled: !detail.allSongs.isEmpty,
+                onPlay: {
+                    if let first = detail.allSongs.first {
+                        Task { await playback.play(song: first, in: .artist(name: artistName)) }
+                    }
+                },
+                onShuffle: {
+                    if let random = detail.allSongs.randomElement() {
+                        if playback.playMode != .shuffle {
+                            playback.setPlayMode(.shuffle)
+                        }
+                        Task { await playback.play(song: random, in: .artist(name: artistName)) }
                     }
                 }
-            }
-
-            // 全部歌曲
-            Section("全部歌曲") {
-                let currentSongId = playback.currentSong?.id
-                ForEach(detail.allSongs) { song in
-                    SongRow(
-                        song: song,
-                        isPlaying: currentSongId == song.id,
-                        isPlaybackActive: playback.isPlaying,
-                        onTap: {
-                            Task {
-                                await playback.play(song: song, in: .artist(name: artistName))
-                                router.openPlayer()
-                            }
-                        },
-                        onFavorite: {
-                            Task {
-                                do { try await libraryService.toggleFavorite(songId: song.id) }
-                                catch { snackbar.show(message: "收藏操作失败") }
-                            }
-                        },
-                        onDelete: {
-                            SongDeletionHelper.softDelete(song: song, libraryService: libraryService, snackbar: snackbar)
-                        },
-                        onAddToPlaylist: { router.present(.addToPlaylist(songIds: [song.id])) },
-                        onInsertNext: { SongQueueHelper.insertNext(song: song, playback: playback, snackbar: snackbar) }
-                    )
-                    .listRowBackground(palette.surface)
-                    .listRowSeparatorTint(palette.separator)
-                }
-            }
-
-            Section {
-                Color.clear.frame(height: MiniPlayerLayout.listBottomPadding)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .listRowInsets(EdgeInsets())
-            }
-            .listSectionSeparator(.hidden)
+            )
+            .padding(.top, 4)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .adaptiveBackground()
+        .frame(maxWidth: .infinity)
     }
 
     private func load() async {
@@ -138,37 +143,29 @@ struct ArtistDetailView: View {
 
 struct AlbumRow: View {
     let album: AlbumGroup
+    /// 替代「年份 · N 首」的副标题（搜索结果显示艺术家）
+    var subtitle: String? = nil
     @Environment(\.themePalette) private var palette
 
     var body: some View {
         HStack(spacing: 12) {
-            CoverImageView(path: album.coverImagePath, size: 48)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+            CoverImageView(path: album.coverImagePath, size: 48, cornerRadius: 12)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(album.name)
-                    .font(.subheadline.weight(.medium))
+                    .font(.body.weight(.medium))
                     .foregroundColor(palette.textPrimary)
                     .lineLimit(1)
-                HStack(spacing: 4) {
-                    if let year = album.year {
-                        Text(String(year))
-                            .font(.caption)
-                            .foregroundColor(palette.textTertiary)
-                        Text("·")
-                            .font(.caption)
-                            .foregroundColor(palette.textTertiary)
-                    }
-                    Text("\(album.songCount) 首")
-                        .font(.caption)
-                        .foregroundColor(palette.textTertiary)
-                }
+                Text(subtitle ?? [album.year.map(String.init), "\(album.songCount) 首"].compactMap { $0 }.joined(separator: " · "))
+                    .font(.footnote)
+                    .foregroundColor(palette.textSecondary)
+                    .lineLimit(1)
             }
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.caption)
-                .foregroundColor(palette.textTertiary)
+                .foregroundColor(palette.textSecondary)
         }
-        .padding(.vertical, 4)
+        .frame(minHeight: 56)
     }
 }

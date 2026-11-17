@@ -43,7 +43,8 @@ enum DebugLibrarySeeder {
 }
 
 /// 仅调试构建：`TUNEHAVEN_DEBUG_ROUTE` 指定启动后落到的页面，供模拟器截图检查。
-/// 取值：library、library.artist、library.album、playlist、settings、player、player.lyrics
+/// 取值：library、library.artist、library.album、playlist、settings、player、player.lyrics、
+/// album:<专辑名>|<艺术家>、artist:<艺术家>、search:<关键词>
 enum DebugLaunchRoute {
     static var raw: String? { ProcessInfo.processInfo.environment["TUNEHAVEN_DEBUG_ROUTE"] }
 
@@ -55,8 +56,23 @@ enum DebugLaunchRoute {
         }
     }
 
+    /// `search:<关键词>`：启动后在音乐库搜索框填入关键词
+    static var searchQuery: String? {
+        guard let raw, raw.hasPrefix("search:") else { return nil }
+        return String(raw.dropFirst("search:".count))
+    }
+
     @MainActor
     static func apply(router: AppRouter) {
+        if let raw, raw.hasPrefix("album:") {
+            let parts = raw.dropFirst("album:".count).split(separator: "|", maxSplits: 1).map(String.init)
+            if parts.count == 2 { router.navigate(to: .albumDetail(album: parts[0], artist: parts[1]), in: .library) }
+            return
+        }
+        if let raw, raw.hasPrefix("artist:") {
+            router.navigate(to: .artistDetail(name: String(raw.dropFirst("artist:".count))), in: .library)
+            return
+        }
         switch raw {
         case "playlist": router.selectedTab = .playlist
         case "settings": router.selectedTab = .settings
