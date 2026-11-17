@@ -541,11 +541,13 @@ final class WiFiTransferServer: ObservableObject {
         var ptr = ifaddr
         while let current = ptr {
             let flags = Int32(current.pointee.ifa_flags)
-            if flags & (IFF_UP | IFF_RUNNING) != 0 && flags & IFF_LOOPBACK == 0 {
-                let family = current.pointee.ifa_addr.pointee.sa_family
+            // 部分接口没有地址（ifa_addr 为 NULL），直接解引用会崩溃
+            if let addr = current.pointee.ifa_addr,
+               flags & (IFF_UP | IFF_RUNNING) != 0 && flags & IFF_LOOPBACK == 0 {
+                let family = addr.pointee.sa_family
                 if family == UInt8(AF_INET) {
                     var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                    if getnameinfo(current.pointee.ifa_addr, socklen_t(current.pointee.ifa_addr.pointee.sa_len),
+                    if getnameinfo(addr, socklen_t(addr.pointee.sa_len),
                                    &hostname, socklen_t(hostname.count), nil, 0, NI_NUMERICHOST) == 0 {
                         let ip = String(cString: hostname)
                         let name = String(cString: current.pointee.ifa_name)

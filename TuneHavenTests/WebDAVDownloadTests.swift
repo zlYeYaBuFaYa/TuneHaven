@@ -2,63 +2,14 @@ import Testing
 import Foundation
 @testable import TuneHaven
 
-// MARK: - URLProtocol 桩：按路径返回固定响应，可设延迟
-
-private final class StubURLProtocol: URLProtocol, @unchecked Sendable {
-    struct Response {
-        var status: Int = 200
-        var body = Data()
-        var delay: TimeInterval = 0
-    }
-
-    private static let lock = NSLock()
-    nonisolated(unsafe) private static var responses: [String: Response] = [:]
-
-    static func set(_ response: Response, for path: String) {
-        lock.lock(); defer { lock.unlock() }
-        responses[path] = response
-    }
-
-    private static func response(for path: String) -> Response? {
-        lock.lock(); defer { lock.unlock() }
-        return responses[path]
-    }
-
-    private var workItem: DispatchWorkItem?
-
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-
-    override func startLoading() {
-        let path = request.url?.path ?? ""
-        let stub = Self.response(for: path) ?? Response(status: 404)
-        let item = DispatchWorkItem { [weak self] in
-            guard let self, let url = self.request.url,
-                  let http = HTTPURLResponse(url: url, statusCode: stub.status, httpVersion: "HTTP/1.1",
-                                             headerFields: ["Content-Length": "\(stub.body.count)"]) else { return }
-            self.client?.urlProtocol(self, didReceive: http, cacheStoragePolicy: .notAllowed)
-            self.client?.urlProtocol(self, didLoad: stub.body)
-            self.client?.urlProtocolDidFinishLoading(self)
-        }
-        workItem = item
-        DispatchQueue.global().asyncAfter(deadline: .now() + stub.delay, execute: item)
-    }
-
-    override func stopLoading() {
-        workItem?.cancel()
-    }
-}
-
 private func makeClient() -> WebDAVClient {
-    let sessionConfig = URLSessionConfiguration.ephemeral
-    sessionConfig.protocolClasses = [StubURLProtocol.self]
-    return WebDAVClient(
+    WebDAVClient(
         configuration: .init(
             baseURL: URL(string: "https://dav.test")!,
             username: "u",
             password: "p"
         ),
-        sessionConfiguration: sessionConfig
+        sessionConfiguration: StubURLProtocol.sessionConfiguration()
     )
 }
 

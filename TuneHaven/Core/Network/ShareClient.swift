@@ -7,14 +7,57 @@ final class ShareClient: ShareClientProviding {
 
     private let jsonDecoder = JSONDecoder()
 
-    private lazy var urlSession: URLSession = {
-        let configuration = URLSessionConfiguration.default
+    private let urlSession: URLSession
+
+    /// `sessionConfiguration` 仅供测试注入 URLProtocol 桩
+    init(sessionConfiguration: URLSessionConfiguration = .default) {
+        let configuration = (sessionConfiguration.copy() as? URLSessionConfiguration) ?? .default
         configuration.timeoutIntervalForRequest = 30
         configuration.timeoutIntervalForResource = 300
-        return URLSession(configuration: configuration)
-    }()
+        urlSession = URLSession(configuration: configuration)
+    }
 
-    init() {}
+    /// 下载文件的本地命名规则。文件名完全由接收端决定，发送端的名字只用来取扩展名，
+    /// 且扩展名必须在白名单内；否则恶意发送端给出 `..` 之类的名字会让接收端删掉目录。
+    enum DownloadKind {
+        case audio, cover, lyrics
+
+        var prefix: String {
+            switch self {
+            case .audio: return "audio"
+            case .cover: return "cover"
+            case .lyrics: return "lyrics"
+            }
+        }
+
+        var allowedExtensions: Set<String> {
+            switch self {
+            case .audio: return FileStorageService.supportedExtensions
+            case .cover: return ["jpg", "jpeg", "png"]
+            case .lyrics: return ["lrc", "txt"]
+            }
+        }
+
+        var defaultExtension: String {
+            switch self {
+            case .audio: return "dat"
+            case .cover: return "jpg"
+            case .lyrics: return "lrc"
+            }
+        }
+    }
+
+    static func localFilename(for response: HTTPURLResponse, kind: DownloadKind, index: Int) -> String {
+        var ext = kind.defaultExtension
+        if let disposition = response.value(forHTTPHeaderField: "Content-Disposition"),
+           let remoteName = parseFilename(from: disposition) {
+            let remoteExt = (remoteName as NSString).pathExtension.lowercased()
+            if kind.allowedExtensions.contains(remoteExt) {
+                ext = remoteExt
+            }
+        }
+        return "\(kind.prefix)_\(index).\(ext)"
+    }
 
     func connect(to qrContent: String) async throws -> ShareSessionInfo {
         let trimmed = qrContent.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -76,7 +119,8 @@ final class ShareClient: ShareClientProviding {
             baseURL: baseURL,
             token: token,
             destinationDirectory: dir,
-            fallbackFilename: "song_\(index).dat",
+            kind: .audio,
+            index: index,
             progressHandler: progressHandler
         )
     }
@@ -88,7 +132,8 @@ final class ShareClient: ShareClientProviding {
             baseURL: baseURL,
             token: token,
             destinationDirectory: dir,
-            fallbackFilename: "cover_\(index).dat"
+            kind: .cover,
+            index: index
         )
     }
 
@@ -99,7 +144,8 @@ final class ShareClient: ShareClientProviding {
             baseURL: baseURL,
             token: token,
             destinationDirectory: dir,
-            fallbackFilename: "lyrics_\(index).dat"
+            kind: .lyrics,
+            index: index
         )
     }
 
@@ -229,7 +275,8 @@ final class ShareClient: ShareClientProviding {
         baseURL: URL,
         token: String,
         destinationDirectory: URL,
-        fallbackFilename: String,
+        kind: DownloadKind,
+        index: Int,
         progressHandler: @escaping @Sendable (Double) -> Void
     ) async throws -> URL {
         let url = try absoluteURL(path: path, baseURL: baseURL)
@@ -251,13 +298,7 @@ final class ShareClient: ShareClientProviding {
             AppLogger.shared.error("[ShareClient] download HTTP \(http.statusCode) for \(path)")
             throw AppError.fileSystemError("下载失败 (\(http.statusCode))")
         }
-        let filename = suggestedFilename(from: http, fallback: fallbackFilename)
-        try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
-        let destURL = destinationDirectory.appendingPathComponent(filename)
-        if FileManager.default.fileExists(atPath: destURL.path) {
-            try FileManager.default.removeItem(at: destURL)
-        }
-        try FileManager.default.moveItem(at: tempURL, to: destURL)
+        let destURL = try place(tempURL, response: http, kind: kind, index: index, in: destinationDirectory)
         progressHandler(1.0)
         return destURL
     }
@@ -267,7 +308,8 @@ final class ShareClient: ShareClientProviding {
         baseURL: URL,
         token: String,
         destinationDirectory: URL,
-        fallbackFilename: String
+        kind: DownloadKind,
+        index: Int
     ) async throws -> URL? {
         let url = try absoluteURL(path: path, baseURL: baseURL)
         let request = authorizedRequest(url: url, token: token)
@@ -292,26 +334,35 @@ final class ShareClient: ShareClientProviding {
             AppLogger.shared.error("[ShareClient] download HTTP \(http.statusCode) for \(path)")
             throw AppError.fileSystemError("下载失败 (\(http.statusCode))")
         }
-        let filename = suggestedFilename(from: http, fallback: fallbackFilename)
-        try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
-        let destURL = destinationDirectory.appendingPathComponent(filename)
-        if FileManager.default.fileExists(atPath: destURL.path) {
-            try FileManager.default.removeItem(at: destURL)
+        return try place(tempURL, response: http, kind: kind, index: index, in: destinationDirectory)
+    }
+
+    /// 把下载的临时文件按本地命名规则移到目标目录。
+    private func place(
+        _ tempURL: URL,
+        response: HTTPURLResponse,
+        kind: DownloadKind,
+        index: Int,
+        in destinationDirectory: URL
+    ) throws -> URL {
+        let fm = FileManager.default
+        try fm.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
+        let destURL = destinationDirectory.appendingPathComponent(
+            Self.localFilename(for: response, kind: kind, index: index))
+        // 名字由本地生成，不会跑出目标目录；这里再校验一次作为防御
+        guard destURL.deletingLastPathComponent().standardizedFileURL.path
+                == destinationDirectory.standardizedFileURL.path else {
+            try? fm.removeItem(at: tempURL)
+            throw AppError.fileSystemError("下载文件路径无效")
         }
-        try FileManager.default.moveItem(at: tempURL, to: destURL)
+        if fm.fileExists(atPath: destURL.path) {
+            try fm.removeItem(at: destURL)
+        }
+        try fm.moveItem(at: tempURL, to: destURL)
         return destURL
     }
 
-    private func suggestedFilename(from response: HTTPURLResponse, fallback: String) -> String {
-        if let disposition = response.value(forHTTPHeaderField: "Content-Disposition"),
-           let parsed = parseFilename(from: disposition) {
-            let last = (parsed as NSString).lastPathComponent
-            if !last.isEmpty { return last }
-        }
-        return fallback
-    }
-
-    private func parseFilename(from contentDisposition: String) -> String? {
+    private static func parseFilename(from contentDisposition: String) -> String? {
         if let starRange = contentDisposition.range(of: "filename*=", options: .caseInsensitive) {
             let rest = String(contentDisposition[starRange.upperBound...]).trimmingCharacters(in: .whitespaces)
             if let q2 = rest.range(of: "''") {
