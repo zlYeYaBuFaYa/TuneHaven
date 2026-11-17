@@ -62,6 +62,19 @@ struct SubscriptionStartupTests {
         #expect(service.status == .lifetime)
     }
 
+    @Test("本地推断不算已确认，StoreKit 刷新后才算")
+    func verificationFlag() async {
+        let provider = MockSubscriptionProvider()
+        provider.cachedEntitlementState = EntitlementState(hasLifetime: true, hasActiveSubscription: false, subscriptionExpirationDate: nil)
+        let service = SubscriptionService(provider: provider)
+
+        service.loadLocalStatus()
+        #expect(service.isStatusVerified == false)
+
+        await service.refreshStatus()
+        #expect(service.isStatusVerified)
+    }
+
     @Test("没有本地日期时启动先视为 Free，不阻塞")
     func missingLocalDateIsFree() async {
         let provider = MockSubscriptionProvider()

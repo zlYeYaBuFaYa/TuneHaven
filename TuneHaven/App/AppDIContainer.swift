@@ -181,8 +181,9 @@ final class AppDIContainer: ObservableObject {
 
     func setupSubscriptionBindings() {
         subscriptionService.$tier
-            .sink { [weak self] tier in
-                self?.themeManager.applyTier(tier)
+            .combineLatest(subscriptionService.$isStatusVerified)
+            .sink { [weak self] tier, verified in
+                self?.themeManager.applyTier(tier, verified: verified)
             }
             .store(in: &cancellables)
     }

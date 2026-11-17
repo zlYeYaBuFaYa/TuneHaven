@@ -31,6 +31,8 @@ final class PlaybackService: ObservableObject {
     private static let maxConsecutiveFailures = 5
 
     @Published private(set) var losslessBlockedSong: Song?
+    /// 启动时因档位（可能只是本地推断的临时 Free）没恢复的上次无损歌曲，档位变为 Premium 后补回
+    private var pendingLosslessRestore: Song?
 
     func clearLosslessBlock() {
         losslessBlockedSong = nil
@@ -76,6 +78,7 @@ final class PlaybackService: ObservableObject {
         guard !deniesLossless(song) else {
             log.info("Free 用户不恢复无损为当前歌曲: \(song.title)")
             currentSong = nil
+            pendingLosslessRestore = song
             return
         }
         currentSong = song
@@ -524,6 +527,15 @@ final class PlaybackService: ObservableObject {
 
     /// 到期降为 Free 时，只暂停正在播放的无损，不打断有损会话。
     private func handleTierChange(_ tier: SubscriptionTier) {
+        if tier == .premium, let pending = pendingLosslessRestore {
+            pendingLosslessRestore = nil
+            // 用户这期间已经选了别的歌，就不覆盖
+            if currentSong == nil {
+                log.info("档位确认为 Premium，补回上次无损歌曲: \(pending.title)")
+                currentSong = pending
+                queueService.replaceQueue(with: [pending], startAt: 0)
+            }
+        }
         guard tier == .free, let song = currentSong, song.isLossless else { return }
         let enginePlaying: Bool
         if case .playing = engine.state {

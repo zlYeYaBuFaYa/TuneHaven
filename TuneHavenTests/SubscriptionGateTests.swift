@@ -125,6 +125,45 @@ struct LosslessPlaybackGateTests {
         #expect(harness.engine.playCalled == false)
     }
 
+    @Test("启动时因临时 Free 没恢复的无损歌曲，档位变为 Premium 后补回且不自动播放")
+    func testPendingLosslessRestoredAfterPremium() async {
+        let harness = await makeHarness(premium: false)
+        let flac = makeFormatSong(format: "flac", title: "上次无损")
+        harness.songs.songs = [flac]
+        harness.preferences.lastPlayedSongId = flac.id.uuidString
+        await harness.playback.restoreLastPlayedSong()
+        #expect(harness.playback.currentSong == nil)
+
+        harness.provider.entitlementState = EntitlementState(
+            hasLifetime: true, hasActiveSubscription: false, subscriptionExpirationDate: nil)
+        await harness.subscription.refreshStatus()
+        await waitForMainActor { harness.playback.currentSong != nil }
+
+        #expect(harness.playback.currentSong?.id == flac.id)
+        #expect(harness.playback.queue.count == 1)
+        #expect(harness.engine.playCalled == false)
+        #expect(harness.playback.losslessBlockedSong == nil)
+    }
+
+    @Test("补回前用户已开始播放别的歌曲时，不覆盖当前歌曲")
+    func testPendingLosslessDoesNotOverrideCurrentSong() async {
+        let harness = await makeHarness(premium: false)
+        let flac = makeFormatSong(format: "flac", title: "上次无损")
+        let mp3 = makeFormatSong(format: "mp3", title: "新选的有损")
+        harness.songs.songs = [flac, mp3]
+        harness.preferences.lastPlayedSongId = flac.id.uuidString
+        await harness.playback.restoreLastPlayedSong()
+        await harness.playback.prepare(song: mp3, in: .queue)
+        #expect(harness.playback.currentSong?.id == mp3.id)
+
+        harness.provider.entitlementState = EntitlementState(
+            hasLifetime: true, hasActiveSubscription: false, subscriptionExpirationDate: nil)
+        await harness.subscription.refreshStatus()
+        for _ in 0..<20 { await Task.yield() }
+
+        #expect(harness.playback.currentSong?.id == mp3.id)
+    }
+
     @Test("下一首遇到无损时停在该首并弹软墙，不静默跳到后面的有损")
     func testPlayNextParksOnLossless() async {
         let harness = await makeHarness(premium: false)
@@ -280,6 +319,50 @@ struct FreeThemeDowngradeTests {
         #expect(manager.currentStyle.id == "cosmic_tech")
     }
 
+    @Test("档位未确认的临时 Free 不改主题、不写偏好；确认后才降级")
+    func testUnverifiedFreeKeepsTheme() {
+        let previous = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle)
+        defer { restoreTheme(previous) }
+        UserDefaults.standard.set("twilight_rose", forKey: AppStorageKey.themeStyle)
+        ThemeRegistry.shared.bootstrap()
+        let manager = ThemeManager()
+
+        manager.applyTier(.free, verified: false)
+        #expect(manager.currentStyle.id == "twilight_rose")
+        #expect(UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) == "twilight_rose")
+
+        manager.applyTier(.premium, verified: true)
+        #expect(manager.currentStyle.id == "twilight_rose")
+
+        manager.applyTier(.free, verified: true)
+        #expect(manager.currentStyle.id == "cloud_white")
+        #expect(UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) == "cloud_white")
+    }
+
+    @Test("缓存为空的买断用户：启动推断为 Free 但主题保留，StoreKit 确认后仍是原主题")
+    func testLifetimeUserKeepsThemeThroughStartup() async {
+        let previous = UserDefaults.standard.string(forKey: AppStorageKey.themeStyle)
+        defer { restoreTheme(previous) }
+        UserDefaults.standard.set("cosmic_tech", forKey: AppStorageKey.themeStyle)
+        ThemeRegistry.shared.bootstrap()
+        let manager = ThemeManager()
+        let provider = MockSubscriptionProvider()
+        provider.entitlementState = EntitlementState(
+            hasLifetime: true, hasActiveSubscription: false, subscriptionExpirationDate: nil)
+        let service = SubscriptionService(provider: provider)
+
+        service.loadLocalStatus()
+        #expect(service.tier == .free)
+        manager.applyTier(service.tier, verified: service.isStatusVerified)
+        #expect(manager.currentStyle.id == "cosmic_tech")
+
+        await service.initialize()
+        manager.applyTier(service.tier, verified: service.isStatusVerified)
+        #expect(service.isStatusVerified)
+        #expect(manager.currentStyle.id == "cosmic_tech")
+        #expect(UserDefaults.standard.string(forKey: AppStorageKey.themeStyle) == "cosmic_tech")
+    }
+
     private func restoreTheme(_ previous: String?) {
         if let previous {
             UserDefaults.standard.set(previous, forKey: AppStorageKey.themeStyle)
@@ -399,6 +482,14 @@ private func makeHarness(premium: Bool) async -> PlaybackHarness {
         subscription: subscription,
         provider: provider
     )
+}
+
+@MainActor
+private func waitForMainActor(timeout: Duration = .seconds(2), _ condition: () -> Bool) async {
+    let deadline = ContinuousClock.now + timeout
+    while !condition() && ContinuousClock.now < deadline {
+        try? await Task.sleep(for: .milliseconds(5))
+    }
 }
 
 @MainActor
