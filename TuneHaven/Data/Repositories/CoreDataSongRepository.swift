@@ -103,9 +103,21 @@ final class CoreDataSongRepository: SongRepository, @unchecked Sendable {
         try await stack.performBackground { ctx in
             let request = SongEntity.fetchRequest()
             request.predicate = NSPredicate(format: "fileHash == %@", song.fileHash)
-            request.fetchLimit = 1
-            if let existing = try ctx.fetch(request).first {
-                SongMapper.updateEntity(existing, from: song)
+            let matches = try ctx.fetch(request)
+
+            // 撤销窗口内重导同一文件：软删除的旧记录直接硬删，按新 id 建记录。
+            // 否则会更新到仍是软删除状态的旧记录上，导入成功却看不到歌曲，随后还会被提交删除清掉。
+            for entity in matches where entity.softDeleted {
+                if let oldId = entity.id {
+                    let links = PlaylistSongEntity.fetchRequest()
+                    links.predicate = NSPredicate(format: "songId == %@", oldId as CVarArg)
+                    try ctx.fetch(links).forEach { ctx.delete($0) }
+                }
+                ctx.delete(entity)
+            }
+
+            if let active = matches.first(where: { !$0.softDeleted }) {
+                SongMapper.updateEntity(active, from: song)
             } else {
                 _ = SongMapper.toEntity(song, context: ctx)
             }

@@ -17,11 +17,29 @@ final class CoreDataStack: @unchecked Sendable {
         return ctx
     }
 
-    private init() {
-        container = NSPersistentContainer(name: "MusicPlayer")
+    private convenience init() {
+        self.init(container: NSPersistentContainer(name: "MusicPlayer"))
+    }
+
+    private init(container: NSPersistentContainer) {
+        self.container = container
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
     }
+
+    #if DEBUG
+    /// 测试用内存库。复用单例的模型，避免同一进程加载两份模型导致实体类冲突。
+    static func makeInMemory() async throws -> CoreDataStack {
+        let model = CoreDataStack.shared.container.managedObjectModel
+        let container = NSPersistentContainer(name: "MusicPlayer", managedObjectModel: model)
+        let description = NSPersistentStoreDescription()
+        description.type = NSInMemoryStoreType
+        container.persistentStoreDescriptions = [description]
+        let stack = CoreDataStack(container: container)
+        try await stack.load()
+        return stack
+    }
+    #endif
 
     func load() async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
