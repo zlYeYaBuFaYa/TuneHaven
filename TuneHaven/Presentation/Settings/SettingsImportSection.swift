@@ -69,16 +69,16 @@ struct SettingsImportSection: View {
                         if isLocked {
                             Image(systemName: "lock.fill")
                                 .font(.caption2)
-                                .foregroundColor(palette.textTertiary)
+                                .foregroundColor(palette.textSecondary)
                         }
                     }
                     Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(isLocked ? palette.textTertiary : palette.textSecondary)
+                        .font(.footnote)
+                        .foregroundColor(isLocked ? palette.textSecondary : palette.textSecondary)
                 }
             } icon: {
                 Image(systemName: icon)
-                    .foregroundColor(isLocked ? palette.textTertiary : palette.primary)
+                    .foregroundColor(isLocked ? palette.textSecondary : palette.accent)
             }
         }
         .listRowBackground(listRowBg)

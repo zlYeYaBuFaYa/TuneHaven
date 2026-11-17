@@ -45,12 +45,12 @@ struct SettingsBackupSection: View {
                         .font(.subheadline)
                         .foregroundColor(palette.textPrimary)
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundColor(palette.textSecondary)
                 }
             } icon: {
                 Image(systemName: icon)
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
             }
         }
         .listRowBackground(listRowBg)

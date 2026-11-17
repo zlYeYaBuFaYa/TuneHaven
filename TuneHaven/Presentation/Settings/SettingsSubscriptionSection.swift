@@ -21,10 +21,10 @@ struct SettingsSubscriptionSection: View {
                         Label {
                             Text("查看 Premium 权益")
                                 .font(.subheadline)
-                                .foregroundColor(palette.primary)
+                                .foregroundColor(palette.accent)
                         } icon: {
                             Image(systemName: "sparkles")
-                                .foregroundColor(palette.primary)
+                                .foregroundColor(palette.accent)
                         }
                     }
                     .listRowBackground(listRowBg)
@@ -39,7 +39,7 @@ struct SettingsSubscriptionSection: View {
                             .foregroundColor(palette.textPrimary)
                     } icon: {
                         Image(systemName: "arrow.clockwise")
-                            .foregroundColor(palette.primary)
+                            .foregroundColor(palette.accent)
                     }
                 }
                 .listRowBackground(listRowBg)
@@ -51,25 +51,25 @@ struct SettingsSubscriptionSection: View {
                             .foregroundColor(palette.textPrimary)
                     } icon: {
                         Image(systemName: "arrow.up.right.square")
-                            .foregroundColor(palette.primary)
+                            .foregroundColor(palette.accent)
                     }
                 }
                 .listRowBackground(listRowBg)
 
                 if let error = subscriptionService.restoreError {
                     Text(error)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundColor(SemanticColor.danger(for: colorScheme))
                         .listRowBackground(listRowBg)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("曲库本地优先，基础播放无需订阅。Premium 解锁无损播放、WebDAV 与在线歌词。")
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundColor(palette.textSecondary)
                     Text("隐私政策可在浏览器中打开。若链接暂时无法访问，请稍后再试或通过 App Store 产品页查看。")
                         .font(.caption2)
-                        .foregroundColor(palette.textTertiary)
+                        .foregroundColor(palette.textSecondary)
                 }
                 .listRowBackground(listRowBg)
             } label: {
@@ -96,7 +96,7 @@ struct SettingsSubscriptionSection: View {
                         .foregroundColor(palette.textPrimary)
                 } icon: {
                     Image(systemName: "clock")
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.accent)
                 }
                 Spacer()
                 Text("剩余 \(days) 天")
@@ -112,7 +112,7 @@ struct SettingsSubscriptionSection: View {
                         .foregroundColor(palette.textPrimary)
                 } icon: {
                     Image(systemName: "checkmark.seal.fill")
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.accent)
                 }
                 Spacer()
                 Text("到期：\(date.formatted(date: .abbreviated, time: .omitted))")
@@ -128,7 +128,7 @@ struct SettingsSubscriptionSection: View {
                         .foregroundColor(palette.textPrimary)
                 } icon: {
                     Image(systemName: "crown.fill")
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.accent)
                 }
                 Spacer()
                 Text("永久有效")
@@ -149,7 +149,7 @@ struct SettingsSubscriptionSection: View {
                 Spacer()
                 Text("功能受限")
                     .font(.subheadline)
-                    .foregroundColor(palette.textTertiary)
+                    .foregroundColor(palette.textSecondary)
             }
             .listRowBackground(listRowBg)
         }

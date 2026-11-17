@@ -19,12 +19,28 @@ struct SettingsView: View {
     @State private var showClearHistoryConfirm = false
     @State private var notificationPermissionStatus: UNAuthorizationStatus = .notDetermined
 
+    #if DEBUG
+    @State private var expandedSubscription = DebugLaunchRoute.raw == "settings.open"
+    #else
     @State private var expandedSubscription = false
+    #endif
+    #if DEBUG
+    @State private var expandedImport = DebugLaunchRoute.raw == "settings.open"
+    #else
     @State private var expandedImport = false
+    #endif
     @State private var expandedShare = false
     @State private var expandedBackup = false
+    #if DEBUG
+    @State private var expandedAppearance = DebugLaunchRoute.raw == "settings.open2"
+    #else
     @State private var expandedAppearance = false
+    #endif
+    #if DEBUG
+    @State private var expandedPlayback = DebugLaunchRoute.raw == "settings.open2"
+    #else
     @State private var expandedPlayback = false
+    #endif
     @State private var expandedStorage = false
     @State private var expandedAbout = false
 
@@ -41,7 +57,7 @@ struct SettingsView: View {
     }
 
     private var listRowBg: Color {
-        hasCustomBg ? palette.surface.opacity(0.75) : palette.surface
+        hasCustomBg ? palette.surface.opacity(0.72) : palette.surface
     }
 
     var body: some View {
@@ -86,6 +102,7 @@ struct SettingsView: View {
         }
         .environment(\.settingsListRowBg, listRowBg)
         .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
         .scrollContentBackground(.hidden)
         .background(hasCustomBg ? Color.clear : palette.background)
         .navigationTitle("设置")

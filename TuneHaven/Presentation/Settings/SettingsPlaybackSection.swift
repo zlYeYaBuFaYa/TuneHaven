@@ -59,7 +59,7 @@ struct SettingsPlaybackSection: View {
             } label: {
                 Text(RecentPlayRange(days: recentPlayRange)?.displayName ?? "\(recentPlayRange)天")
                     .font(.subheadline)
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
             }
         }
         .listRowBackground(listRowBg)
@@ -89,15 +89,15 @@ struct SettingsPlaybackSection: View {
                         .font(.subheadline)
                         .foregroundColor(palette.textPrimary)
                     Text("定时结束前发送通知")
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundColor(palette.textSecondary)
                 }
             } icon: {
                 Image(systemName: "moon.zzz")
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
             }
         }
-        .tint(palette.primary)
+        .tint(palette.accent)
         .listRowBackground(listRowBg)
         .onChange(of: sleepTimerNotification) { enabled in
             if enabled { requestNotificationPermission() }
@@ -111,7 +111,7 @@ struct SettingsPlaybackSection: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(SemanticColor.warning)
                 Text("通知权限已关闭，请在系统设置中开启")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundColor(palette.textSecondary)
                 Spacer()
                 Button("去开启") {
@@ -119,8 +119,8 @@ struct SettingsPlaybackSection: View {
                         UIApplication.shared.open(url)
                     }
                 }
-                .font(.caption)
-                .foregroundColor(palette.primary)
+                .font(.footnote)
+                .foregroundColor(palette.accent)
             }
             .listRowBackground(palette.surfaceSecondary)
         }
@@ -134,15 +134,15 @@ struct SettingsPlaybackSection: View {
                         .font(.subheadline)
                         .foregroundColor(palette.textPrimary)
                     Text("开启后上传文件需要密码")
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundColor(palette.textSecondary)
                 }
             } icon: {
                 Image(systemName: "lock.shield")
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
             }
         }
-        .tint(palette.primary)
+        .tint(palette.accent)
         .listRowBackground(listRowBg)
     }
 
@@ -154,15 +154,15 @@ struct SettingsPlaybackSection: View {
                         .font(.subheadline)
                         .foregroundColor(palette.textPrimary)
                     Text("播放时自动搜索并下载歌词")
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundColor(palette.textSecondary)
                 }
             } icon: {
                 Image(systemName: "text.magnifyingglass")
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
             }
         }
-        .tint(palette.primary)
+        .tint(palette.accent)
         .listRowBackground(listRowBg)
     }
 
@@ -174,12 +174,12 @@ struct SettingsPlaybackSection: View {
                         .font(.subheadline)
                         .foregroundColor(palette.textPrimary)
                     Text("默认简体；原文保留文件中的繁简")
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundColor(palette.textSecondary)
                 }
             } icon: {
                 Image(systemName: "character.textbox")
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
             }
             Spacer(minLength: 8)
             Picker("", selection: $lyricsPreferSimplified) {

@@ -56,7 +56,7 @@ struct SongInfoEditView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { dismiss() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.accent)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSaving {
@@ -64,7 +64,7 @@ struct SongInfoEditView: View {
                     } else {
                         Button("保存") { saveChanges() }
                             .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            .foregroundColor(palette.primary)
+                            .foregroundColor(palette.accent)
                     }
                 }
             }
@@ -105,7 +105,7 @@ struct SongInfoEditView: View {
             } label: {
                 Label("搜索歌词", systemImage: "magnifyingglass")
                     .font(.subheadline)
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
             }
 
             Button {
@@ -113,7 +113,7 @@ struct SongInfoEditView: View {
             } label: {
                 Label("导入歌词", systemImage: "doc.text")
                     .font(.subheadline)
-                    .foregroundColor(palette.primary)
+                    .foregroundColor(palette.accent)
             }
 
             if song.lyricsSource != nil || song.lyricsPath != nil {

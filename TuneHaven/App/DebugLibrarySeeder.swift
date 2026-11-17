@@ -86,7 +86,7 @@ enum DebugLaunchRoute {
             router.navigate(to: .songList(title: "最近播放", context: .recentlyPlayed), in: .playlist)
         case "playlist.groups":
             router.selectedTab = .playlist
-        case "settings": router.selectedTab = .settings
+        case "settings", "settings.open", "settings.open2": router.selectedTab = .settings
         case "player", "player.lyrics", "player.more", "player.sleep", "player.speed", "player.lyricsSearch":
             router.openPlayer()
         case "sheet.create": router.present(.createPlaylist)

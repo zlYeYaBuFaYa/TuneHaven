@@ -30,7 +30,7 @@ struct SettingsAppearanceSection: View {
     private var themeStyleRow: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("主题风格")
-                .font(.caption)
+                .font(.footnote)
                 .foregroundColor(palette.textSecondary)
             // 辅助功能字号下改单列
             let columns = dynamicTypeSize.isAccessibilitySize
@@ -49,7 +49,7 @@ struct SettingsAppearanceSection: View {
                 }
             }
             Text("日间／黑夜跟随系统外观")
-                .font(.caption)
+                .font(.footnote)
                 .foregroundColor(palette.textSecondary)
         }
         .padding(.vertical, 4)
@@ -74,7 +74,7 @@ struct SettingsAppearanceSection: View {
                 }
             }
             Text(style.displayName)
-                .font(.caption)
+                .font(.footnote)
                 .fontWeight(isSelected ? .semibold : .regular)
                 .foregroundColor(isSelected ? palette.textPrimary : palette.textSecondary)
                 .lineLimit(1)
@@ -82,11 +82,11 @@ struct SettingsAppearanceSection: View {
         .padding(6)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? palette.primary.opacity(0.08) : Color.clear)
+                .fill(isSelected ? palette.accent.opacity(0.08) : Color.clear)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(isSelected ? palette.primary : palette.separator, lineWidth: isSelected ? 1.5 : 0.5)
+                .stroke(isSelected ? palette.accent : palette.separator, lineWidth: isSelected ? 1.5 : 0.5)
         )
     }
 

@@ -6,13 +6,14 @@ struct SettingsSectionIcon: View {
 
     var body: some View {
         Image(systemName: systemName)
-            .font(.subheadline)
-            .foregroundColor(palette.primaryDark)
-            .frame(width: 30, height: 30)
+            .font(.subheadline.weight(.semibold))
+            .foregroundColor(palette.accent)
+            .frame(width: 32, height: 32)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(palette.highlight)
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(palette.tagBackground)
             )
+            .accessibilityHidden(true)
     }
 }
 
