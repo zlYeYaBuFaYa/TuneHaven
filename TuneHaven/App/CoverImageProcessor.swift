@@ -30,7 +30,9 @@ final class CoverImageProcessor: CoverImageProcessing {
             throw AppError.imageProcessingFailed("无法压缩图片")
         }
         try jpegData.write(to: url)
-        return url.lastPathComponent
+        let key = url.lastPathComponent
+        await MainActor.run { imageCache.store(image: thumb, forKey: key) }
+        return key
     }
 
     func generatePlaylistGridCover(coverPaths: [String?], playlistId: UUID) async throws -> String {

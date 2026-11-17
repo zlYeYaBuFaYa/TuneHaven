@@ -115,6 +115,15 @@ final class AppDIContainer: ObservableObject {
         try await CoreDataStack.shared.load()
         await MigrationManager.shared.runPostLoadMigrations()
         SandboxPathManager.createAllDirectories()
+        let coverMigration = CoverStorageMigration.migrate(
+            legacyCovers: SandboxPathManager.legacyCoverImagesURL,
+            legacyPlaylistCovers: SandboxPathManager.legacyPlaylistCoversURL,
+            covers: SandboxPathManager.coverImagesURL,
+            playlistCovers: SandboxPathManager.playlistCoversURL
+        )
+        if coverMigration != CoverStorageMigration.Result() {
+            AppLogger.shared.info("[Cover] 封面迁移: 移动=\(coverMigration.moved) 跳过=\(coverMigration.skipped) 失败=\(coverMigration.failed)")
+        }
         // 冷启动没有进行中的分享。await 完成前不会 isReady，导出和分享都还没开始。
         let removedBackupFiles = await BackupTempDirectory.cleanupOnLaunchBeforeUse()
         if removedBackupFiles > 0 {

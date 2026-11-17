@@ -18,12 +18,8 @@ final class MockUserPreferences: UserPreferencesProviding {
 }
 
 final class MockImageCacheManaging: ImageCacheManaging {
-    var cacheLimitMB: Int = 100
-    var cacheCleared = false
     var mockCacheSize: Int64 = 0
 
-    func setCacheLimit(_ megabytes: Int) { cacheLimitMB = megabytes }
-    func clearAll() async { cacheCleared = true }
     func cacheSizeAsync() async -> Int64 { mockCacheSize }
     func memoryImage(forKey key: String) -> UIImage? { nil }
     func imageAsync(forKey key: String) async -> UIImage? { nil }

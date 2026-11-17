@@ -2,8 +2,7 @@ import UIKit
 
 // TODO: 🟢20 — import UIKit 因 UIImage 深度嵌入协议接口，去除需大规模重构，列入后续迭代
 protocol ImageCacheManaging: AnyObject {
-    func setCacheLimit(_ megabytes: Int)
-    func clearAll() async
+    /// 封面正式存储占用的磁盘空间
     func cacheSizeAsync() async -> Int64
     func memoryImage(forKey key: String) -> UIImage?
     func imageAsync(forKey key: String) async -> UIImage?

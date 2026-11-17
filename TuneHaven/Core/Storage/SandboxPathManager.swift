@@ -17,11 +17,26 @@ enum SandboxPathManager {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
     }
 
+    static var applicationSupportURL: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+    }
+
+    /// 歌曲封面的唯一存储。不放 Caches，避免被系统或清理操作删除。
     static var coverImagesURL: URL {
+        applicationSupportURL.appendingPathComponent("CoverImages", isDirectory: true)
+    }
+
+    /// 歌单封面（自定义与自动拼图）的唯一存储。
+    static var playlistCoversURL: URL {
+        applicationSupportURL.appendingPathComponent("PlaylistCovers", isDirectory: true)
+    }
+
+    /// 旧版本的封面目录，只供 `CoverStorageMigration` 迁移使用。
+    static var legacyCoverImagesURL: URL {
         cachesURL.appendingPathComponent("CoverImages", isDirectory: true)
     }
 
-    static var playlistCoversURL: URL {
+    static var legacyPlaylistCoversURL: URL {
         cachesURL.appendingPathComponent("PlaylistCovers", isDirectory: true)
     }
 

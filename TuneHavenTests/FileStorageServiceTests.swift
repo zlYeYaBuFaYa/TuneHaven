@@ -207,16 +207,26 @@ struct SandboxPathManagerTests {
         #expect(url.path.contains("Caches"))
     }
 
-    @Test("coverImagesURL 是 Caches/CoverImages 子目录")
+    @Test("coverImagesURL 是 Application Support/CoverImages，不在 Caches")
     func testCoverImagesURL() {
         let url = SandboxPathManager.coverImagesURL
         #expect(url.path.hasSuffix("CoverImages"))
+        #expect(url.deletingLastPathComponent().standardizedFileURL == SandboxPathManager.applicationSupportURL.standardizedFileURL)
+        #expect(!url.path.contains("/Caches/"))
     }
 
-    @Test("playlistCoversURL 是 Caches/PlaylistCovers 子目录")
+    @Test("playlistCoversURL 是 Application Support/PlaylistCovers，不在 Caches")
     func testPlaylistCoversURL() {
         let url = SandboxPathManager.playlistCoversURL
         #expect(url.path.hasSuffix("PlaylistCovers"))
+        #expect(url.deletingLastPathComponent().standardizedFileURL == SandboxPathManager.applicationSupportURL.standardizedFileURL)
+        #expect(!url.path.contains("/Caches/"))
+    }
+
+    @Test("旧封面目录仍指向 Caches，供迁移读取")
+    func testLegacyCoverURLs() {
+        #expect(SandboxPathManager.legacyCoverImagesURL.path.contains("/Caches/"))
+        #expect(SandboxPathManager.legacyPlaylistCoversURL.path.contains("/Caches/"))
     }
 
     @Test("pendingDeleteURL 在 tmp 目录下")
