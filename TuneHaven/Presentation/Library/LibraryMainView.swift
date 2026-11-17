@@ -31,7 +31,11 @@ struct LibraryMainView: View {
 
     @StateObject private var searchDebouncer = SearchDebouncer()
     @FocusState private var isSearchFieldFocused: Bool
+    #if DEBUG
+    @State private var selectedTab: LibraryTab = DebugLaunchRoute.libraryTab ?? .all
+    #else
     @State private var selectedTab: LibraryTab = .all
+    #endif
     @Namespace private var tabNamespace
     @State private var searchText = ""
     @State private var isSearchActive = false

@@ -20,4 +20,28 @@ enum DebugLibrarySeeder {
         await libraryService.loadSongs()
     }
 }
+
+/// 仅调试构建：`TUNEHAVEN_DEBUG_ROUTE` 指定启动后落到的页面，供模拟器截图检查。
+/// 取值：library、library.artist、library.album、playlist、settings、player
+enum DebugLaunchRoute {
+    static var raw: String? { ProcessInfo.processInfo.environment["TUNEHAVEN_DEBUG_ROUTE"] }
+
+    static var libraryTab: LibraryTab? {
+        switch raw {
+        case "library.artist": return .artist
+        case "library.album": return .album
+        default: return nil
+        }
+    }
+
+    @MainActor
+    static func apply(router: AppRouter) {
+        switch raw {
+        case "playlist": router.selectedTab = .playlist
+        case "settings": router.selectedTab = .settings
+        case "player": router.openPlayer()
+        default: break
+        }
+    }
+}
 #endif

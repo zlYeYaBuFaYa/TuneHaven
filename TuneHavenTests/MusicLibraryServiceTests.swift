@@ -295,3 +295,68 @@ struct MusicLibrarySortReuseTests {
         #expect(service.currentSort == (.importDate, false))
     }
 }
+
+// MARK: - 最近添加专辑
+
+@Suite("LibraryGrouping - 最近添加专辑")
+struct RecentlyAddedAlbumsTests {
+
+    private func song(_ title: String, album: String, artist: String = "A", daysAgo: Double, cover: String? = nil) -> Song {
+        let base = makeSong(title: title, artist: artist, album: album, coverImagePath: cover)
+        return Song(
+            id: base.id, title: base.title, artist: base.artist, album: base.album,
+            duration: base.duration, fileHash: base.fileHash, fileRelativePath: base.fileRelativePath,
+            coverImagePath: cover, lyricsPath: nil, lyricsSource: nil, metadata: base.metadata,
+            importDate: Date().addingTimeInterval(-daysAgo * 86_400),
+            fileSize: base.fileSize, playCount: 0, isFavorite: false, favoriteDate: nil, lastPlayedDate: nil
+        )
+    }
+
+    @Test("按专辑内最新导入歌曲时间倒序")
+    func testOrderedByLatestImport() {
+        let songs = [
+            song("1", album: "旧专辑", daysAgo: 30),
+            song("2", album: "新专辑", daysAgo: 1),
+            song("3", album: "中专辑", daysAgo: 10),
+            song("4", album: "旧专辑", daysAgo: 0.5),   // 旧专辑里新导入了一首，排到最前
+        ]
+
+        let albums = LibraryGrouping.recentlyAddedAlbums(from: songs, limit: 10)
+
+        #expect(albums.map(\.name) == ["旧专辑", "新专辑", "中专辑"])
+        #expect(albums.first?.songCount == 2)
+    }
+
+    @Test("同名专辑按艺术家区分")
+    func testSameAlbumNameDifferentArtists() {
+        let songs = [
+            song("1", album: "Greatest Hits", artist: "X", daysAgo: 1),
+            song("2", album: "Greatest Hits", artist: "Y", daysAgo: 2),
+        ]
+
+        let albums = LibraryGrouping.recentlyAddedAlbums(from: songs, limit: 10)
+
+        #expect(albums.map(\.artist) == ["X", "Y"])
+    }
+
+    @Test("封面取最新导入且有封面的歌曲")
+    func testCoverFromLatestSongWithCover() {
+        let songs = [
+            song("1", album: "专辑", daysAgo: 5, cover: "old.jpg"),
+            song("2", album: "专辑", daysAgo: 2, cover: "new.jpg"),
+            song("3", album: "专辑", daysAgo: 1, cover: nil),
+        ]
+
+        let albums = LibraryGrouping.recentlyAddedAlbums(from: songs, limit: 10)
+
+        #expect(albums.first?.coverImagePath == "new.jpg")
+    }
+
+    @Test("按 limit 截断，limit 为 0 返回空")
+    func testLimit() {
+        let songs = (0..<8).map { song("\($0)", album: "专辑\($0)", daysAgo: Double($0)) }
+
+        #expect(LibraryGrouping.recentlyAddedAlbums(from: songs, limit: 6).count == 6)
+        #expect(LibraryGrouping.recentlyAddedAlbums(from: songs, limit: 0).isEmpty)
+    }
+}
