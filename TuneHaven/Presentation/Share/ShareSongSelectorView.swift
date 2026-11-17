@@ -22,6 +22,10 @@ struct ShareSongSelectorView: View {
     var body: some View {
         VStack(spacing: 0) {
             List {
+                if filteredSongs.isEmpty {
+                    Text(searchText.isEmpty ? "曲库还没有音乐，请先导入。" : "没有找到相关音乐，请试试其他关键词。")
+                        .font(.subheadline).foregroundColor(palette.textSecondary).plainListRow()
+                }
                 ForEach(filteredSongs) { song in
                     Button {
                         if selectedIds.contains(song.id) {
@@ -32,8 +36,10 @@ struct ShareSongSelectorView: View {
                     } label: {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: selectedIds.contains(song.id) ? "checkmark.circle.fill" : "circle")
-                                .foregroundColor(selectedIds.contains(song.id) ? palette.primary : palette.textSecondary)
+                                .foregroundColor(selectedIds.contains(song.id) ? palette.accent : palette.textSecondary)
                                 .font(.title3)
+                            CoverImageView(path: song.coverImagePath, size: 44, cornerRadius: 10)
+                                .accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(song.title)
                                     .font(.subheadline.weight(.medium))
@@ -51,11 +57,12 @@ struct ShareSongSelectorView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .listRowBackground(palette.surface)
+                    .flowRowSurface()
                     .listRowSeparatorTint(palette.separator)
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
             .scrollContentBackground(.hidden)
 
             bottomBar
@@ -63,6 +70,7 @@ struct ShareSongSelectorView: View {
         .adaptiveBackground()
         .navigationTitle("选择歌曲")
         .navigationBarTitleDisplayMode(.inline)
+        .themeNavigationBarSurface()
         .searchable(text: $searchText, prompt: "搜索标题或艺术家")
         .toolbar {
             ToolbarItemGroup(placement: .topBarLeading) {
@@ -127,7 +135,7 @@ struct ShareSongSelectorView: View {
                     onSelected(songs)
                 }
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(selectedIds.isEmpty ? palette.textSecondary : palette.primary)
+                .buttonStyle(FlowPrimaryButtonStyle())
                 .disabled(selectedIds.isEmpty)
             }
             .padding(.horizontal, 16)

@@ -53,7 +53,7 @@ struct WebDAVAccountEditView: View {
         NavigationStack {
             List {
                 Section {
-                    ImportIntro(symbol: "externaldrive.badge.wifi", title: "保存一个音乐来源", message: "填写服务器地址和登录信息。密码安全保存在本机钥匙串中。")
+                    FlowIntro(symbol: "externaldrive.badge.wifi", title: "保存一个音乐来源", message: "填写服务器地址和登录信息。密码安全保存在本机钥匙串中。")
                         .plainListRow()
                 }
                 serverConfigSection

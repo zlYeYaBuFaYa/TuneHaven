@@ -21,7 +21,7 @@ struct CloudDriveImportView: View {
         NavigationStack {
             List {
                 Section {
-                    ImportIntro(symbol: "cloud", title: "从云端，回到你的曲库", message: "通过系统文件选择器，或在网盘 App 中把已下载的音频分享给 TuneHaven。")
+                    FlowIntro(symbol: "cloud", title: "从云端，回到你的曲库", message: "通过系统文件选择器，或在网盘 App 中把已下载的音频分享给 TuneHaven。")
                         .plainListRow()
                 }
                 if isImporting, let p = progress { importingSection(p) }

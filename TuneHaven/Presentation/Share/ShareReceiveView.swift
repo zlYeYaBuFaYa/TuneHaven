@@ -36,10 +36,11 @@ struct ShareReceiveView: View {
             }
             .navigationTitle("接收")
             .navigationBarTitleDisplayMode(.inline)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { handleClose() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
             }
         }
@@ -88,7 +89,7 @@ struct ShareReceiveView: View {
         VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.5)
-                .tint(palette.primary)
+                .tint(palette.accent)
             Text("正在分析分享内容...")
                 .font(.subheadline)
                 .foregroundColor(palette.textSecondary)
@@ -109,11 +110,11 @@ struct ShareReceiveView: View {
             } label: {
                 Text("开始接收")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(palette.onAction)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(palette.primary)
-                    .cornerRadius(12)
+                    .background(palette.actionFill)
+                    .clipShape(Capsule())
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -134,7 +135,7 @@ struct ShareReceiveView: View {
                         .foregroundColor(palette.textPrimary)
 
                     ProgressView(value: progress.fractionCompleted)
-                        .tint(palette.primary)
+                        .tint(palette.accent)
                         .padding(.horizontal, 32)
 
                     HStack {
@@ -161,7 +162,7 @@ struct ShareReceiveView: View {
             } else {
                 ProgressView()
                     .scaleEffect(1.5)
-                    .tint(palette.primary)
+                    .tint(palette.accent)
                 Text("准备接收中...")
                     .font(.subheadline)
                     .foregroundColor(palette.textSecondary)
@@ -181,8 +182,8 @@ struct ShareReceiveView: View {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.largeTitle)
-                        .foregroundColor(.green)
-                    Text("接收完成")
+                        .foregroundColor(palette.accent)
+                    Text(result.failedCount > 0 ? "接收结束，部分文件未完成" : "接收完成")
                         .font(.title2.bold())
                         .foregroundColor(palette.textPrimary)
                 }
@@ -193,13 +194,13 @@ struct ShareReceiveView: View {
             if result.songsReceived > 0 || result.songsSkipped > 0 || result.failedCount > 0 {
                 Section {
                     if result.songsReceived > 0 {
-                        infoRow("新增", value: "\(result.songsReceived) 首", icon: "plus.circle.fill", color: .green)
+                        infoRow("新增", value: "\(result.songsReceived) 首", icon: "plus.circle.fill", color: palette.accent)
                     }
                     if result.songsSkipped > 0 {
-                        infoRow("跳过（本地已有）", value: "\(result.songsSkipped) 首", icon: "arrow.right.circle.fill", color: .orange)
+                        infoRow("跳过（本地已有）", value: "\(result.songsSkipped) 首", icon: "arrow.right.circle.fill", color: SemanticColor.warning)
                     }
                     if result.failedCount > 0 {
-                        infoRow("失败", value: "\(result.failedCount) 首", icon: "xmark.circle.fill", color: .red)
+                        infoRow("失败", value: "\(result.failedCount) 首", icon: "xmark.circle.fill", color: SemanticColor.danger)
                     }
                 } header: {
                     Text("歌曲")
@@ -210,10 +211,10 @@ struct ShareReceiveView: View {
             if result.playlistsCreated > 0 || result.localSongsLinked > 0 {
                 Section {
                     if result.playlistsCreated > 0 {
-                        infoRow("创建歌单", value: "\(result.playlistsCreated) 个", icon: "list.bullet.rectangle.fill", color: palette.primary)
+                        infoRow("创建歌单", value: "\(result.playlistsCreated) 个", icon: "list.bullet.rectangle.fill", color: palette.accent)
                     }
                     if result.localSongsLinked > 0 {
-                        infoRow("关联本地歌曲", value: "\(result.localSongsLinked) 首", icon: "link.circle.fill", color: palette.primary)
+                        infoRow("关联本地歌曲", value: "\(result.localSongsLinked) 首", icon: "link.circle.fill", color: palette.accent)
                     }
                 } header: {
                     Text("歌单")
@@ -228,17 +229,18 @@ struct ShareReceiveView: View {
                 } label: {
                     Text("完成")
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(palette.onAction)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(palette.primary)
-                        .cornerRadius(10)
+                        .background(palette.actionFill)
+                        .clipShape(Capsule())
                 }
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
             }
         }
         .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
         .scrollContentBackground(.hidden)
         .adaptiveBackground()
     }
@@ -257,6 +259,7 @@ struct ShareReceiveView: View {
                 .font(.subheadline.bold())
                 .foregroundColor(palette.textPrimary)
         }
+        .flowRowSurface()
     }
 
     private func handleScanned(_ content: String) async {

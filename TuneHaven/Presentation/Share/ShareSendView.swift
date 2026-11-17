@@ -39,10 +39,11 @@ struct ShareSendView: View {
             }
             .navigationTitle(phase == .selectType ? "发送" : "")
             .navigationBarTitleDisplayMode(.inline)
+            .themeNavigationBarSurface()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("关闭") { handleClose() }
-                        .foregroundColor(palette.primary)
+                        .foregroundColor(palette.textPrimary)
                 }
             }
         }
@@ -58,47 +59,27 @@ struct ShareSendView: View {
     private var selectTypeView: some View {
         List {
             Section {
-                Button {
-                    phase = .selectSongs
-                } label: {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("分享歌曲")
-                                .font(.subheadline)
-                                .foregroundColor(palette.textPrimary)
-                            Text("选择歌曲发送到其他设备")
-                                .font(.caption)
-                                .foregroundColor(palette.textSecondary)
-                        }
-                    } icon: {
-                        Image(systemName: "music.note.list")
-                            .foregroundColor(palette.primary)
-                    }
+                FlowIntro(symbol: "square.and.arrow.up", title: "把喜欢的声音，分享出去", message: "两台设备连接同一 WiFi，无需上传到外部服务器。")
+                    .plainListRow()
+            }
+            Section {
+                Button { phase = .selectSongs } label: {
+                    FlowChoiceLabel(symbol: "music.note.list", title: "分享歌曲", message: "挑选喜欢的音乐，发送到另一台设备")
                 }
-
-                Button {
-                    phase = .selectPlaylists
-                } label: {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("分享歌单")
-                                .font(.subheadline)
-                                .foregroundColor(palette.textPrimary)
-                            Text("选择歌单连同歌曲发送")
-                                .font(.caption)
-                                .foregroundColor(palette.textSecondary)
-                        }
-                    } icon: {
-                        Image(systemName: "list.bullet.rectangle")
-                            .foregroundColor(palette.primary)
-                    }
+                .buttonStyle(.plain).flowRowSurface()
+                .accessibilityIdentifier("share.send.songs")
+                Button { phase = .selectPlaylists } label: {
+                    FlowChoiceLabel(symbol: "list.bullet.rectangle", title: "分享歌单", message: "连同歌曲一起，分享你的音乐收藏")
                 }
+                .buttonStyle(.plain).flowRowSurface()
+                .accessibilityIdentifier("share.send.playlists")
             } header: {
                 Text("选择分享内容")
                     .foregroundColor(palette.textSecondary)
             }
         }
         .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
         .scrollContentBackground(.hidden)
         .adaptiveBackground()
     }
@@ -133,60 +114,64 @@ struct ShareSendView: View {
     }
 
     private var sendActiveView: some View {
-        VStack(spacing: 24) {
-            if let qr = qrContent {
-                Text("请用另一台设备的 TuneHaven 扫描此二维码")
-                    .font(.subheadline)
-                    .foregroundColor(palette.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-
-                QRCodeView(content: qr)
-                    .frame(width: 220, height: 220)
-                    .padding()
-
-                if let receiver = shareService.connectedReceiver {
-                    Label(receiver, systemImage: "iphone.radiowaves.left.and.right")
+        ScrollView {
+            VStack(spacing: 24) {
+                if let qr = qrContent {
+                    Text("请用另一台设备的 TuneHaven 扫描此二维码")
                         .font(.subheadline)
-                        .foregroundColor(palette.primary)
-                } else {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                            .tint(palette.textSecondary)
-                        Text("等待连接...")
+                        .foregroundColor(palette.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+
+                    QRCodeView(content: qr)
+                        .frame(width: 220, height: 220)
+                        .padding(16)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 24))
+                        .accessibilityLabel("分享连接二维码")
+
+                    if let receiver = shareService.connectedReceiver {
+                        Label(receiver, systemImage: "iphone.radiowaves.left.and.right")
                             .font(.subheadline)
-                            .foregroundColor(palette.textSecondary)
+                            .foregroundColor(palette.accent)
+                    } else {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .tint(palette.textSecondary)
+                            Text("等待连接...")
+                                .font(.subheadline)
+                                .foregroundColor(palette.textSecondary)
+                        }
                     }
                 }
-            }
 
-            if let progress = shareService.sendProgress {
-                VStack(spacing: 8) {
-                    ProgressView(value: progress.fractionCompleted)
-                        .tint(palette.primary)
-                    HStack {
-                        Text(progress.phase.label)
-                            .font(.caption)
-                            .foregroundColor(palette.textSecondary)
-                        Spacer()
-                        Text("\(progress.current)/\(progress.total)")
-                            .font(.caption)
-                            .foregroundColor(palette.textSecondary)
+                if let progress = shareService.sendProgress {
+                    VStack(spacing: 8) {
+                        ProgressView(value: progress.fractionCompleted)
+                            .tint(palette.accent)
+                        HStack {
+                            Text(progress.phase.label)
+                                .font(.caption)
+                                .foregroundColor(palette.textSecondary)
+                            Spacer()
+                            Text("\(progress.current)/\(progress.total)")
+                                .font(.caption)
+                                .foregroundColor(palette.textSecondary)
+                        }
+                        if let name = progress.currentFileName {
+                            Text(name)
+                                .font(.caption2)
+                                .foregroundColor(palette.textSecondary)
+                                .lineLimit(1)
+                        }
                     }
-                    if let name = progress.currentFileName {
-                        Text(name)
-                            .font(.caption2)
-                            .foregroundColor(palette.textSecondary)
-                            .lineLimit(1)
-                    }
+                    .padding(.horizontal, 32)
                 }
-                .padding(.horizontal, 32)
-            }
 
-            Spacer()
+                Spacer()
+            }
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity)
         }
-        .padding(.top, 32)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .adaptiveBackground()
     }
 
@@ -196,7 +181,7 @@ struct ShareSendView: View {
 
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 56))
-                .foregroundColor(.green)
+                .foregroundColor(palette.accent)
 
             Text("发送完成")
                 .font(.title2.bold())
@@ -216,11 +201,11 @@ struct ShareSendView: View {
             } label: {
                 Text("完成")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(palette.onAction)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(palette.primary)
-                    .cornerRadius(12)
+                    .background(palette.actionFill)
+                    .clipShape(Capsule())
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
@@ -235,7 +220,7 @@ struct ShareSendView: View {
 
             Image(systemName: "wifi.exclamationmark")
                 .font(.system(size: 56))
-                .foregroundColor(.orange)
+                .foregroundColor(SemanticColor.warning)
 
             Text("连接已断开")
                 .font(.title2.bold())
@@ -261,11 +246,11 @@ struct ShareSendView: View {
             } label: {
                 Text("关闭")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(palette.onAction)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(palette.primary)
-                    .cornerRadius(12)
+                    .background(palette.actionFill)
+                    .clipShape(Capsule())
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 20)

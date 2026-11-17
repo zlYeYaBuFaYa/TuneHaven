@@ -32,7 +32,7 @@ struct ImportFilesView: View {
         NavigationStack {
             List {
                 Section {
-                    ImportIntro(symbol: "square.and.arrow.down", title: "把喜欢的音乐带进来", message: "选择一种导入方式，音乐将保存在这台设备上，随时离线聆听。")
+                    FlowIntro(symbol: "square.and.arrow.down", title: "把喜欢的音乐带进来", message: "选择一种导入方式，音乐将保存在这台设备上，随时离线聆听。")
                         .plainListRow()
                 }
                 Section {

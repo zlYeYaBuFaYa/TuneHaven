@@ -22,7 +22,7 @@ struct SharePlaylistSelectorView: View {
                 if playlists.isEmpty {
                     Text("暂无歌单")
                         .font(.subheadline)
-                        .foregroundColor(palette.textTertiary)
+                        .foregroundColor(palette.textSecondary)
                         .listRowBackground(Color.clear)
                 } else {
                     ForEach(playlists) { playlist in
@@ -35,7 +35,7 @@ struct SharePlaylistSelectorView: View {
                         } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: selectedIds.contains(playlist.id) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundColor(selectedIds.contains(playlist.id) ? palette.primary : palette.textSecondary)
+                                    .foregroundColor(selectedIds.contains(playlist.id) ? palette.accent : palette.textSecondary)
                                     .font(.title3)
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(playlist.name)
@@ -52,12 +52,13 @@ struct SharePlaylistSelectorView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .listRowBackground(palette.surface)
+                        .flowRowSurface()
                         .listRowSeparatorTint(palette.separator)
                     }
                 }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(.compact)
             .scrollContentBackground(.hidden)
 
             bottomBar
@@ -65,6 +66,7 @@ struct SharePlaylistSelectorView: View {
         .adaptiveBackground()
         .navigationTitle("选择歌单")
         .navigationBarTitleDisplayMode(.inline)
+        .themeNavigationBarSurface()
         .toolbar {
             ToolbarItemGroup(placement: .topBarLeading) {
                 Button("全选") {
@@ -104,7 +106,7 @@ struct SharePlaylistSelectorView: View {
                     Task { await shareSelected() }
                 }
                 .font(.subheadline.weight(.semibold))
-                .foregroundColor(selectedIds.isEmpty || isSharing ? palette.textSecondary : palette.primary)
+                .buttonStyle(FlowPrimaryButtonStyle())
                 .disabled(selectedIds.isEmpty || isSharing)
             }
             .padding(.horizontal, 16)

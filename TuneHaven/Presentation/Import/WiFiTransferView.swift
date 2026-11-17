@@ -17,7 +17,7 @@ struct WiFiTransferView: View {
         NavigationStack {
             List {
                 Section {
-                    ImportIntro(symbol: "wifi", title: "让电脑里的音乐，来到手机", message: "手机和电脑连接同一 WiFi 后，开启服务并在电脑浏览器上传文件。")
+                    FlowIntro(symbol: "wifi", title: "让电脑里的音乐，来到手机", message: "手机和电脑连接同一 WiFi 后，开启服务并在电脑浏览器上传文件。")
                         .plainListRow()
                 }
                 serverStatusSection

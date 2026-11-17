@@ -33,7 +33,7 @@ enum MusicImportSource: String, CaseIterable, Identifiable {
     }
 }
 
-struct ImportIntro: View {
+struct FlowIntro: View {
     let symbol: String
     let title: String
     let message: String
@@ -95,6 +95,7 @@ private struct ImportRowSurface: ViewModifier {
 
 extension View {
     func importRowSurface(secondary: Bool = false) -> some View { modifier(ImportRowSurface(secondary: secondary)) }
+    func flowRowSurface(secondary: Bool = false) -> some View { modifier(ImportRowSurface(secondary: secondary)) }
 }
 
 enum ImportPickerFailure {

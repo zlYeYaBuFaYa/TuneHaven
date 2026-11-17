@@ -15,7 +15,7 @@ struct WebDAVAccountListView: View {
         NavigationStack {
             List {
                 Section {
-                    ImportIntro(symbol: "server.rack", title: "连接你的私人音乐收藏", message: "添加 NAS 或 WebDAV 服务器，再选择需要保存到本机的音乐。")
+                    FlowIntro(symbol: "server.rack", title: "连接你的私人音乐收藏", message: "添加 NAS 或 WebDAV 服务器，再选择需要保存到本机的音乐。")
                         .plainListRow()
                 }
                 if webDAVService.accounts.isEmpty {

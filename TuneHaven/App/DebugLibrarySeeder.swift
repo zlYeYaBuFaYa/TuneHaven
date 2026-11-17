@@ -89,6 +89,8 @@ enum DebugLaunchRoute {
         case "settings", "settings.open", "settings.open2": router.selectedTab = .settings
         case "player", "player.lyrics", "player.more", "player.sleep", "player.speed", "player.lyricsSearch":
             router.openPlayer()
+        case "paywall": router.present(.paywall(feature: .webDAVImport))
+        case "share.send", "share.receive": router.selectedTab = .settings
         case "import": router.present(.importFromFiles)
         case "import.wifi": router.present(.importFromSource(.wifi))
         case "import.cloud": router.present(.importFromSource(.cloudDrive))

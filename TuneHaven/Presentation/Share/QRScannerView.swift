@@ -124,7 +124,8 @@ final class QRScannerViewController: UIViewController {
         let label = UILabel()
         label.text = "需要相机权限才能扫描二维码\n请在「设置」中允许访问相机"
         label.textColor = .white
-        label.font = .systemFont(ofSize: 15)
+        label.font = .preferredFont(forTextStyle: .body)
+        label.adjustsFontForContentSizeCategory = true
         label.numberOfLines = 0
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -132,8 +133,11 @@ final class QRScannerViewController: UIViewController {
 
         let button = UIButton(type: .system)
         button.setTitle("前往设置", for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        button.setTitleColor(.systemBlue, for: .normal)
+        button.titleLabel?.font = .preferredFont(forTextStyle: .headline)
+        button.titleLabel?.adjustsFontForContentSizeCategory = true
+        button.setTitleColor(.white, for: .normal)
+        button.backgroundColor = UIColor.white.withAlphaComponent(0.15)
+        button.layer.cornerRadius = 24
         button.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(button)
@@ -142,6 +146,9 @@ final class QRScannerViewController: UIViewController {
             label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             label.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -20),
             label.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 32),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -32),
+            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48),
+            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 156),
             button.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             button.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 16),
         ])
@@ -231,11 +238,11 @@ private final class ScanOverlayView: UIView {
         )
 
         let path = UIBezierPath(rect: b)
-        path.append(UIBezierPath(roundedRect: hole, cornerRadius: 12))
+        path.append(UIBezierPath(roundedRect: hole, cornerRadius: 20))
         dimFill.path = path.cgPath
         dimFill.frame = b
 
-        frameStroke.path = UIBezierPath(roundedRect: hole, cornerRadius: 12).cgPath
+        frameStroke.path = UIBezierPath(roundedRect: hole, cornerRadius: 20).cgPath
         frameStroke.frame = b
     }
 }

@@ -22,7 +22,7 @@ struct ShareContentPreviewView: View {
                         Spacer()
                     }
                     .foregroundColor(SemanticColor.success)
-                    .listRowBackground(palette.surface)
+                    .flowRowSurface()
 
                     if !analysis.exactMatchSongs.isEmpty {
                         HStack {
@@ -30,7 +30,7 @@ struct ShareContentPreviewView: View {
                             Spacer()
                         }
                         .foregroundColor(palette.textSecondary)
-                        .listRowBackground(palette.surface)
+                        .flowRowSurface()
                     }
 
                     if !analysis.fuzzyMatchSongs.isEmpty {
@@ -39,9 +39,9 @@ struct ShareContentPreviewView: View {
                                 .foregroundColor(SemanticColor.warning)
                             Text("本地已有同名歌曲，但专辑或时长不同")
                                 .font(.caption)
-                                .foregroundColor(palette.textTertiary)
+                                .foregroundColor(palette.textSecondary)
                         }
-                        .listRowBackground(palette.surface)
+                        .flowRowSurface()
                     }
                 } header: {
                     Label("歌曲", systemImage: "music.note")
@@ -67,7 +67,7 @@ struct ShareContentPreviewView: View {
                                     .foregroundColor(palette.textSecondary)
                             }
                         }
-                        .listRowBackground(palette.surface)
+                        .flowRowSurface()
                     }
                 } header: {
                     Label("歌单", systemImage: "list.bullet.rectangle")
@@ -79,20 +79,22 @@ struct ShareContentPreviewView: View {
             Section {
                 Text("预计下载：\(ByteCountFormatter.string(fromByteCount: analysis.estimatedDownloadSize, countStyle: .file))")
                     .foregroundColor(palette.textPrimary)
-                    .listRowBackground(palette.surface)
+                    .flowRowSurface()
 
                 if showLargeDownloadWarning {
                     Text("下载体积较大，请确认设备存储空间充足。")
                         .font(.subheadline)
                         .foregroundColor(SemanticColor.warning)
-                        .listRowBackground(palette.surface)
+                        .flowRowSurface()
                 }
             }
         }
         .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
         .scrollContentBackground(.hidden)
         .adaptiveBackground()
         .navigationTitle("来自「\(analysis.sessionInfo.deviceName)」的分享")
         .navigationBarTitleDisplayMode(.inline)
+        .themeNavigationBarSurface()
     }
 }

@@ -105,6 +105,10 @@ struct SettingsView: View {
         .task {
             await calculateCacheSize()
             await checkNotificationPermission()
+            #if DEBUG
+            if DebugLaunchRoute.raw == "share.send" { activeSheet = .shareSend }
+            if DebugLaunchRoute.raw == "share.receive" { activeSheet = .shareReceive }
+            #endif
         }
         .sheet(item: $activeSheet) { sheet in
             Group {
