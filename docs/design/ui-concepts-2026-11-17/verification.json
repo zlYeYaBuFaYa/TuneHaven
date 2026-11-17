@@ -1,0 +1,54 @@
+{
+  "a": {
+    "images": true,
+    "screens": [
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      }
+    ],
+    "textClipping": []
+  },
+  "b": {
+    "images": true,
+    "screens": [
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      }
+    ],
+    "textClipping": []
+  },
+  "c": {
+    "images": true,
+    "screens": [
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      }
+    ],
+    "textClipping": []
+  },
+  "favorite": "true",
+  "playback": "播放",
+  "searchResults": 1,
+  "errors": []
+}

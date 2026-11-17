@@ -1,0 +1,73 @@
+{
+  "appearance": "dark",
+  "a": {
+    "images": true,
+    "screens": [
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      }
+    ],
+    "textClipping": [],
+    "contrast": {
+      "method": "Minimum WCAG contrast of foreground tokens against all five opaque palette stops; rendered alpha mixtures checked visually.",
+      "primaryMinimum": 9.66,
+      "secondaryMinimum": 5.34,
+      "primaryAction": 9.38
+    }
+  },
+  "b": {
+    "images": true,
+    "screens": [
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      }
+    ],
+    "textClipping": [],
+    "contrast": {
+      "method": "Minimum WCAG contrast of foreground tokens against all five opaque palette stops; rendered alpha mixtures checked visually.",
+      "primaryMinimum": 8.38,
+      "secondaryMinimum": 5.23,
+      "primaryAction": 8.57
+    }
+  },
+  "c": {
+    "images": true,
+    "screens": [
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "horizontalOverflow": false
+      }
+    ],
+    "textClipping": [],
+    "contrast": {
+      "method": "Minimum WCAG contrast of foreground tokens against all five opaque palette stops; rendered alpha mixtures checked visually.",
+      "primaryMinimum": 9.17,
+      "secondaryMinimum": 5.7,
+      "primaryAction": 8.76
+    }
+  },
+  "favorite": "true",
+  "playback": "播放",
+  "searchResults": 1,
+  "errors": []
+}
