@@ -176,6 +176,7 @@ struct SongInfoEditView: View {
         case .embedded: return "内嵌歌词"
         case .file: return "已有歌词（LRC 文件）"
         case .manual: return "手动导入歌词"
+        case .instrumental: return "器乐曲（无歌词）"
         case nil:
             return lyricsService.hasExternalLyrics(for: song.id) ? "已有歌词（LRC 文件）" : "暂无歌词"
         }
@@ -186,6 +187,7 @@ struct SongInfoEditView: View {
         case .embedded: return "内嵌"
         case .file: return "本地文件"
         case .manual: return "手动导入"
+        case .instrumental: return "无歌词标记"
         case nil: return "—"
         }
     }

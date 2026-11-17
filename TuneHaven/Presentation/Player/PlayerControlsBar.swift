@@ -56,6 +56,7 @@ struct PlayerControlsBar: View {
             .buttonStyle(PressableButtonStyle(scale: playButtonSize >= PlayerControlsBarLayout.largePlayButtonThreshold ? PlayerControlsBarLayout.pressScaleWhenLarge : PlayerControlsBarLayout.pressScaleWhenSmall))
             .frame(maxWidth: .infinity)
             .accessibilityLabel(playback.isPlaying ? "暂停" : "播放")
+            .accessibilityIdentifier("player.playPause")
 
             controlButton(symbol: "forward.fill", font: navFont, color: palette.textPrimary, label: "下一首") {
                 playback.playNext()

@@ -94,6 +94,8 @@ enum LyricsSource: Int16, Codable {
     case embedded = 0
     case file = 1
     case manual = 2
+    /// Explicit no-lyrics choice, persisted in the existing Int16 column (no schema migration).
+    case instrumental = 3
 }
 
 struct Metadata: Hashable, Sendable {

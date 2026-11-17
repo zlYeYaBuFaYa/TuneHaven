@@ -2,6 +2,8 @@ import SwiftUI
 
 struct LyricsPageView: View {
     let lyricsData: LyricsData?
+    let loadState: LyricsLoadState
+    let onRetry: () -> Void
     let onDismiss: () -> Void
     let onSearchLyrics: () -> Void
     let onImportLyrics: () -> Void
@@ -13,6 +15,8 @@ struct LyricsPageView: View {
     @EnvironmentObject private var router: AppRouter
     @Environment(\.themePalette) private var palette
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     @AppStorage(AppStorageKey.lyricsPreferSimplified) private var preferSimplified: Bool = true
     @State private var isUserScrolling = false
@@ -53,29 +57,42 @@ struct LyricsPageView: View {
 
     /// 布局（docs/UI设计文档.md §7.4）：小封面与歌曲信息 → 歌词 → 轻工具条 → 进度 → 控制 → 音频输出。
     /// 歌词区竖向手势优先阅读；收起按钮、右滑或在非歌词区下滑返回封面播放器（交互设计文档 §8.1）。
+    private var usesScrollingLayout: Bool {
+        dynamicTypeSize.isAccessibilitySize || verticalSizeClass == .compact
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            headerSection
-                .padding(.bottom, 8)
-                .contentShape(Rectangle())
-                .gesture(dismissGesture)
-
-            lyricsContent
-                .frame(maxHeight: .infinity)
-
-            VStack(spacing: 0) {
-                lyricsToolbar
-                    .padding(.vertical, 8)
-                progressSection
-                controlsSection
-                AudioOutputButton()
+        Group {
+            if usesScrollingLayout {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        headerSection
+                        if lyricsData == nil {
+                            emptyLyricsCard
+                        } else {
+                            lyricsContent.frame(height: 320)
+                        }
+                        playbackFooter
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                }
+            } else {
+                VStack(spacing: 0) {
+                    headerSection
+                        .padding(.bottom, 8)
+                        .contentShape(Rectangle())
+                        .gesture(dismissGesture)
+                    lyricsContent.frame(maxHeight: .infinity)
+                    playbackFooter
+                        .contentShape(Rectangle())
+                        .gesture(dismissGesture)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
             }
-            .contentShape(Rectangle())
-            .gesture(dismissGesture)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
         .offset(x: dragOffsetX, y: dragOffset)
         .onAppear { dragOffset = 0; dragOffsetX = 0 }
         .onChange(of: engine.currentTime) { _ in
@@ -85,6 +102,19 @@ struct LyricsPageView: View {
             resumeFollowing()
             hasPerformedInitialScroll = false
         }
+    }
+
+    private var playbackFooter: some View {
+        VStack(spacing: 0) {
+            if lyricsData != nil {
+                lyricsToolbar.padding(.vertical, 8)
+            }
+            progressSection
+            controlsSection
+            AudioOutputButton()
+        }
+        // Icons and compact time labels retain usable hit targets without overlapping.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     // MARK: - Gestures
@@ -476,57 +506,75 @@ struct LyricsPageView: View {
 
     /// 暂无歌词：导入 LRC 与搜索／粘贴（在线搜索标明 Premium，手动粘贴免费）
     private var emptyLyricsSection: some View {
+        ScrollView { emptyLyricsCard }
+            .defaultScrollAnchor(.center)
+    }
+
+    private var emptyLyricsCard: some View {
         VStack(spacing: 14) {
-            Spacer()
-            Image(systemName: "text.quote")
+            if loadState.isBusy {
+                ProgressView().tint(palette.accent).padding(12)
+            }
+            Image(systemName: loadState == .instrumental ? "music.note" : "text.quote")
                 .font(.system(size: 40, weight: .light))
                 .foregroundColor(palette.accent)
                 .accessibilityHidden(true)
-            Text("暂无歌词")
+            Text(loadState.title)
+                .accessibilityIdentifier("lyrics.status")
                 .font(.headline)
                 .foregroundColor(palette.textPrimary)
-            Text("可以导入 LRC 文件，或搜索、粘贴歌词")
+            Text(loadState.message)
                 .font(.subheadline)
                 .foregroundColor(palette.textSecondary)
                 .multilineTextAlignment(.center)
-
-            HStack(spacing: 10) {
-                Button(action: onImportLyrics) {
-                    Label("导入 LRC", systemImage: "doc.text")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundColor(palette.onAction)
-                        .padding(.horizontal, 16)
-                        .frame(minHeight: 44)
-                        .background(Capsule().fill(palette.actionFill))
-                }
-                .buttonStyle(.plain)
-
-                Button(action: onSearchLyrics) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "magnifyingglass")
-                        Text("搜索／粘贴")
-                        if !subscriptionService.canAccess(.onlineLyricsSearch) {
-                            Text("Premium")
-                                .font(.caption2.weight(.bold))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(palette.tagBackground))
-                        }
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(palette.textPrimary)
-                    .padding(.horizontal, 16)
-                    .frame(minHeight: 44)
-                    .background(Capsule().fill(palette.surface.opacity(0.7)))
-                    .overlay(Capsule().stroke(palette.separator, lineWidth: 0.5))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(subscriptionService.canAccess(.onlineLyricsSearch)
-                                    ? "搜索或粘贴歌词" : "搜索或粘贴歌词，在线搜索需要 Premium")
+            if loadState.canRetry {
+                Button("重试匹配", action: onRetry)
+                    .buttonStyle(FlowPrimaryButtonStyle())
+                    .accessibilityIdentifier("lyrics.retry")
             }
-            Spacer()
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { addLyricsButtons }
+                VStack(spacing: 10) { addLyricsButtons }
+            }
         }
+        .padding(.vertical, 32)
         .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var addLyricsButtons: some View {
+        Button(action: onImportLyrics) {
+            Label("导入 LRC", systemImage: "doc.text")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(palette.onAction)
+                .padding(.horizontal, 16)
+                .frame(minHeight: 44)
+                .background(Capsule().fill(palette.actionFill))
+        }
+        .buttonStyle(.plain)
+
+        Button(action: onSearchLyrics) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                Text("搜索／粘贴")
+                if !subscriptionService.canAccess(.onlineLyricsSearch) {
+                    Text("Premium")
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(palette.tagBackground))
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundColor(palette.textPrimary)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 44)
+            .background(Capsule().fill(palette.surface.opacity(0.7)))
+            .overlay(Capsule().stroke(palette.separator, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(subscriptionService.canAccess(.onlineLyricsSearch)
+                            ? "搜索或粘贴歌词" : "搜索或粘贴歌词，在线搜索需要 Premium")
     }
 
     // MARK: - Progress (compact)

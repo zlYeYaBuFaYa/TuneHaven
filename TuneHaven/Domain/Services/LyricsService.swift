@@ -10,6 +10,8 @@ final class LyricsService: ObservableObject {
     private let embeddedReader: EmbeddedLyricsReading
     private let subscriptionService: SubscriptionService
 
+    private var revisions: [UUID: Int] = [:]
+
     private static let cooldownDuration: TimeInterval = 7 * 24 * 3600
 
     init(repo: SongRepository,
@@ -29,94 +31,113 @@ final class LyricsService: ObservableObject {
     // MARK: - Load Lyrics (fallthrough chain)
 
     func loadLyrics(for song: Song) async -> LyricsData? {
-        log.debug("加载歌词: \(song.title)")
+        await loadLyricsResult(for: song).data
+    }
 
+    func loadLyricsResult(for original: Song, onMatching: (() -> Void)? = nil) async -> LyricsLoadResult {
+        // The player may hold a pre-edit value. Read the persisted lyrics choice again.
+        let song = await repo.fetchSong(id: original.id) ?? original
+        if song.lyricsSource == .instrumental { return LyricsLoadResult(state: .instrumental) }
         var triedEmbedded = false
         if let source = song.lyricsSource {
             switch source {
             case .embedded:
                 triedEmbedded = true
-                if let data = await loadEmbedded(song: song) { return data }
+                if let data = await loadEmbedded(song: song) { return LyricsLoadResult(state: .loaded, data: data) }
             case .file, .manual:
-                if let path = song.lyricsPath,
-                   let data = loadFromFile(relativePath: path) { return data }
+                if let path = song.lyricsPath, let data = loadFromFile(relativePath: path) {
+                    return LyricsLoadResult(state: .loaded, data: data)
+                }
+            case .instrumental: break
             }
         }
-
-        if !triedEmbedded, let embedded = await loadEmbedded(song: song) { return embedded }
-
-        let songIdFile = "\(song.id.uuidString).lrc"
-        if let data = loadFromFile(relativePath: songIdFile) { return data }
-        if let data = loadExternalLRC(songTitle: song.title) { return data }
-
-        if preferences.autoMatchLyrics {
-            if let data = await autoMatchOnline(for: song) { return data }
+        if !triedEmbedded, let data = await loadEmbedded(song: song) { return LyricsLoadResult(state: .loaded, data: data) }
+        if let data = loadFromFile(relativePath: "\(song.id.uuidString).lrc") ?? loadExternalLRC(songTitle: song.title) {
+            return LyricsLoadResult(state: .loaded, data: data)
         }
-
-        log.debug("歌词未找到: \(song.title)")
-        return nil
+        guard !Task.isCancelled, preferences.autoMatchLyrics,
+              subscriptionService.canAccess(.onlineLyricsSearch) else { return LyricsLoadResult(state: .unavailable) }
+        if isCooldownActive(for: song.id) { return LyricsLoadResult(state: .notFound) }
+        onMatching?()
+        return await matchOnline(for: song)
     }
 
     // MARK: - Online Auto Match (degraded search chain)
 
     func autoMatchOnline(for song: Song) async -> LyricsData? {
-        guard subscriptionService.canAccess(.onlineLyricsSearch) else {
-            log.debug("Free 用户，跳过在线歌词匹配")
-            return nil
+        guard subscriptionService.canAccess(.onlineLyricsSearch), !isCooldownActive(for: song.id) else { return nil }
+        return await matchOnline(for: song).data
+    }
+
+    private func matchOnline(for song: Song) async -> LyricsLoadResult {
+        let revision = revisions[song.id, default: 0]
+        func checkCurrent() throws {
+            try Task.checkCancellation()
+            guard revisions[song.id, default: 0] == revision else { throw CancellationError() }
         }
-        guard !isCooldownActive(for: song.id) else { return nil }
-
-        if let data = try? await exactMatch(song: song) { return data }
-
+        var hadNetworkError = false
         do {
-            if let data = try await searchMatch(title: song.title, artist: song.artist, songId: song.id, songTitle: song.title) {
-                return data
+            let track: LRCLibTrack?
+            do {
+                track = try await api.get(trackName: song.title, artistName: song.artist,
+                                          albumName: song.album, duration: Int(song.duration))
+            } catch {
+                try Task.checkCancellation()
+                hadNetworkError = true
+                track = nil
             }
-
-            if song.artist != SongDefaults.unknownArtist {
-                if let data = try await searchMatch(title: song.title, artist: nil, songId: song.id, songTitle: song.title) {
-                    return data
-                }
+            try checkCurrent()
+            // Only an exact match may automatically classify a song as instrumental.
+            if let track, track.instrumental {
+                try await markInstrumental(for: song)
+                return LyricsLoadResult(state: .instrumental)
             }
+            if let data = try await processTrack(track, song: song) { return LyricsLoadResult(state: .loaded, data: data) }
 
+            var queries: [(String, String?)] = [(song.title, song.artist)]
+            if song.artist != SongDefaults.unknownArtist { queries.append((song.title, nil)) }
             let simplified = simplifyTitle(song.title)
-            if simplified != song.title && !simplified.isEmpty {
-                if let data = try await searchMatch(title: simplified, artist: nil, songId: song.id, songTitle: song.title) {
-                    return data
-                }
+            if simplified != song.title && !simplified.isEmpty { queries.append((simplified, nil)) }
+            for (title, artist) in queries {
+                let results = try await api.search(trackName: title, artistName: artist)
+                try checkCurrent()
+                let candidates = results.filter { !$0.instrumental && $0.hasAnyLyrics }
+                let best = candidates.first(where: { $0.hasSyncedLyrics }) ?? candidates.first
+                if let data = try await processTrack(best, song: song) { return LyricsLoadResult(state: .loaded, data: data) }
             }
+        } catch is CancellationError {
+            return LyricsLoadResult(state: .unavailable)
+        } catch AppError.lyricsSaveFailed {
+            return LyricsLoadResult(state: .saveError)
         } catch {
-            log.debug("降级搜索网络错误: \(song.title) - \(error.localizedDescription)")
-            return nil
+            return LyricsLoadResult(state: .networkError)
         }
-
+        // A failed exact request must not create a seven-day no-results cache.
+        guard !hadNetworkError else { return LyricsLoadResult(state: .networkError) }
         markCooldown(for: song.id)
-        return nil
+        return LyricsLoadResult(state: .notFound)
     }
 
-    private func exactMatch(song: Song) async throws -> LyricsData? {
-        let track = try await api.get(
-            trackName: song.title,
-            artistName: song.artist,
-            albumName: song.album,
-            duration: Int(song.duration)
-        )
-        return try await processTrack(track, songId: song.id, songTitle: song.title)
-    }
-
-    private func searchMatch(title: String, artist: String?, songId: UUID, songTitle: String) async throws -> LyricsData? {
-        let results = try await api.search(trackName: title, artistName: artist)
-        let candidates = results.filter { !$0.instrumental && $0.hasAnyLyrics }
-        let best = candidates.first(where: { $0.hasSyncedLyrics }) ?? candidates.first
-        guard let best else { return nil }
-        return try await processTrack(best, songId: songId, songTitle: songTitle)
-    }
-
-    private func processTrack(_ track: LRCLibTrack?, songId: UUID, songTitle: String) async throws -> LyricsData? {
+    private func processTrack(_ track: LRCLibTrack?, song: Song) async throws -> LyricsData? {
         guard let track, !track.instrumental, let lyrics = track.bestLyrics else { return nil }
-        cleanupOldLRC(songTitle: songTitle)
-        try await saveLyricsFile(lyrics, for: songId)
+        try Task.checkCancellation()
+        try await saveLyrics(lyrics, for: song)
         return buildLyricsData(from: lyrics, source: .file)
+    }
+
+    func markInstrumental(for song: Song) async throws {
+        try Task.checkCancellation()
+        revisions[song.id, default: 0] += 1
+        let revision = revisions[song.id, default: 0]
+        do {
+            try await repo.updateLyrics(songId: song.id, lyricsPath: nil, lyricsSource: .instrumental)
+        } catch { throw AppError.lyricsSaveFailed(error.localizedDescription) }
+        // A manual import may have completed while the repository save was suspended.
+        guard revisions[song.id, default: 0] == revision else { return }
+        // Remove only this song's saved lyrics, so a later lyric import can replace the mark.
+        let url = fileStorage.lyricsFileURL(relativePath: "\(song.id.uuidString).lrc")
+        try? fileStorage.removeItem(at: url)
+        clearCooldown(for: song.id)
     }
 
     private func simplifyTitle(_ title: String) -> String {
@@ -147,6 +168,7 @@ final class LyricsService: ObservableObject {
     // MARK: - Save Lyrics
 
     func saveLyrics(_ lrcContent: String, for song: Song) async throws {
+        revisions[song.id, default: 0] += 1
         cleanupOldLRC(songTitle: song.title)
         try await saveLyricsFile(lrcContent, for: song.id)
         clearCooldown(for: song.id)
@@ -172,6 +194,7 @@ final class LyricsService: ObservableObject {
             throw AppError.lyricsImportFailed("文件内容为空")
         }
 
+        revisions[song.id, default: 0] += 1
         cleanupOldLRC(songTitle: song.title)
         try await saveLyricsFile(content, for: song.id)
         clearCooldown(for: song.id)
@@ -180,6 +203,7 @@ final class LyricsService: ObservableObject {
     // MARK: - Delete Lyrics
 
     func deleteLyrics(for song: Song) async throws {
+        revisions[song.id, default: 0] += 1
         let songIdFile = "\(song.id.uuidString).lrc"
         let fileURL = fileStorage.lyricsFileURL(relativePath: songIdFile)
         if fileStorage.fileExists(at: fileURL) {
@@ -255,14 +279,17 @@ final class LyricsService: ObservableObject {
         return buildLyricsData(from: content, source: .file)
     }
 
+    private func externalLyricsURL(songTitle: String) -> URL? {
+        let directory = fileStorage.lyricsDirectoryURL.standardizedFileURL
+        let url = directory.appendingPathComponent("\(songTitle).lrc").standardizedFileURL
+        guard url.deletingLastPathComponent() == directory else { return nil }
+        return url
+    }
+
     private func loadExternalLRC(songTitle: String) -> LyricsData? {
-        let candidates = ["\(songTitle).lrc"]
-        for name in candidates {
-            let url = fileStorage.lyricsDirectoryURL.appendingPathComponent(name)
-            guard let content = fileStorage.readStringContents(at: url) else { continue }
-            if let data = buildLyricsData(from: content, source: .file) { return data }
-        }
-        return nil
+        guard let url = externalLyricsURL(songTitle: songTitle),
+              let content = fileStorage.readStringContents(at: url) else { return nil }
+        return buildLyricsData(from: content, source: .file)
     }
 
     // MARK: - Private: Shared Parsing
@@ -270,7 +297,7 @@ final class LyricsService: ObservableObject {
     private func buildLyricsData(from content: String, source: LyricsSource) -> LyricsData? {
         let lines = parseLRC(content)
         if lines.isEmpty && !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return LyricsData(source: source, lines: buildPlainLines(from: content), rawText: content)
+            return LyricsData(source: source, lines: [], rawText: content)
         }
         if lines.isEmpty { return nil }
         return LyricsData(source: source, lines: lines, rawText: content)
@@ -296,15 +323,8 @@ final class LyricsService: ObservableObject {
     }
 
     private func cleanupOldLRC(songTitle: String) {
-        let oldURL = fileStorage.lyricsDirectoryURL.appendingPathComponent("\(songTitle).lrc")
+        guard let oldURL = externalLyricsURL(songTitle: songTitle) else { return }
         try? fileStorage.removeItem(at: oldURL)
-    }
-
-    private func buildPlainLines(from text: String) -> [LyricsLine] {
-        text.components(separatedBy: "\n")
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            .enumerated()
-            .map { LyricsLine(timestamp: Double($0.offset) * 3, text: $0.element) }
     }
 
     // MARK: - Private: Cooldown

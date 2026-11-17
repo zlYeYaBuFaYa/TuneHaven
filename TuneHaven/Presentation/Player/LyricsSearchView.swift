@@ -337,7 +337,7 @@ struct LyricsSearchView: View {
                     .padding(.bottom, 8)
             }
 
-            if !track.instrumental && track.hasAnyLyrics {
+            if track.instrumental || track.hasAnyLyrics {
                 HStack {
                     Spacer()
                     Button {
@@ -349,7 +349,7 @@ struct LyricsSearchView: View {
                                     .scaleEffect(0.7)
                                     .tint(palette.onAction)
                             }
-                            Text("使用此歌词")
+                            Text(track.instrumental ? "标记为器乐曲" : "使用此歌词")
                                 .font(.footnote.weight(.semibold))
                         }
                         .foregroundColor(palette.onAction)
@@ -433,12 +433,16 @@ struct LyricsSearchView: View {
     }
 
     private func useTrack(_ track: LRCLibTrack) {
-        guard let lyrics = track.bestLyrics else { return }
+        guard track.instrumental || track.bestLyrics != nil else { return }
         isSaving = true
 
         Task {
             do {
-                try await lyricsService.saveLyrics(lyrics, for: song)
+                if track.instrumental {
+                    try await lyricsService.markInstrumental(for: song)
+                } else if let lyrics = track.bestLyrics {
+                    try await lyricsService.saveLyrics(lyrics, for: song)
+                }
                 await MainActor.run {
                     onSaved?()
                     dismiss()

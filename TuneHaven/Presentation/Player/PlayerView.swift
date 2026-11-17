@@ -32,6 +32,8 @@ struct PlayerView: View {
     }
 
     @State private var lyricsData: LyricsData?
+    @State private var lyricsState: LyricsLoadState = .unavailable
+    @State private var lyricsRequestID = UUID()
     @State private var showQueue = false
     @State private var activeSheet: ActiveSheet?
     @State private var dragOffset: CGFloat = 0
@@ -63,6 +65,8 @@ struct PlayerView: View {
                 if showLyricsPage {
                     LyricsPageView(
                         lyricsData: lyricsData,
+                        loadState: lyricsState,
+                        onRetry: { Task { await loadLyrics() } },
                         onDismiss: {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                                 showLyricsPage = false
@@ -179,7 +183,9 @@ struct PlayerView: View {
                 Task {
                     do {
                         try await lyricsService.deleteLyrics(for: song)
+                        lyricsRequestID = UUID()
                         lyricsData = nil
+                        lyricsState = .unavailable
                     } catch {
                         snackbar.show(message: "歌词删除失败")
                     }
@@ -428,28 +434,24 @@ struct PlayerView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("歌词")
                 .accessibilityHint("打开歌词页")
-            } else if let song = playback.currentSong {
-                Menu {
-                    Button { activeSheet = .lyricsSearch(song) } label: {
-                        Label("搜索歌词", systemImage: "magnifyingglass")
-                    }
-                    Button { showLyricsImporter = true } label: {
-                        Label("导入 LRC 文件", systemImage: "doc.text")
-                    }
-                } label: {
+            } else if playback.currentSong != nil {
+                Button { showLyricsPage = true } label: {
                     HStack(spacing: 8) {
-                        Text("暂无歌词")
+                        if lyricsState.isBusy { ProgressView().tint(palette.accent) }
+                        Text(lyricsState.title)
                             .font(.subheadline)
                             .foregroundColor(palette.textSecondary)
                         Spacer(minLength: 0)
-                        Label("添加歌词", systemImage: "plus")
-                            .font(.subheadline.weight(.semibold))
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
                             .foregroundColor(palette.accent)
                     }
                     .padding(.horizontal, 16)
                     .frame(minHeight: 48)
                     .contentShape(shape)
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint("打开歌词页，可导入、搜索或粘贴歌词")
             }
         }
         .background(shape.fill(palette.surface.opacity(0.5)))
@@ -521,11 +523,27 @@ struct PlayerView: View {
     }
 
     private func loadLyrics() async {
-        guard let song = playback.currentSong else { lyricsData = nil; return }
-        let data = await lyricsService.loadLyrics(for: song)
-        // 在线匹配可能很慢：期间已切歌就丢弃，避免旧歌词覆盖新歌曲
-        guard !Task.isCancelled, playback.currentSong?.id == song.id else { return }
-        lyricsData = data
+        let requestID = UUID()
+        lyricsRequestID = requestID
+        lyricsData = nil
+        #if DEBUG
+        // Presentation-only fixtures for UI tests; never modify a song or subscription.
+        if let raw = ProcessInfo.processInfo.environment["TUNEHAVEN_DEBUG_LYRICS_STATE"],
+           let fixture = LyricsLoadState(rawValue: raw) {
+            lyricsState = fixture
+            return
+        }
+        #endif
+        guard let song = playback.currentSong else { lyricsState = .unavailable; return }
+        lyricsState = .loading
+        let result = await lyricsService.loadLyricsResult(for: song) {
+            guard !Task.isCancelled, lyricsRequestID == requestID, playback.currentSong?.id == song.id else { return }
+            lyricsState = .matching
+        }
+        // Also guard same-song retries and manual replacements, not only track changes.
+        guard !Task.isCancelled, lyricsRequestID == requestID, playback.currentSong?.id == song.id else { return }
+        lyricsData = result.data
+        lyricsState = result.state
     }
 
     private func switchSheet(to newSheet: ActiveSheet, delay: TimeInterval = 0.3) {

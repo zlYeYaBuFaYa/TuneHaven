@@ -255,6 +255,7 @@ final class MockSearchHistoryRepository: SearchHistoryRepository {
 
 final class MockSongRepository: SongRepository {
     var songs: [Song] = []
+    var onLyricsUpdated: ((LyricsSource?) async -> Void)?
 
     func fetchAll(sortBy: SongSortOption, ascending: Bool) async -> [Song] { songs }
     func fetchSong(id: UUID) async -> Song? { songs.first { $0.id == id } }
@@ -274,7 +275,12 @@ final class MockSongRepository: SongRepository {
     func commitDelete(token: UndoToken) async throws {}
     func toggleFavorite(id: UUID) async throws {}
     func recordPlay(id: UUID) async throws {}
-    func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws {}
+    func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws {
+        guard let index = songs.firstIndex(where: { $0.id == songId }) else { return }
+        songs[index].lyricsPath = lyricsPath
+        songs[index].lyricsSource = lyricsSource
+        await onLyricsUpdated?(lyricsSource)
+    }
     func updateCoverPath(songId: UUID, coverImagePath: String?) async throws {
         guard let index = songs.firstIndex(where: { $0.id == songId }) else { return }
         songs[index].coverImagePath = coverImagePath
