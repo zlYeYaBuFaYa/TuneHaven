@@ -13,18 +13,20 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: icon)
-                .font(.system(size: 52, weight: .thin))
-                .foregroundColor(palette.textTertiary)
+                .font(.system(size: 48, weight: .light))
+                .foregroundColor(palette.accent)
+                .accessibilityHidden(true)
 
             VStack(spacing: 6) {
                 Text(title)
-                    .font(.headline)
-                    .foregroundColor(palette.textSecondary)
+                    .font(.title3.weight(.semibold))
+                    .foregroundColor(palette.textPrimary)
+                    .multilineTextAlignment(.center)
 
                 if let subtitle {
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundColor(palette.textTertiary)
+                        .foregroundColor(palette.textSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
                 }
@@ -33,13 +35,13 @@ struct EmptyStateView: View {
             if let actionTitle, let action {
                 Button(action: action) {
                     Text(actionTitle)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundColor(palette.primary)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(palette.primary.opacity(0.12))
-                        .clipShape(Capsule())
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(palette.onAction)
+                        .padding(.horizontal, 24)
+                        .frame(minHeight: 44)
+                        .background(Capsule().fill(palette.actionFill))
                 }
+                .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -53,9 +55,9 @@ extension EmptyStateView {
     static func noSongs(onImport: @escaping () -> Void) -> EmptyStateView {
         EmptyStateView(
             icon: "music.note.list",
-            title: "暂无歌曲",
-            subtitle: "从文件 App 导入音乐，或通过 WiFi 传输",
-            actionTitle: "立即导入",
+            title: "还没有音乐",
+            subtitle: "把喜欢的音乐带进来",
+            actionTitle: "导入音乐",
             action: onImport
         )
     }
@@ -63,8 +65,8 @@ extension EmptyStateView {
     static func noSearchResults(query: String) -> EmptyStateView {
         EmptyStateView(
             icon: "magnifyingglass",
-            title: "未找到「\(query)」",
-            subtitle: "请尝试其他关键词"
+            title: "没有找到相关音乐",
+            subtitle: "试试拼音首字母"
         )
     }
 
@@ -73,7 +75,7 @@ extension EmptyStateView {
             icon: "music.note.house",
             title: "还没有歌单",
             subtitle: "创建歌单来整理你的音乐",
-            actionTitle: "创建歌单",
+            actionTitle: "创建第一个歌单",
             action: onCreate
         )
     }

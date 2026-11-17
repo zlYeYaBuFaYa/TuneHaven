@@ -239,6 +239,7 @@ private struct PlaylistContentView: View {
                     SongRow(
                         song: song,
                         isPlaying: playback.currentSong?.id == song.id,
+                        isPlaybackActive: playback.isPlaying,
                         onTap: {
                             Task {
                                 let startIndex = allSorted.firstIndex(where: { $0.id == song.id }) ?? 0
@@ -264,7 +265,8 @@ private struct PlaylistContentView: View {
                                     snackbar.show(message: "移除歌曲失败，请重试")
                                 }
                             }
-                        }
+                        },
+                        deleteTitle: "移出歌单"
                     )
                     .listRowBackground(palette.surface)
                 }

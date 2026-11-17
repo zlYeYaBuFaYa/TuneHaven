@@ -37,6 +37,7 @@ struct SongListView: View {
                         SongRow(
                             song: song,
                             isPlaying: playback.currentSong?.id == song.id,
+                            isPlaybackActive: playback.isPlaying,
                             onTap: {
                                 Task {
                                     await playSong(song)
@@ -50,7 +51,7 @@ struct SongListView: View {
                                 router.present(.addToPlaylist(songIds: [song.id]))
                             } : nil,
                             onInsertNext: isFavorites ? {
-                                _ = playback.queue.insertNext(song)
+                                SongQueueHelper.insertNext(song: song, playback: playback, snackbar: snackbar)
                             } : nil
                         )
                         .listRowBackground(palette.surface)

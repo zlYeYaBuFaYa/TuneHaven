@@ -30,3 +30,16 @@ enum SongDeletionHelper {
         }
     }
 }
+
+/// 「下一首播放」的统一入口：成功才提示，队列满时明确告知（交互设计文档 §4.3、§11）
+@MainActor
+enum SongQueueHelper {
+    static func insertNext(song: Song, playback: PlaybackService, snackbar: SnackbarState) {
+        switch playback.queue.insertNext(song) {
+        case .success:
+            snackbar.show(message: "已添加到下一首播放")
+        case .queueFull:
+            snackbar.show(message: "播放队列已满，请先移除一些歌曲")
+        }
+    }
+}

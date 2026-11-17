@@ -10,6 +10,7 @@ struct SearchResultView: View {
 
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playback: PlaybackService
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
     @AppStorage(AppStorageKey.songSortOption) private var songSortOptionRaw: Int = SongSortOption.title.rawValue
     @State private var showAllSongs = false
@@ -24,6 +25,7 @@ struct SearchResultView: View {
                         SongRow(
                             song: song,
                             isPlaying: playback.currentSong?.id == song.id,
+                            isPlaybackActive: playback.isPlaying,
                             onTap: {
                                 Task {
                                     await playback.play(song: song, in: playContext(for: song))
@@ -33,7 +35,7 @@ struct SearchResultView: View {
                             onFavorite: onFavoriteSong != nil ? { onFavoriteSong?(song) } : nil,
                             onDelete: onDeleteSong != nil ? { onDeleteSong?(song) } : nil,
                             onAddToPlaylist: onAddToPlaylist != nil ? { onAddToPlaylist?(song) } : nil,
-                            onInsertNext: { _ = playback.queue.insertNext(song) }
+                            onInsertNext: { SongQueueHelper.insertNext(song: song, playback: playback, snackbar: snackbar) }
                         )
                         .listRowBackground(palette.surface)
                     }

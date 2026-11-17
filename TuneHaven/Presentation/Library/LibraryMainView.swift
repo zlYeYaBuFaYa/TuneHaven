@@ -52,8 +52,6 @@ struct LibraryMainView: View {
         VStack(spacing: 0) {
             searchBar
             tabBar
-            Divider()
-                .background(palette.separator)
 
             if isSearchActive && !searchDebouncer.debouncedQuery.isEmpty {
                 SearchResultView(
@@ -75,6 +73,18 @@ struct LibraryMainView: View {
         .navigationTitle("音乐库")
         .navigationBarTitleDisplayMode(.large)
         .themeNavigationBarSurface(customMaterial: hasCustomBg)
+        .toolbar {
+            // 与设置中的导入入口共用同一个导入方式选择（交互设计文档 §4.1、§10）
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    router.present(.importFromFiles)
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.body.weight(.semibold))
+                }
+                .accessibilityLabel("导入音乐")
+            }
+        }
         .onChange(of: searchDebouncer.debouncedQuery) { query in
             performSearch(query: query)
         }
@@ -100,64 +110,94 @@ struct LibraryMainView: View {
         }
     }
 
+    /// 搜索框（docs/UI设计文档.md §6：高 44、圆角 15）。
+    /// 清除只清空输入并保留焦点；「取消」退出搜索并收起键盘（交互设计文档 §4.2）。
     private var searchBar: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(palette.textTertiary)
-            TextField("搜索歌曲、艺术家或专辑", text: $searchText)
-                .focused($isSearchFieldFocused)
-                .textFieldStyle(.plain)
-                .foregroundColor(palette.textPrimary)
-            if !searchText.isEmpty || isSearchFieldFocused {
-                Button {
+        HStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(palette.textSecondary)
+                    .accessibilityHidden(true)
+                TextField("搜索歌曲、艺术家、专辑", text: $searchText)
+                    .focused($isSearchFieldFocused)
+                    .textFieldStyle(.plain)
+                    .submitLabel(.search)
+                    .foregroundColor(palette.textPrimary)
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                        isSearchFieldFocused = true
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(palette.textSecondary)
+                            .frame(width: 32, height: 32)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("清除搜索内容")
+                }
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 6)
+            .frame(minHeight: 44)
+            .background(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .fill(palette.surface.opacity(0.72))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .stroke(palette.separator, lineWidth: 0.5)
+            )
+
+            if isSearchFieldFocused || isSearchActive {
+                Button("取消") {
                     searchText = ""
                     isSearchActive = false
                     isSearchFieldFocused = false
-                } label: {
-                    if searchText.isEmpty {
-                        Text("取消")
-                            .font(.subheadline)
-                            .foregroundColor(palette.accent)
-                    } else {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(palette.textTertiary)
-                    }
                 }
+                .font(.body)
+                .foregroundColor(palette.accent)
+                .frame(minHeight: 44)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(palette.surfaceSecondary)
-        .clipShape(Capsule())
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 20)
+        .padding(.top, 4)
+        .padding(.bottom, 8)
+        .animation(.easeOut(duration: 0.15), value: isSearchFieldFocused)
     }
 
+    /// 分段按钮：选中为主操作色胶囊（docs/UI设计文档.md §6：视觉高 37–40，命中区 44）
     private var tabBar: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: 8) {
             ForEach(LibraryTab.allCases, id: \.self) { tab in
+                let isSelected = selectedTab == tab
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.easeInOut(duration: 0.18)) {
                         selectedTab = tab
                     }
                 } label: {
                     Text(tab.displayName)
-                        .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
-                        .foregroundColor(selectedTab == tab ? palette.primary : palette.textSecondary)
-                        .padding(.vertical, 8)
-                        .overlay(alignment: .bottom) {
-                            if selectedTab == tab {
-                                Rectangle()
-                                    .fill(palette.primary)
-                                    .frame(height: 2)
-                                    .matchedGeometryEffect(id: "tab_underline", in: tabNamespace)
+                        .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                        .foregroundColor(isSelected ? palette.onAction : palette.textSecondary)
+                        .padding(.horizontal, 18)
+                        .frame(minHeight: 38)
+                        .background {
+                            if isSelected {
+                                Capsule()
+                                    .fill(palette.actionFill)
+                                    .matchedGeometryEffect(id: "segment", in: tabNamespace)
                             }
                         }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 4)
     }
 
     @ViewBuilder

@@ -90,6 +90,7 @@ struct ArtistDetailView: View {
                     SongRow(
                         song: song,
                         isPlaying: currentSongId == song.id,
+                        isPlaybackActive: playback.isPlaying,
                         onTap: {
                             Task {
                                 await playback.play(song: song, in: .artist(name: artistName))
@@ -106,7 +107,7 @@ struct ArtistDetailView: View {
                             SongDeletionHelper.softDelete(song: song, libraryService: libraryService, snackbar: snackbar)
                         },
                         onAddToPlaylist: { router.present(.addToPlaylist(songIds: [song.id])) },
-                        onInsertNext: { _ = playback.queue.insertNext(song) }
+                        onInsertNext: { SongQueueHelper.insertNext(song: song, playback: playback, snackbar: snackbar) }
                     )
                     .listRowBackground(palette.surface)
                     .listRowSeparatorTint(palette.separator)

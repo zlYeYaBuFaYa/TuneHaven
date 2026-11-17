@@ -5,6 +5,8 @@ struct ImportFilesView: View {
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var subscriptionService: SubscriptionService
+    @EnvironmentObject private var webDAVService: WebDAVService
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -12,6 +14,7 @@ struct ImportFilesView: View {
     @State private var showWifiTransfer = false
     @State private var showAppleMusicImport = false
     @State private var showCloudDriveImport = false
+    @State private var showWebDAV = false
     @State private var importResult: ImportResult?
     @State private var isImporting = false
     @State private var progress: ImportProgress?
@@ -97,6 +100,40 @@ struct ImportFilesView: View {
                         }
                     }
                     .listRowBackground(palette.surface)
+
+                    // 与设置页导入入口一致：无权限时先打开权益说明（交互设计文档 §10）
+                    Button {
+                        if subscriptionService.canAccess(.webDAVImport) {
+                            showWebDAV = true
+                        } else {
+                            router.present(.paywall(feature: .webDAVImport))
+                        }
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 4) {
+                                    Text("WebDAV 导入")
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundColor(palette.textPrimary)
+                                    if !subscriptionService.canAccess(.webDAVImport) {
+                                        Image(systemName: "lock.fill")
+                                            .font(.caption2)
+                                            .foregroundColor(palette.textSecondary)
+                                            .accessibilityLabel("Premium")
+                                    }
+                                }
+                                Text(subscriptionService.canAccess(.webDAVImport)
+                                     ? "从坚果云、NAS 等 WebDAV 服务器导入"
+                                     : "Premium 专属功能")
+                                    .font(.caption)
+                                    .foregroundColor(palette.textSecondary)
+                            }
+                        } icon: {
+                            Image(systemName: "server.rack")
+                                .foregroundColor(palette.primary)
+                        }
+                    }
+                    .listRowBackground(palette.surface)
                 } header: {
                     Text("导入方式")
                         .foregroundColor(palette.textSecondary)
@@ -159,6 +196,14 @@ struct ImportFilesView: View {
                 .environment(\.themePalette, palette)
                 .environmentObject(importService)
                 .environmentObject(libraryService)
+        }
+        .sheet(isPresented: $showWebDAV) {
+            WebDAVAccountListView()
+                .environment(\.themePalette, palette)
+                .environmentObject(importService)
+                .environmentObject(libraryService)
+                .environmentObject(webDAVService)
+                .environmentObject(subscriptionService)
         }
         .sheet(isPresented: $showCloudDriveImport) {
             CloudDriveImportView()

@@ -40,6 +40,22 @@ struct RootTabView: View {
                 MiniPlayerBar()
                 customTabBar
             }
+            // 悬浮控制层下方用页面底色渐隐，避免列表文字与玻璃层叠在一起（docs/UI设计文档.md §6.1）
+            .background(alignment: .bottom) {
+                LinearGradient(
+                    stops: [
+                        .init(color: palette.background.opacity(0), location: 0),
+                        .init(color: palette.background.opacity(0.85), location: 0.35),
+                        .init(color: palette.background, location: 1),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .padding(.top, -24)
+                .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
         }
         .fullScreenCover(isPresented: .init(
             get:  { router.isPlayerPresented },
