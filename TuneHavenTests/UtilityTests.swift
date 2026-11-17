@@ -698,3 +698,45 @@ struct PagedResultExtendedTests {
     }
 }
 
+
+// MARK: - 歌单页工具
+
+@Suite("DurationFormatter.spoken")
+struct DurationSpokenTests {
+    @Test("总时长的中文说法", arguments: [
+        (0.0, "不到 1 分钟"),
+        (59.0, "不到 1 分钟"),
+        (60.0, "1 分钟"),
+        (12 * 60.0 + 30, "12 分钟"),
+        (3600.0, "1 小时"),
+        (4320.0, "1 小时 12 分钟"),
+    ])
+    func testSpoken(seconds: Double, expected: String) {
+        #expect(DurationFormatter.spoken(seconds) == expected)
+    }
+}
+
+@Suite("PlaylistNameFilter")
+struct PlaylistNameFilterTests {
+    private func playlist(_ name: String, system: Bool = false) -> Playlist {
+        Playlist(id: UUID(), name: name, description: nil, coverImagePath: nil, autoCoverHash: nil,
+                 isSystem: system, systemType: system ? .favorites : .normal, songCount: 0,
+                 groupId: nil, sortOrder: 0, createdAt: Date(), updatedAt: Date())
+    }
+
+    @Test("按名称原文与拼音筛选自建歌单，不含系统歌单")
+    func testFilter() {
+        let list = [playlist("把日子调慢"), playlist("Road Trip"), playlist("我喜欢", system: true)]
+
+        #expect(PlaylistNameFilter.filter(list, query: "日子").map(\.name) == ["把日子调慢"])
+        #expect(PlaylistNameFilter.filter(list, query: "brz").map(\.name) == ["把日子调慢"])
+        #expect(PlaylistNameFilter.filter(list, query: "road").map(\.name) == ["Road Trip"])
+        #expect(PlaylistNameFilter.filter(list, query: "喜欢").isEmpty)
+    }
+
+    @Test("空查询返回原列表")
+    func testEmptyQuery() {
+        let list = [playlist("A"), playlist("B")]
+        #expect(PlaylistNameFilter.filter(list, query: "  ").count == 2)
+    }
+}

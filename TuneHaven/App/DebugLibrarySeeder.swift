@@ -7,7 +7,11 @@ import Foundation
 /// 用法：`SIMCTL_CHILD_TUNEHAVEN_SEED_DIR=/path/to/dir xcrun simctl launch <udid> <bundle id>`
 @MainActor
 enum DebugLibrarySeeder {
-    static func seedIfRequested(importService: ImportService, libraryService: MusicLibraryService) async {
+    static func seedIfRequested(
+        importService: ImportService,
+        libraryService: MusicLibraryService,
+        playlistService: PlaylistService
+    ) async {
         guard let dir = ProcessInfo.processInfo.environment["TUNEHAVEN_SEED_DIR"], !dir.isEmpty,
               libraryService.songs.isEmpty else { return }
         let urls = ((try? FileManager.default.contentsOfDirectory(
@@ -18,6 +22,23 @@ enum DebugLibrarySeeder {
         AppLogger.shared.info("[DebugSeeder] 导入 \(urls.count) 个调试文件")
         _ = await importService.importFromFiles(urls: urls) { _ in }
         await libraryService.loadSongs()
+        await seedPlaylists(libraryService: libraryService, playlistService: playlistService)
+    }
+
+    /// 两个自建歌单 + 三首收藏，供歌单页截图
+    private static func seedPlaylists(libraryService: MusicLibraryService, playlistService: PlaylistService) async {
+        let songs = libraryService.songs
+        guard songs.count >= 4 else { return }
+        for song in songs.prefix(3) {
+            try? await libraryService.toggleFavorite(songId: song.id)
+        }
+        if let slow = try? await playlistService.createPlaylist(name: "把日子调慢", description: "安静的下午") {
+            try? await playlistService.addSongs(songs.prefix(5).map(\.id), to: slow.id)
+        }
+        if let road = try? await playlistService.createPlaylist(name: "去海边的路上", description: nil) {
+            try? await playlistService.addSongs(songs.suffix(3).map(\.id), to: road.id)
+        }
+        await playlistService.loadPlaylists()
     }
 }
 

@@ -174,7 +174,8 @@ struct TuneHavenApp: App {
             #if DEBUG
             await DebugLibrarySeeder.seedIfRequested(
                 importService: container.importService,
-                libraryService: container.libraryService
+                libraryService: container.libraryService,
+                playlistService: container.playlistService
             )
             #endif
             isReady = true
