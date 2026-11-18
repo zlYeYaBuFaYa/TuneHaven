@@ -51,6 +51,11 @@ struct TuneHavenApp: App {
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
+                        Button("重试") {
+                            initError = nil
+                            Task { await initialize() }
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
                 } else {
                     ProgressView("加载中...")

@@ -52,7 +52,9 @@ final class CoreDataStack: @unchecked Sendable {
     }
     #endif
 
+    /// 已加载过时直接返回：启动失败后重试会再次调用。
     func load() async throws {
+        guard _backgroundContext == nil else { return }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             container.loadPersistentStores { _, error in
                 if let error {
