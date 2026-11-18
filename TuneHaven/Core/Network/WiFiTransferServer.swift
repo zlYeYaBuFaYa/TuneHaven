@@ -43,7 +43,12 @@ final class WiFiTransferServer: ObservableObject {
     private var activeConnection: NWConnection?
     private var session = WiFiTransferSession()
     private var authAttempts: [String: (attempts: Int, cooldownUntil: Date?)] = [:]
-    private var port: UInt16 = 8080
+    private let port: UInt16
+
+    /// `port` 仅供测试换用不同端口，避免上一个监听还没释放
+    init(port: UInt16 = 8080) {
+        self.port = port
+    }
 
     // MARK: - Lifecycle
 
@@ -161,8 +166,10 @@ final class WiFiTransferServer: ObservableObject {
 
         connection.stateUpdateHandler = { [weak self] state in
             Task { @MainActor [weak self] in
-                if case .failed = state { self?.connectionState = .idle }
-                if case .cancelled = state { self?.connectionState = .idle }
+                // 每次响应后都会关闭连接，旧连接的关闭不能把新连接的状态改回空闲
+                guard let self, self.activeConnection === connection else { return }
+                if case .failed = state { self.connectionState = .idle }
+                if case .cancelled = state { self.connectionState = .idle }
             }
         }
 
@@ -196,9 +203,13 @@ final class WiFiTransferServer: ObservableObject {
 
                         if self.isUploadRequest(headers) {
                             let headerBytes = Data(headers)
+                            guard self.isSameOriginRequest(headerBytes) else {
+                                self.sendJSON(connection: connection, status: 403, body: #"{"error":"禁止跨站请求"}"#)
+                                self.connectionState = .idle
+                                return
+                            }
                             guard self.allowsUpload(headers: headerBytes) else {
                                 self.sendJSON(connection: connection, status: 401, body: #"{"error":"未授权"}"#)
-                                connection.cancel()
                                 self.connectionState = .idle
                                 return
                             }
@@ -211,7 +222,13 @@ final class WiFiTransferServer: ObservableObject {
                                 ctx.bytesReceived = overflow.count
                                 self.updateTransferProgress(ctx)
                             }
-                            self.bodyReadLoop(context: ctx, connection: connection)
+                            // 小文件可能和请求头同一包到达，已收齐就不再等后续数据
+                            if ctx.bytesReceived >= ctx.contentLength {
+                                ctx.fileHandle.closeFile()
+                                self.processUploadedTempFile(context: ctx, connection: connection)
+                            } else {
+                                self.bodyReadLoop(context: ctx, connection: connection)
+                            }
                         } else {
                             self.finishSmallRequest(headerData: headerData, connection: connection, ip: ip)
                         }
@@ -360,6 +377,11 @@ final class WiFiTransferServer: ObservableObject {
         let lines = request.components(separatedBy: "\r\n")
         guard let firstLine = lines.first else { return }
 
+        if firstLine.hasPrefix("POST "), !isSameOriginRequest(data) {
+            sendJSON(connection: connection, status: 403, body: #"{"error":"禁止跨站请求"}"#)
+            return
+        }
+
         if firstLine.contains("GET / ") {
             sendHTML(connection: connection)
         } else if firstLine.contains("POST /auth") {
@@ -492,13 +514,20 @@ final class WiFiTransferServer: ObservableObject {
         let html = WiFiTransferHTML.page(address: serverAddress ?? "", passwordRequired: session.passwordEnabled)
         guard let bodyData = html.data(using: .utf8) else { return }
         let response = buildHTTPResponse(status: 200, contentType: "text/html; charset=utf-8", body: bodyData)
-        connection.send(content: response, completion: .idempotent)
+        sendAndClose(response, on: connection)
     }
 
     private func sendJSON(connection: NWConnection, status: Int, body: String) {
         guard let bodyData = body.data(using: .utf8) else { return }
         let response = buildHTTPResponse(status: status, contentType: "application/json", body: bodyData)
-        connection.send(content: response, completion: .idempotent)
+        sendAndClose(response, on: connection)
+    }
+
+    /// 响应头声明了 `Connection: close`，发完即关闭，出错返回后也不会留着连接。
+    private func sendAndClose(_ response: Data, on connection: NWConnection) {
+        connection.send(content: response, completion: .contentProcessed { _ in
+            connection.cancel()
+        })
     }
 
     private func sendStatus(connection: NWConnection) {
@@ -518,13 +547,14 @@ final class WiFiTransferServer: ObservableObject {
         case 200: statusText = "OK"
         case 400: statusText = "Bad Request"
         case 401: statusText = "Unauthorized"
+        case 403: statusText = "Forbidden"
         case 404: statusText = "Not Found"
         case 413: statusText = "Payload Too Large"
         case 429: statusText = "Too Many Requests"
         case 500: statusText = "Internal Server Error"
         default: statusText = "OK"
         }
-        let header = "HTTP/1.1 \(status) \(statusText)\r\nContent-Type: \(contentType)\r\nContent-Length: \(body.count)\r\nConnection: close\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
+        let header = "HTTP/1.1 \(status) \(statusText)\r\nContent-Type: \(contentType)\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
         guard var response = header.data(using: .utf8) else { return body }
         response.append(body)
         return response
@@ -595,6 +625,22 @@ final class WiFiTransferServer: ObservableObject {
             return json[key]
         }
         return nil
+    }
+
+    private func isSameOriginRequest(_ headers: Data) -> Bool {
+        Self.isSameOrigin(origin: extractHeader(from: headers, key: "Origin"),
+                          host: extractHeader(from: headers, key: "Host"))
+    }
+
+    /// 浏览器的跨站 POST 会带上别的 `Origin`；multipart 表单属于简单请求，不经预检就会发出，
+    /// 所以要在服务端拒绝。没有 `Origin`（curl 等非浏览器客户端）放行。
+    nonisolated static func isSameOrigin(origin: String?, host: String?) -> Bool {
+        guard let origin = origin?.trimmingCharacters(in: .whitespaces), !origin.isEmpty else { return true }
+        guard let host = host?.trimmingCharacters(in: .whitespaces).lowercased(), !host.isEmpty,
+              let url = URL(string: origin), url.scheme?.lowercased() == "http",
+              let originHost = url.host?.lowercased() else { return false }
+        let originAuthority = url.port.map { "\(originHost):\($0)" } ?? originHost
+        return originAuthority == host
     }
 
     private func allowsUpload(headers: Data) -> Bool {
