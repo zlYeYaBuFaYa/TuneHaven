@@ -134,15 +134,16 @@ final class StoreKitSubscriptionProvider: SubscriptionProviding {
     func transactionUpdates() -> AsyncStream<TransactionUpdate> {
         AsyncStream { continuation in
             let task = Task {
+                // 上次没来得及 finish 的交易（如购买中被杀）不会再出现在 updates 里，启动时先补处理
+                for await result in Transaction.unfinished {
+                    guard let transaction = try? self.checkVerified(result) else { continue }
+                    await transaction.finish()
+                    continuation.yield(transaction.revocationDate != nil ? .revoked : .purchased)
+                }
                 for await result in Transaction.updates {
                     guard let transaction = try? self.checkVerified(result) else { continue }
                     await transaction.finish()
-
-                    if transaction.revocationDate != nil {
-                        continuation.yield(.revoked)
-                    } else {
-                        continuation.yield(.purchased)
-                    }
+                    continuation.yield(transaction.revocationDate != nil ? .revoked : .purchased)
                 }
                 continuation.finish()
             }

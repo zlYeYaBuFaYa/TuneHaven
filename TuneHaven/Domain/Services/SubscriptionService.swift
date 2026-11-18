@@ -172,9 +172,10 @@ final class SubscriptionService: ObservableObject {
 
     private func startListeningForUpdates() {
         transactionTask?.cancel()
-        transactionTask = Task { [weak self] in
-            guard let self else { return }
-            for await update in self.provider.transactionUpdates() {
+        // 只在处理每次更新时临时持有 self，等待更新期间不延长服务的生命周期
+        transactionTask = Task { [weak self, provider] in
+            for await update in provider.transactionUpdates() {
+                guard let self else { return }
                 self.log.debug("[Subscription] 收到交易更新: \(update)")
                 await self.performRefresh()
             }
