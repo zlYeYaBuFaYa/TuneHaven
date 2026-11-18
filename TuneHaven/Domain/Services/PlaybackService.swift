@@ -526,6 +526,14 @@ final class PlaybackService: ObservableObject {
         )
     }
 
+    /// 编辑歌曲信息后，播放器、队列和锁屏不再显示旧标题。
+    private func applyEditedSong(_ song: Song) {
+        queueService.updateSong(song)
+        guard currentSong?.id == song.id else { return }
+        currentSong = song
+        updateNowPlayingTime(currentTime: engine.currentTime)
+    }
+
     private func updateNowPlayingTime(currentTime: TimeInterval) {
         guard let song = currentSong else { return }
         Task {
@@ -582,6 +590,14 @@ final class PlaybackService: ObservableObject {
             .sink { [weak self] ids in
                 Task { @MainActor [weak self] in
                     self?.removeSongsFromQueue(ids: ids)
+                }
+            }
+            .store(in: &cancellables)
+
+        libraryService.songUpdated
+            .sink { [weak self] song in
+                Task { @MainActor [weak self] in
+                    self?.applyEditedSong(song)
                 }
             }
             .store(in: &cancellables)

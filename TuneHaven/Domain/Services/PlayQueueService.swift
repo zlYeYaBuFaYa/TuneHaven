@@ -44,6 +44,13 @@ final class PlayQueueService: ObservableObject {
         return .success
     }
 
+    /// 歌曲信息编辑后同步队列里的副本，顺序与当前项不变。
+    func updateSong(_ song: Song) {
+        for index in queue.indices where queue[index].song.id == song.id {
+            queue[index].song = song
+        }
+    }
+
     func removeFromQueue(at indices: IndexSet) {
         queue.remove(atOffsets: indices)
         if let idx = currentIndex {

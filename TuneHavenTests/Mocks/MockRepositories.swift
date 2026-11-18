@@ -307,7 +307,18 @@ final class MockSongRepository: SongRepository {
         guard let index = songs.firstIndex(where: { $0.id == songId }) else { return }
         songs[index].coverImagePath = coverImagePath
     }
-    func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws {}
+    func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws {
+        guard let index = songs.firstIndex(where: { $0.id == id }) else { return }
+        let old = songs[index]
+        songs[index] = Song(
+            id: old.id, title: title, artist: artist, album: album,
+            duration: old.duration, fileHash: old.fileHash, fileRelativePath: old.fileRelativePath,
+            coverImagePath: old.coverImagePath, lyricsPath: old.lyricsPath, lyricsSource: old.lyricsSource,
+            metadata: old.metadata, importDate: old.importDate, fileSize: old.fileSize,
+            playCount: old.playCount, isFavorite: old.isFavorite, favoriteDate: old.favoriteDate,
+            lastPlayedDate: old.lastPlayedDate
+        )
+    }
     func fetchSongsMissingAudio() async -> [Song] {
         songs.filter(\.isAudioMissing)
     }

@@ -2,7 +2,8 @@ import Foundation
 
 struct QueueItem: Identifiable, Hashable {
     let id: UUID
-    let song: Song
+    /// 歌曲信息被编辑后会就地替换，队列项 id 不变
+    var song: Song
     var isPlayed: Bool
     let addedAt: Date
 

@@ -13,6 +13,8 @@ final class MusicLibraryService: ObservableObject {
     private var pendingUndoTokens: [UndoToken] = []
     /// 软删除成功后发出被删歌曲 id，播放服务据此同步队列与当前歌曲
     let songsDeleted = PassthroughSubject<Set<UUID>, Never>()
+    /// 歌曲信息编辑后发出新值，播放服务据此刷新当前歌曲、队列和锁屏信息
+    let songUpdated = PassthroughSubject<Song, Never>()
     private var undoTimers: [UUID: Timer] = [:]
     private let backgroundTask: BackgroundTaskProviding?
     private var backgroundTaskID: UInt?
@@ -120,8 +122,19 @@ final class MusicLibraryService: ObservableObject {
 
     func updateSongInfo(id: UUID, title: String, artist: String, album: String) async throws {
         log.info("更新歌曲信息: \(id)")
-        try await songRepo.updateSongInfo(id: id, title: title, artist: artist, album: album)
+        // 与导入一致：艺术家、专辑留空时显示「未知艺术家」「未知专辑」
+        let artist = artist.trimmingCharacters(in: .whitespacesAndNewlines)
+        let album = album.trimmingCharacters(in: .whitespacesAndNewlines)
+        try await songRepo.updateSongInfo(
+            id: id,
+            title: title,
+            artist: artist.isEmpty ? SongDefaults.unknownArtist : artist,
+            album: album.isEmpty ? SongDefaults.unknownAlbum : album
+        )
         await loadSongs()
+        if let updated = await songRepo.fetchSong(id: id) {
+            songUpdated.send(updated)
+        }
     }
 
     func cleanupOnLaunch() async {
