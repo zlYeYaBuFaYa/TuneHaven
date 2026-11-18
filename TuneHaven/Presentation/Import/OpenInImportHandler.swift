@@ -7,7 +7,12 @@ final class OpenInImportHandler {
     private let fileStorage: FileStorageProviding
     private let snackbar: SnackbarState
     private let onBackupPackage: (@MainActor (URL) -> Bool)?
+    private let beginAccess: (URL) -> Bool
+    private let endAccess: (URL) -> Void
     private let log = AppLogger.shared
+
+    static let inaccessibleNotice = "无法访问该文件，请在「文件」中下载到本机后重试"
+    static let missingNotice = "找不到该文件"
 
     private var queue: [URL] = []
     private var isProcessing = false
@@ -16,12 +21,16 @@ final class OpenInImportHandler {
          libraryService: MusicLibraryService,
          fileStorage: FileStorageProviding,
          snackbar: SnackbarState,
-         onBackupPackage: (@MainActor (URL) -> Bool)? = nil) {
+         onBackupPackage: (@MainActor (URL) -> Bool)? = nil,
+         beginAccess: @escaping (URL) -> Bool = { $0.startAccessingSecurityScopedResource() },
+         endAccess: @escaping (URL) -> Void = { $0.stopAccessingSecurityScopedResource() }) {
         self.importService = importService
         self.libraryService = libraryService
         self.fileStorage = fileStorage
         self.snackbar = snackbar
         self.onBackupPackage = onBackupPackage
+        self.beginAccess = beginAccess
+        self.endAccess = endAccess
     }
 
     func enqueue(url: URL) {
@@ -46,8 +55,14 @@ final class OpenInImportHandler {
     }
 
     private func handleIncomingFile(url: URL) async {
+        // 「文件」原位打开的 URL（如 iCloud 云盘）要先拿到安全范围才能判断存在性；
+        // Inbox 副本不在安全范围内，返回 false 属正常。
+        let hasAccess = beginAccess(url)
+        defer { if hasAccess { endAccess(url) } }
+
         guard fileStorage.fileExists(at: url) else {
-            log.info("[OpenIn] 文件不存在，跳过: \(url.lastPathComponent)")
+            log.info("[OpenIn] 文件不可访问，跳过: \(url.lastPathComponent) securityScopedAccess=\(hasAccess)")
+            snackbar.show(message: hasAccess || isInInbox(url) ? Self.missingNotice : Self.inaccessibleNotice)
             return
         }
 
@@ -104,10 +119,12 @@ final class OpenInImportHandler {
         }
     }
 
+    private func isInInbox(_ url: URL) -> Bool {
+        url.path.hasPrefix(fileStorage.documentsURL.appendingPathComponent("Inbox").path)
+    }
+
     private func cleanup(url: URL) {
-        let inboxPath = fileStorage.documentsURL
-            .appendingPathComponent("Inbox").path
-        guard url.path.hasPrefix(inboxPath) else { return }
+        guard isInInbox(url) else { return }
         try? fileStorage.removeItem(at: url)
     }
 
