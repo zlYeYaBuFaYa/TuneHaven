@@ -114,10 +114,7 @@ final class ShareService: ObservableObject, ShareDataSource {
             songs = try await client.fetchSongList()
             playlists = try await client.fetchPlaylistList()
         } catch {
-            client.disconnect()
-            self.client = nil
-            isReceiving = false
-            receiveProgress = nil
+            abortAnalysis(client)
             throw error
         }
 
@@ -140,7 +137,13 @@ final class ShareService: ObservableObject, ShareDataSource {
 
         var playlistLocalSongs: [String: Int] = [:]
         for playlist in playlists {
-            let playlistSongList = try await client.fetchPlaylistSongs(at: playlist.index)
+            let playlistSongList: [ShareSongSummary]
+            do {
+                playlistSongList = try await client.fetchPlaylistSongs(at: playlist.index)
+            } catch {
+                abortAnalysis(client)
+                throw error
+            }
             var localCount = 0
             for ps in playlistSongList {
                 let match = matchSong(title: ps.title, artist: ps.artist, album: ps.album, duration: ps.duration)
@@ -201,6 +204,7 @@ final class ShareService: ObservableObject, ShareDataSource {
         var importedSongMap: [Int: UUID] = [:]
 
         for (i, song) in newSongs.enumerated() {
+            try checkReceiveNotCancelled(client)
             receiveProgress = ShareProgress(
                 phase: .transferring,
                 current: i + 1,
@@ -245,6 +249,7 @@ final class ShareService: ObservableObject, ShareDataSource {
 
         let playlists = analysis.playlists
         for (i, playlist) in playlists.enumerated() {
+            try checkReceiveNotCancelled(client)
             receiveProgress = ShareProgress(
                 phase: .importing,
                 current: i + 1,
@@ -253,6 +258,10 @@ final class ShareService: ObservableObject, ShareDataSource {
             )
 
             do {
+                // 先取曲目再建歌单：取消或断线时不留下空歌单
+                let playlistSongs = try await client.fetchPlaylistSongs(at: playlist.index)
+                try checkReceiveNotCancelled(client)
+
                 let playlistName = generateUniqueName(playlist.name)
                 let created = try await playlistService.createPlaylist(
                     name: playlistName,
@@ -263,7 +272,6 @@ final class ShareService: ObservableObject, ShareDataSource {
                     await ensureGroupExists(named: groupName, forPlaylist: created.id)
                 }
 
-                let playlistSongs = try await client.fetchPlaylistSongs(at: playlist.index)
                 var songIds: [UUID] = []
 
                 for ps in playlistSongs {
@@ -285,12 +293,15 @@ final class ShareService: ObservableObject, ShareDataSource {
                     try await playlistService.addSongs(songIds, to: created.id)
                 }
                 playlistsCreated += 1
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 log.error(error, context: "[Share] 歌单创建失败: \(playlist.name)")
                 failedCount += 1
             }
         }
 
+        try checkReceiveNotCancelled(client)
         let result = ShareTransferResult(
             songsReceived: songsReceived,
             songsSkipped: songsSkipped + analysis.skippedSongs.count,
@@ -305,6 +316,22 @@ final class ShareService: ObservableObject, ShareDataSource {
         try? await client.notifyComplete(result: result)
 
         return result
+    }
+
+    /// 分析阶段出错：断开并复位，界面不会停在「准备中」。
+    private func abortAnalysis(_ session: ShareClientProviding) {
+        session.disconnect()
+        if client === session { client = nil }
+        isReceiving = false
+        receiveProgress = nil
+    }
+
+    /// `cancelReceive()` 会清空 `client`，进行中的接收据此停止后续阶段。
+    private func checkReceiveNotCancelled(_ session: ShareClientProviding) throws {
+        if self.client !== session || Task.isCancelled {
+            log.info("[Share] 接收已取消，停止后续步骤")
+            throw CancellationError()
+        }
     }
 
     func cancelReceive() {

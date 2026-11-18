@@ -276,6 +276,8 @@ struct ShareReceiveView: View {
         do {
             let result = try await shareService.executeReceive()
             phase = .completed(result)
+        } catch is CancellationError {
+            // 用户关闭页面主动取消，不提示错误
         } catch {
             shareService.cancelReceive()
             errorMessage = error.localizedDescription
