@@ -39,14 +39,14 @@ enum BackupPackageCodec {
         }
     }
 
-    static func extract(zipURL: URL, to destination: URL) throws -> BackupCatalog {
+    static func extract(zipURL: URL, to destination: URL, isCancelled: () -> Bool = { false }) throws -> BackupCatalog {
         let fileManager = FileManager.default
         if fileManager.fileExists(atPath: destination.path) {
             try fileManager.removeItem(at: destination)
         }
         try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
         do {
-            try ZipStoreArchive.unzip(zipURL, to: destination)
+            try ZipStoreArchive.unzip(zipURL, to: destination, isCancelled: isCancelled)
             return try readCatalog(at: destination)
         } catch {
             try? fileManager.removeItem(at: destination)

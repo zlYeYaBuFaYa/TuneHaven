@@ -296,7 +296,7 @@ final class BackupRestoreService: ObservableObject {
         let cancelled = cancelFlag
         let catalog = try await runOffMain {
             if cancelled.isCancelled() { throw AppError.backupCancelled }
-            return try BackupPackageCodec.extract(zipURL: url, to: directory)
+            return try BackupPackageCodec.extract(zipURL: url, to: directory, isCancelled: { cancelled.isCancelled() })
         }
         preparedDirectory = directory
         preparedSource = url

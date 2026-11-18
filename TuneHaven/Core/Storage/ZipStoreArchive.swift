@@ -62,13 +62,14 @@ enum ZipStoreArchive {
         try finish(handle: handle, central: central, count: count, offset: offset)
     }
 
-    static func unzip(_ archive: URL, to destination: URL) throws {
+    static func unzip(_ archive: URL, to destination: URL, isCancelled: () -> Bool = { false }) throws {
         let fileManager = FileManager.default
         try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
         let handle = try FileHandle(forReadingFrom: archive)
         defer { try? handle.close() }
 
         while true {
+            if isCancelled() { throw AppError.backupCancelled }
             let signatureData = try handle.read(upToCount: 4) ?? Data()
             if signatureData.isEmpty { return }
             guard signatureData.count == 4 else {
@@ -102,7 +103,7 @@ enum ZipStoreArchive {
             try validateEntryName(name)
             let output = try safeDestination(root: destination, entry: name)
             try fileManager.createDirectory(at: output.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let actualCRC = try stream(handle, count: UInt64(uncompressedSize), to: output)
+            let actualCRC = try stream(handle, count: UInt64(uncompressedSize), to: output, isCancelled: isCancelled)
             if actualCRC != crc {
                 try? fileManager.removeItem(at: output)
                 throw AppError.backupInvalidPackage("备份包校验失败")
@@ -147,15 +148,16 @@ enum ZipStoreArchive {
                 try? FileManager.default.removeItem(at: destination)
                 throw AppError.backupCancelled
             }
-            let measured = try ZIPCRC32.checksum(file: entry.url)
-            try ensureOffset(offset, adding: measured.size)
             let nameData = Data(entry.name.utf8)
             guard nameData.count <= Int(UInt16.max) else {
                 throw AppError.backupInvalidPackage("文件名过长")
             }
-            let local = localHeader(name: nameData, crc: measured.crc, size: UInt32(measured.size))
+            // 先写占位头，边写边算 CRC，写完回填：每个文件只读一遍，头和内容一定一致
+            let local = localHeader(name: nameData, crc: 0, size: 0)
             try handle.write(contentsOf: local)
-            try streamFile(at: entry.url, to: handle)
+            let measured = try streamFile(at: entry.url, to: handle, isCancelled: isCancelled)
+            try ensureOffset(offset, adding: measured.size)
+            try patchLocalHeader(handle: handle, at: offset, crc: measured.crc, size: UInt32(measured.size))
             appendCentral(
                 to: &central,
                 name: nameData,
@@ -245,13 +247,20 @@ enum ZipStoreArchive {
         return destination
     }
 
-    private static func stream(_ handle: FileHandle, count: UInt64, to destination: URL) throws -> UInt32 {
+    private static func stream(
+        _ handle: FileHandle,
+        count: UInt64,
+        to destination: URL,
+        isCancelled: () -> Bool
+    ) throws -> UInt32 {
         FileManager.default.createFile(atPath: destination.path, contents: nil)
         let output = try FileHandle(forWritingTo: destination)
         defer { try? output.close() }
         var remaining = count
         var crc: UInt32 = 0xFFFF_FFFF
         while remaining > 0 {
+            // 大文件按块检查，取消不用等整个条目写完
+            if isCancelled() { throw AppError.backupCancelled }
             let chunkSize = Int(min(remaining, 1024 * 1024))
             let chunk = try readExactly(handle, count: chunkSize)
             try output.write(contentsOf: chunk)
@@ -261,14 +270,37 @@ enum ZipStoreArchive {
         return crc ^ 0xFFFF_FFFF
     }
 
-    private static func streamFile(at url: URL, to handle: FileHandle) throws {
+    private static func streamFile(
+        at url: URL,
+        to handle: FileHandle,
+        isCancelled: () -> Bool
+    ) throws -> (crc: UInt32, size: UInt64) {
         let input = try FileHandle(forReadingFrom: url)
         defer { try? input.close() }
+        var crc: UInt32 = 0xFFFF_FFFF
+        var size: UInt64 = 0
         while true {
+            if isCancelled() { throw AppError.backupCancelled }
             let chunk = try input.read(upToCount: 1024 * 1024) ?? Data()
-            if chunk.isEmpty { return }
+            if chunk.isEmpty { return (crc ^ 0xFFFF_FFFF, size) }
             try handle.write(contentsOf: chunk)
+            crc = ZIPCRC32.update(crc, with: chunk)
+            size += UInt64(chunk.count)
+            if size > UInt64(UInt32.max) {
+                throw AppError.backupInvalidPackage("单个文件超过 4GB")
+            }
         }
+    }
+
+    /// 回填本地文件头里的 CRC 与大小（偏移 14、18、22），之后回到文件末尾继续写。
+    private static func patchLocalHeader(handle: FileHandle, at headerOffset: UInt64, crc: UInt32, size: UInt32) throws {
+        var fields = Data()
+        appendUInt32(crc, to: &fields)
+        appendUInt32(size, to: &fields)
+        appendUInt32(size, to: &fields)
+        try handle.seek(toOffset: headerOffset + 14)
+        try handle.write(contentsOf: fields)
+        try handle.seekToEnd()
     }
 
     private static func readExactly(_ handle: FileHandle, count: Int) throws -> Data {
@@ -347,23 +379,6 @@ enum ZipStoreArchive {
 enum ZIPCRC32 {
     static func checksum(_ data: Data) -> UInt32 {
         update(0xFFFF_FFFF, with: data) ^ 0xFFFF_FFFF
-    }
-
-    static func checksum(file url: URL) throws -> (crc: UInt32, size: UInt64) {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-        var crc: UInt32 = 0xFFFF_FFFF
-        var size: UInt64 = 0
-        while true {
-            let chunk = try handle.read(upToCount: 1024 * 1024) ?? Data()
-            if chunk.isEmpty { break }
-            crc = update(crc, with: chunk)
-            size += UInt64(chunk.count)
-            if size > UInt64(UInt32.max) {
-                throw AppError.backupInvalidPackage("单个文件超过 4GB")
-            }
-        }
-        return (crc ^ 0xFFFF_FFFF, size)
     }
 
     static func update(_ crc: UInt32, with data: Data) -> UInt32 {
