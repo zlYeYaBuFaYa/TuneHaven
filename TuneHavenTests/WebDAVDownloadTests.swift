@@ -101,6 +101,40 @@ struct WebDAVClientDownloadTests {
         #expect(!FileManager.default.fileExists(atPath: dest.path))
     }
 
+    @Test("大文件完整写入目标文件，最后一次进度为总字节数")
+    func testLargeDownloadWritesFileAndReportsProgress() async throws {
+        let client = makeClient()
+        let dir = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let body = Data((0..<(4 * 1024 * 1024)).map { UInt8(truncatingIfNeeded: $0) })
+        StubURLProtocol.set(.init(body: body), for: "/large/big.flac")
+        let dest = dir.appendingPathComponent("big.flac")
+        let reports = ProgressLog()
+
+        let url = try await client.downloadFile(remotePath: "/large/big.flac", to: dest) { received, total in
+            reports.append(received, total)
+        }
+
+        #expect(try Data(contentsOf: url) == body)
+        let last = try #require(reports.values.last)
+        #expect(last.0 == Int64(body.count))
+        #expect(last.1 == Int64(body.count))
+    }
+
+    @Test("目标路径已有旧文件时被新内容替换")
+    func testDownloadReplacesExistingFile() async throws {
+        let client = makeClient()
+        let dir = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        StubURLProtocol.set(.init(body: Data("new".utf8)), for: "/replace/a.mp3")
+        let dest = dir.appendingPathComponent("a.mp3")
+        try Data("old content".utf8).write(to: dest)
+
+        let url = try await client.downloadFile(remotePath: "/replace/a.mp3", to: dest) { _, _ in }
+
+        #expect((try? String(contentsOf: url, encoding: .utf8)) == "new")
+    }
+
     @Test("服务器返回 404：抛错且不留下目标文件")
     func testHTTPErrorRemovesFile() async throws {
         let client = makeClient()
@@ -114,6 +148,13 @@ struct WebDAVClientDownloadTests {
         }
         #expect(!FileManager.default.fileExists(atPath: dest.path))
     }
+}
+
+private final class ProgressLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _values: [(Int64, Int64)] = []
+    var values: [(Int64, Int64)] { lock.withLock { _values } }
+    func append(_ received: Int64, _ total: Int64) { lock.withLock { _values.append((received, total)) } }
 }
 
 // MARK: - WebDAVService 下载与导入

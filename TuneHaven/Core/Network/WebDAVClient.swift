@@ -192,39 +192,23 @@ actor WebDAVClient: WebDAVClientProtocol {
         request.httpMethod = "GET"
         addAuth(to: &request)
 
-        let (asyncBytes, response) = try await session.bytes(for: request)
+        // 系统直接把响应写入临时文件，进度由任务的字节计数回报，不在 Swift 里逐字节搬运。
+        let progressDelegate = DownloadProgressDelegate(progress: progress)
+        let (tempURL, response) = try await session.download(for: request, delegate: progressDelegate)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
             throw AppError.webdavDownloadFailed("下载失败 (HTTP \(code))")
         }
+        try Task.checkCancellation()
 
-        let totalBytes = http.expectedContentLength
-        var receivedBytes: Int64 = 0
-
-        FileManager.default.createFile(atPath: destination.path, contents: nil)
-        let handle = try FileHandle(forWritingTo: destination)
-        defer { try? handle.close() }
-
-        let bufferSize = 65536
-        var buffer = Data()
-        buffer.reserveCapacity(bufferSize)
-
-        for try await byte in asyncBytes {
-            buffer.append(byte)
-            if buffer.count >= bufferSize {
-                try Task.checkCancellation()
-                handle.write(buffer)
-                receivedBytes += Int64(buffer.count)
-                buffer.removeAll(keepingCapacity: true)
-                progress(receivedBytes, totalBytes)
-            }
+        if FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.removeItem(at: destination)
         }
-        if !buffer.isEmpty {
-            handle.write(buffer)
-            receivedBytes += Int64(buffer.count)
-        }
-        progress(receivedBytes, totalBytes)
+        try FileManager.default.moveItem(at: tempURL, to: destination)
 
+        let receivedBytes = (try? FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? Int64) ?? 0
+        progress(receivedBytes, http.expectedContentLength)
         return destination
     }
 
@@ -255,3 +239,22 @@ actor WebDAVClient: WebDAVClientProtocol {
     }
 }
 
+/// 单个下载任务的进度回报。任务创建时开始观察已接收字节数。
+private final class DownloadProgressDelegate: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    private let progress: @Sendable (Int64, Int64) -> Void
+    private var observation: NSKeyValueObservation?
+
+    init(progress: @escaping @Sendable (Int64, Int64) -> Void) {
+        self.progress = progress
+    }
+
+    func urlSession(_ session: URLSession, didCreateTask task: URLSessionTask) {
+        observation = task.observe(\.countOfBytesReceived, options: [.new]) { [progress] task, _ in
+            progress(task.countOfBytesReceived, task.countOfBytesExpectedToReceive)
+        }
+    }
+
+    deinit {
+        observation?.invalidate()
+    }
+}
