@@ -105,6 +105,7 @@ struct AllSongsView: View {
 
             Color.clear
                 .frame(height: MiniPlayerLayout.listBottomPadding)
+                .accessibilityHidden(true)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets())

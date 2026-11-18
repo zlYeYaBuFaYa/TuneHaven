@@ -77,6 +77,7 @@ struct AlbumDetailView: View {
             }
 
             Color.clear.frame(height: MiniPlayerLayout.listBottomPadding)
+                .accessibilityHidden(true)
                 .plainListRow(insets: EdgeInsets())
         }
         .listStyle(.plain)
