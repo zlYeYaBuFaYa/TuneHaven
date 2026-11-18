@@ -10,7 +10,10 @@ final class ShareServer: ObservableObject, ShareServerProviding {
     private let log = AppLogger.shared
 
     private var listener: NWListener?
+    /// 通过 token 校验的连接，新的已授权连接会接替它
     private var activeConnection: NWConnection?
+    /// 还没通过校验的连接，不能影响 `activeConnection`
+    private var pendingConnections: [ObjectIdentifier: NWConnection] = [:]
     private let port: UInt16 = 8090
     private let sessionToken = UUID().uuidString
     private let streamChunkSize = 1_048_576 // 1 MB
@@ -98,6 +101,8 @@ final class ShareServer: ObservableObject, ShareServerProviding {
         listener = nil
         activeConnection?.cancel()
         activeConnection = nil
+        pendingConnections.values.forEach { $0.cancel() }
+        pendingConnections.removeAll()
         isRunning = false
         serverAddress = nil
         connectedDevice = nil
@@ -107,22 +112,35 @@ final class ShareServer: ObservableObject, ShareServerProviding {
     // MARK: - Connection
 
     private func handleNewConnection(_ connection: NWConnection) {
-        if let active = activeConnection {
-            active.stateUpdateHandler = nil
-            active.cancel()
-        }
-        activeConnection = connection
+        let id = ObjectIdentifier(connection)
+        pendingConnections[id] = connection
 
         connection.stateUpdateHandler = { [weak self] state in
             Task { @MainActor [weak self] in
-                guard let self, self.activeConnection === connection else { return }
-                if case .failed = state { self.activeConnection = nil }
-                if case .cancelled = state { self.activeConnection = nil }
+                guard let self else { return }
+                switch state {
+                case .failed, .cancelled:
+                    self.pendingConnections[id] = nil
+                    if self.activeConnection === connection { self.activeConnection = nil }
+                default:
+                    break
+                }
             }
         }
 
         receiveRequest(connection: connection)
         connection.start(queue: .main)
+    }
+
+    /// token 校验通过后才接替活动连接；局域网里未授权的连接不能打断正在进行的传输。
+    private func promoteToActive(_ connection: NWConnection) {
+        pendingConnections[ObjectIdentifier(connection)] = nil
+        guard activeConnection !== connection else { return }
+        if let active = activeConnection {
+            active.stateUpdateHandler = nil
+            active.cancel()
+        }
+        activeConnection = connection
     }
 
     private func receiveRequest(connection: NWConnection) {
@@ -200,6 +218,7 @@ final class ShareServer: ObservableObject, ShareServerProviding {
             return
         }
 
+        promoteToActive(connection)
         resetInactivityTimer()
 
         if method == "POST" && path == "/api/share/complete" {
@@ -240,8 +259,7 @@ final class ShareServer: ObservableObject, ShareServerProviding {
     // MARK: - Handlers
 
     private func handleInfo(connection: NWConnection) {
-        if connectedDevice == nil, let endpoint = activeConnection?.endpoint,
-           case let .hostPort(host, _) = endpoint {
+        if connectedDevice == nil, case let .hostPort(host, _) = connection.endpoint {
             let deviceId = "\(host)"
             connectedDevice = deviceId
             onDeviceConnected?(deviceId)
