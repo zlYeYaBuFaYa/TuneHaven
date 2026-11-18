@@ -267,7 +267,26 @@ final class MockSongRepository: SongRepository {
     func fetchSongs(byAlbum album: String, artist: String, sortBy: SongSortOption, ascending: Bool) async -> [Song] {
         songs.filter { $0.album == album && $0.artist == artist }
     }
-    func insert(song: Song) async throws { songs.append(song) }
+    /// 测试用：在 insert 写入前调用，可模拟另一路导入先入库
+    var beforeInsert: ((Song) -> Void)?
+    /// 与 CoreData 实现一致：同哈希已有记录时更新它、保留原 id
+    var upsertsByHash = false
+    func insert(song: Song) async throws {
+        beforeInsert?(song)
+        if upsertsByHash, let index = songs.firstIndex(where: { $0.fileHash == song.fileHash }) {
+            let existing = songs[index]
+            songs[index] = Song(
+                id: existing.id, title: song.title, artist: song.artist, album: song.album,
+                duration: song.duration, fileHash: song.fileHash, fileRelativePath: song.fileRelativePath,
+                coverImagePath: song.coverImagePath, lyricsPath: song.lyricsPath, lyricsSource: song.lyricsSource,
+                metadata: song.metadata, importDate: song.importDate, fileSize: song.fileSize,
+                playCount: song.playCount, isFavorite: song.isFavorite, favoriteDate: song.favoriteDate,
+                lastPlayedDate: song.lastPlayedDate
+            )
+        } else {
+            songs.append(song)
+        }
+    }
     var softDeleteWindow: TimeInterval = 30
     private(set) var undoneSongIds: [[UUID]] = []
     private(set) var committedSongIds: [[UUID]] = []

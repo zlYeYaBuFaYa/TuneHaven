@@ -13,9 +13,6 @@ final class ImportService: ObservableObject, FileImporting, WiFiFileImporting {
     private let metadataParser: AudioMetadataParsing
     private let activityGate: BackupActivityGate?
 
-    /// 新歌曲导入成功后的回调，用于触发缺失歌曲恢复等后续逻辑
-    var onNewSongsImported: (@MainActor () async -> Void)?
-
     init(songRepo: SongRepository,
          fileService: FileStorageProviding,
          coverProcessor: CoverImageProcessing,
@@ -86,10 +83,6 @@ final class ImportService: ObservableObject, FileImporting, WiFiFileImporting {
         isImporting = false
         progress = nil
         log.info("导入完成: 成功=\(successCount), 重复=\(skippedDuplicateCount), 格式不支持=\(skippedFormatCount), 超限=\(skippedOversizeCount), 失败=\(failedCount)")
-
-        if successCount > 0 {
-            await onNewSongsImported?()
-        }
 
         return ImportResult(
             successCount: successCount,
@@ -288,6 +281,11 @@ final class ImportService: ObservableObject, FileImporting, WiFiFileImporting {
 
         do {
             try await songRepo.insert(song: song)
+            // 并发导入同一内容时，另一路可能先入库，insert 会更新那条记录而不是用这里的新 id
+            if let stored = await songRepo.fetchByHash(hash), stored.id != song.id {
+                log.info("[Import] 并发导入同一内容，沿用已入库记录: \(stored.id)")
+                return SingleImportResult(fileName: fileName, status: .skippedDuplicate, song: stored, errorMessage: nil)
+            }
             log.info("[Import] 入库成功: \(song.title) id=\(song.id)")
             return SingleImportResult(fileName: fileName, status: (isIncomplete || coverFailed) ? .successIncompleteMetadata : .success, song: song, errorMessage: nil)
         } catch {
