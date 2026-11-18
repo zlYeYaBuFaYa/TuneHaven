@@ -21,8 +21,10 @@ enum AppStorageKey {
     /// 播放器封面样式：auto（晴屿用唱片，其他方形）、square、disc
     static let playerCoverStyle = "player_cover_style"
     static let lyricsCooldown = "lyrics_match_cooldown"
-    /// App 首次启动日期（AppTransaction 获取失败时的兜底）
+    /// App 首次启动日期（AppTransaction 获取失败时的兜底），Keychain 里另存一份
     static let appFirstLaunchDate = "app_first_launch_date"
+    /// 已校验的 AppTransaction 首次下载日期
+    static let verifiedOriginalPurchaseDate = "app_verified_original_purchase_date"
     /// 上次解析出的购买权益，启动时先用它，不等 StoreKit
     static let cachedEntitlements = "subscription_cached_entitlements"
 }

@@ -106,25 +106,26 @@ final class StoreKitSubscriptionProvider: SubscriptionProviding {
     // MARK: - Trial
 
     func localInstallDate() -> Date? {
-        UserDefaults.standard.object(forKey: AppStorageKey.appFirstLaunchDate) as? Date
+        FirstLaunchDateStore.live.earliestDate()
     }
 
+    /// 已校验的首次下载日期不会变，取到一次后缓存，之后不再请求 AppTransaction。
     func appOriginalPurchaseDate() async -> Date? {
+        if let cached = UserDefaults.standard.object(forKey: AppStorageKey.verifiedOriginalPurchaseDate) as? Date {
+            return cached
+        }
         do {
             let appTransaction = try await AppTransaction.shared
             switch appTransaction {
             case .verified(let transaction):
+                UserDefaults.standard.set(transaction.originalPurchaseDate, forKey: AppStorageKey.verifiedOriginalPurchaseDate)
                 return transaction.originalPurchaseDate
             case .unverified:
-                return UserDefaults.standard.object(
-                    forKey: AppStorageKey.appFirstLaunchDate
-                ) as? Date
+                return FirstLaunchDateStore.live.earliestDate()
             }
         } catch {
             log.error("[StoreKit] AppTransaction 获取失败: \(error)")
-            return UserDefaults.standard.object(
-                forKey: AppStorageKey.appFirstLaunchDate
-            ) as? Date
+            return FirstLaunchDateStore.live.earliestDate()
         }
     }
 

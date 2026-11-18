@@ -148,10 +148,7 @@ struct TuneHavenApp: App {
     }
 
     private func recordFirstLaunchDateIfNeeded() {
-        let key = AppStorageKey.appFirstLaunchDate
-        if UserDefaults.standard.object(forKey: key) == nil {
-            UserDefaults.standard.set(Date(), forKey: key)
-        }
+        FirstLaunchDateStore.live.recordIfNeeded()
     }
 
     private func initialize() async {

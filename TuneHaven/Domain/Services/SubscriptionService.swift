@@ -20,6 +20,9 @@ final class SubscriptionService: ObservableObject {
 
     static let trialDurationDays = 30
     private var transactionTask: Task<Void, Never>?
+    private var refreshTask: Task<Void, Never>?
+    private var refreshGeneration = 0
+    private var appliedRefreshGeneration = 0
 
     init(provider: SubscriptionProviding) {
         self.provider = provider
@@ -49,13 +52,30 @@ final class SubscriptionService: ObservableObject {
 
     // MARK: - Status
 
+    /// 启动和回前台可能同时触发，正在刷新时直接等那一次的结果。
     func refreshStatus() async {
-        let entitlements = await provider.resolveEntitlements()
-        if entitlements.hasLifetime || entitlements.hasActiveSubscription {
-            apply(entitlements, installDate: nil)
-        } else {
-            apply(entitlements, installDate: await provider.appOriginalPurchaseDate())
+        if let refreshTask {
+            await refreshTask.value
+            return
         }
+        let task = Task { await performRefresh() }
+        refreshTask = task
+        await task.value
+        refreshTask = nil
+    }
+
+    /// 购买、恢复和交易更新之后要读最新状态，不能复用之前发起的刷新。
+    /// 并发时只采用最后发起的那次结果，先发起的晚返回也不会覆盖。
+    private func performRefresh() async {
+        refreshGeneration += 1
+        let generation = refreshGeneration
+        let entitlements = await provider.resolveEntitlements()
+        let installDate = entitlements.hasLifetime || entitlements.hasActiveSubscription
+            ? nil
+            : await provider.appOriginalPurchaseDate()
+        guard generation > appliedRefreshGeneration else { return }
+        appliedRefreshGeneration = generation
+        apply(entitlements, installDate: installDate)
         isStatusVerified = true
     }
 
@@ -82,7 +102,8 @@ final class SubscriptionService: ObservableObject {
                 [.day], from: installDate, to: Date()
             ).day ?? Int.max
 
-            if daysSinceInstall < Self.trialDurationDays {
+            // 负数说明系统时间被调到首次启动之前，按试用结束处理
+            if (0..<Self.trialDurationDays).contains(daysSinceInstall) {
                 let remaining = Self.trialDurationDays - daysSinceInstall
                 tier = .premium
                 status = .trial(daysRemaining: remaining)
@@ -122,7 +143,7 @@ final class SubscriptionService: ObservableObject {
         let result = try await provider.purchase(product.id)
         switch result {
         case .success:
-            await refreshStatus()
+            await performRefresh()
             log.info("[Subscription] 购买成功: \(product.id)")
         case .pending:
             pendingProductID = product.id
@@ -139,7 +160,7 @@ final class SubscriptionService: ObservableObject {
         restoreError = nil
         do {
             try await provider.restorePurchases()
-            await refreshStatus()
+            await performRefresh()
             log.info("[Subscription] 恢复购买完成")
         } catch {
             restoreError = "恢复购买失败，请检查网络后重试"
@@ -155,7 +176,7 @@ final class SubscriptionService: ObservableObject {
             guard let self else { return }
             for await update in self.provider.transactionUpdates() {
                 self.log.debug("[Subscription] 收到交易更新: \(update)")
-                await self.refreshStatus()
+                await self.performRefresh()
             }
         }
     }
