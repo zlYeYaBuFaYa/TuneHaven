@@ -32,6 +32,16 @@ final class WebDAVXMLParser: NSObject, XMLParserDelegate {
         return f
     }()
 
+    /// href 可能是编码过的路径，也可能是完整 URL（部分服务器）；统一成解码后的路径，保留末尾斜杠。
+    static func serverPath(fromHref href: String) -> String {
+        let trimmed = href.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let url = URL(string: trimmed), url.scheme != nil {
+            let path = url.path
+            return trimmed.hasSuffix("/") && !path.hasSuffix("/") ? path + "/" : path
+        }
+        return trimmed.removingPercentEncoding ?? trimmed
+    }
+
     private func parse(data: Data, requestPath: String) throws -> [WebDAVFile] {
         self.requestPath = requestPath.removingPercentEncoding ?? requestPath
         results = []
@@ -101,14 +111,15 @@ final class WebDAVXMLParser: NSObject, XMLParserDelegate {
             insidePropstat = false
         case "response":
             insideResponse = false
-            let decodedHref = currentHref.removingPercentEncoding ?? currentHref
+            let decodedHref = Self.serverPath(fromHref: currentHref)
             let decodedRequest = requestPath
             let isParent = decodedHref == decodedRequest
                 || decodedHref == decodedRequest + "/"
                 || decodedHref + "/" == decodedRequest
             if !isParent && !currentHref.isEmpty {
+                // 存解码后的服务器路径：客户端发请求时会统一编码一次，存编码值会被编码两遍导致 404
                 let file = WebDAVFile(
-                    href: currentHref,
+                    href: decodedHref,
                     displayName: currentDisplayName,
                     contentLength: currentContentLength,
                     contentType: currentContentType,

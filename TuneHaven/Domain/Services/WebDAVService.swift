@@ -6,6 +6,8 @@ final class WebDAVService: ObservableObject {
 
     @Published private(set) var accounts: [WebDAVAccount] = []
     @Published private(set) var currentFiles: [WebDAVFile] = []
+    /// 账户地址里的路径（如 `/dav/`），浏览从这里开始，也是「返回上级」的终点
+    @Published private(set) var rootPath = "/"
     @Published private(set) var isLoading = false
     @Published private(set) var downloadTasks: [WebDAVDownloadTask] = []
     @Published private(set) var overallProgress: Double = 0
@@ -114,7 +116,15 @@ final class WebDAVService: ObservableObject {
         )
         try? accountStore.updateLastConnected(accountId: account.id)
         loadAccounts()
-        try await loadDirectory("/")
+        rootPath = Self.rootPath(for: baseURL)
+        try await loadDirectory(rootPath)
+    }
+
+    /// 坚果云等服务的地址带路径（`https://dav.jianguoyun.com/dav/`），不能从服务器根目录开始列。
+    nonisolated static func rootPath(for baseURL: URL) -> String {
+        let path = baseURL.path
+        guard !path.isEmpty, path != "/" else { return "/" }
+        return path.hasSuffix("/") ? path : path + "/"
     }
 
     func loadDirectory(_ path: String) async throws {

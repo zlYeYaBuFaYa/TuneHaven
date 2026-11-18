@@ -83,7 +83,7 @@ struct WebDAVBrowserView: View {
 
     private var pathBar: some View {
         HStack {
-            if currentPath != "/" {
+            if currentPath != webDAVService.rootPath {
                 Button {
                     navigateToParent()
                 } label: {
@@ -238,7 +238,7 @@ struct WebDAVBrowserView: View {
         errorMessage = nil
         do {
             try await webDAVService.connect(to: account)
-            currentPath = "/"
+            currentPath = webDAVService.rootPath
             isConnecting = false
         } catch {
             errorMessage = error.localizedDescription
@@ -247,7 +247,7 @@ struct WebDAVBrowserView: View {
     }
 
     private func navigateToParent() {
-        guard currentPath != "/" else { return }
+        guard currentPath != webDAVService.rootPath else { return }
         var path = currentPath
         if path.hasSuffix("/") { path = String(path.dropLast()) }
         let parent = (path as NSString).deletingLastPathComponent

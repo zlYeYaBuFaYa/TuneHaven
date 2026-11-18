@@ -60,6 +60,24 @@ struct WebDAVXMLParserTests {
     </d:multistatus>
     """
 
+    @Test("href 解码成服务器路径：编码路径与完整 URL 都只解码一次，保留末尾斜杠")
+    func testHrefDecoding() throws {
+        #expect(WebDAVXMLParser.serverPath(fromHref: "/dav/%E5%91%A8/") == "/dav/周/")
+        #expect(WebDAVXMLParser.serverPath(fromHref: "/dav/a%20b.mp3") == "/dav/a b.mp3")
+        #expect(WebDAVXMLParser.serverPath(fromHref: "https://h.example/dav/%E5%91%A8/") == "/dav/周/")
+        #expect(WebDAVXMLParser.serverPath(fromHref: "/dav/100%25.mp3") == "/dav/100%.mp3")
+
+        let xml = """
+        <?xml version="1.0"?><d:multistatus xmlns:d="DAV:">
+        <d:response><d:href>https://h.example/dav/%E5%91%A8/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop></d:propstat></d:response>
+        <d:response><d:href>https://h.example/dav/%E5%91%A8/%E6%99%B4.mp3</d:href><d:propstat><d:prop><d:resourcetype/></d:prop></d:propstat></d:response>
+        </d:multistatus>
+        """
+        let files = try WebDAVXMLParser.parseMultiStatus(Data(xml.utf8), requestPath: "/dav/%E5%91%A8/")
+        #expect(files.map(\.href) == ["/dav/周/晴.mp3"])
+        #expect(files.first?.fileName == "晴.mp3")
+    }
+
     @Test("解析过滤父目录条目")
     func testFilterParentDirectory() throws {
         let data = Data(sampleXML.utf8)
