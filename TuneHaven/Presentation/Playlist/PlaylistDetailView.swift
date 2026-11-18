@@ -106,6 +106,11 @@ struct PlaylistDetailView: View {
             guard !isDeleted else { return }
             Task { detail = await playlistService.fetchDetail(playlistId: playlistId) }
         }
+        // 从音乐库删除、撤销或编辑歌曲后同步歌单内容（交互验收 I-06）
+        .onReceive(libraryService.$songs.dropFirst().debounce(for: .milliseconds(300), scheduler: RunLoop.main)) { _ in
+            guard !isDeleted else { return }
+            Task { detail = await playlistService.fetchDetail(playlistId: playlistId) }
+        }
         .sheet(isPresented: $showSongOrder) {
             PlaylistSongOrderView(playlistId: playlistId) {
                 usePlaylistOrder = true
@@ -336,6 +341,7 @@ private struct PlaylistContentView: View {
         }
 
         Color.clear.frame(height: MiniPlayerLayout.listBottomPadding)
+            .accessibilityHidden(true)
             .plainListRow(insets: EdgeInsets())
     }
 }

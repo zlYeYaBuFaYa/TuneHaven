@@ -60,6 +60,7 @@ struct SongListView: View {
 
                     Color.clear
                         .frame(height: MiniPlayerLayout.listBottomPadding)
+                        .accessibilityHidden(true)
                         .plainListRow(insets: EdgeInsets())
                 }
                 .listStyle(.plain)
@@ -71,6 +72,10 @@ struct SongListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .themeNavigationBarSurface()
         .task { await load() }
+        // 别的页面删除、撤销、收藏或编辑歌曲后，这里同步（交互验收 I-06）
+        .onReceive(libraryService.$songs.dropFirst().debounce(for: .milliseconds(300), scheduler: RunLoop.main)) { _ in
+            Task { await load() }
+        }
     }
 
     private var symbol: String {
