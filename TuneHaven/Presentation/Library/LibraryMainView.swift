@@ -111,6 +111,10 @@ struct LibraryMainView: View {
             if focused && searchText.isEmpty {
                 Task { await searchService.fetchHistory(tab: selectedTab) }
             }
+            // 「取消」会同时清空输入，这里只剩收起键盘查看结果的情况
+            if !focused && isSearchActive {
+                commitSearchHistory()
+            }
         }
         .onChange(of: selectedTab) { newTab in
             if isSearchFieldFocused && searchText.isEmpty {
@@ -131,6 +135,7 @@ struct LibraryMainView: View {
                     .focused($isSearchFieldFocused)
                     .textFieldStyle(.plain)
                     .submitLabel(.search)
+                    .onSubmit { commitSearchHistory() }
                     .foregroundColor(palette.textPrimary)
                 if !searchText.isEmpty {
                     Button {
@@ -246,8 +251,15 @@ struct LibraryMainView: View {
             let result = await searchService.search(query: query, tab: selectedTab, allSongs: libraryService.songs)
             guard !Task.isCancelled else { return }
             searchResult = result
-            await searchService.saveHistory(keyword: query, tab: selectedTab)
         }
+    }
+
+    /// 只在确认搜索时记历史（回车、收起键盘去看结果）；输入过程中的防抖查询不记，避免「周」「周杰」这类中间词。
+    private func commitSearchHistory() {
+        let keyword = searchText.trimmingCharacters(in: .whitespaces)
+        guard !keyword.isEmpty else { return }
+        let tab = selectedTab
+        Task { await searchService.saveHistory(keyword: keyword, tab: tab) }
     }
 
     private func refreshSearch() {
