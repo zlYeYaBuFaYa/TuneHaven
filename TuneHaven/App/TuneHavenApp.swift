@@ -72,7 +72,9 @@ struct TuneHavenApp: App {
                 case .active:
                     container.playbackService.checkSleepTimerOnForeground()
                     Task { await container.subscriptionService.refreshStatus() }
+                    Task { await container.libraryService.commitExpiredDeletes() }
                 case .background:
+                    Task { await container.libraryService.handleDidEnterBackground() }
                     // 只在播放中保持会话；没在播放时激活会打断其他 App 的音频
                     if container.playbackService.isPlaying {
                         container.audioSessionManager.ensureActive()

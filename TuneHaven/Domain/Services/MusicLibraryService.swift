@@ -14,10 +14,13 @@ final class MusicLibraryService: ObservableObject {
     /// 软删除成功后发出被删歌曲 id，播放服务据此同步队列与当前歌曲
     let songsDeleted = PassthroughSubject<Set<UUID>, Never>()
     private var undoTimers: [UUID: Timer] = [:]
+    private let backgroundTask: BackgroundTaskProviding?
+    private var backgroundTaskID: UInt?
 
-    init(songRepo: SongRepository, imageCache: ImageCacheManaging) {
+    init(songRepo: SongRepository, imageCache: ImageCacheManaging, backgroundTask: BackgroundTaskProviding? = nil) {
         self.songRepo = songRepo
         self.imageCache = imageCache
+        self.backgroundTask = backgroundTask
     }
 
     /// 当前 `songs` 使用的排序。不传参数的 `loadSongs()` 沿用它，导入后刷新不会打乱用户选的排序
@@ -73,9 +76,13 @@ final class MusicLibraryService: ObservableObject {
 
     func undoDelete(token: UndoToken) async throws {
         log.info("撤销删除")
+        guard pendingUndoTokens.contains(where: { $0 === token }) else {
+            throw AppError.fileSystemError("撤销已过期")
+        }
         invalidateTimer(for: token)
+        pendingUndoTokens.removeAll { $0 === token }
+        endBackgroundTaskIfIdle()
         try await songRepo.undoDelete(token: token)
-        pendingUndoTokens.removeAll { $0.songIds == token.songIds }
         await loadSongs()
     }
 
@@ -122,20 +129,61 @@ final class MusicLibraryService: ObservableObject {
         await songRepo.cleanupPendingDeletes()
     }
 
+    // MARK: - 删除提交与前后台
+
+    /// 进后台：已到期的立即提交；还在撤销窗口内的申请后台时间等它到期，
+    /// 系统收回时间前全部提交，避免挂起或被杀后文件一直留在待删除目录。
+    func handleDidEnterBackground() async {
+        await commitExpiredDeletes()
+        guard !pendingUndoTokens.isEmpty, backgroundTaskID == nil, let backgroundTask else { return }
+        backgroundTaskID = backgroundTask.beginTask { [weak self] in
+            Task { @MainActor [weak self] in
+                await self?.commitAllPendingDeletes()
+            }
+        }
+    }
+
+    /// 回到前台时补提交挂起期间到期的删除。
+    func commitExpiredDeletes(now: Date = Date()) async {
+        for token in pendingUndoTokens where token.expiresAt <= now {
+            await commit(token)
+        }
+    }
+
+    private func commitAllPendingDeletes() async {
+        for token in pendingUndoTokens {
+            await commit(token)
+        }
+        endBackgroundTaskIfIdle()
+    }
+
+    private func commit(_ token: UndoToken) async {
+        // 先移出列表再提交，计时器与前后台同时触发时只提交一次
+        guard pendingUndoTokens.contains(where: { $0 === token }) else { return }
+        invalidateTimer(for: token)
+        pendingUndoTokens.removeAll { $0 === token }
+        do {
+            try await songRepo.commitDelete(token: token)
+        } catch {
+            log.error(error, context: "commitDelete 失败，songIds=\(token.songIds)")
+        }
+        endBackgroundTaskIfIdle()
+    }
+
+    private func endBackgroundTaskIfIdle() {
+        guard pendingUndoTokens.isEmpty, let id = backgroundTaskID else { return }
+        backgroundTaskID = nil
+        backgroundTask?.endTask(id)
+    }
+
     private func scheduleCommit(token: UndoToken) {
         let tokenKey = UUID()
         token.timerKey = tokenKey
         undoTimers[tokenKey]?.invalidate()
-        let timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in
+        let interval = max(0, token.expiresAt.timeIntervalSinceNow)
+        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard let self else { return }
-                do {
-                    try await self.songRepo.commitDelete(token: token)
-                } catch {
-                    self.log.error(error, context: "commitDelete 失败，songIds=\(token.songIds)")
-                }
-                self.pendingUndoTokens.removeAll { $0.songIds == token.songIds }
-                self.undoTimers.removeValue(forKey: tokenKey)
+                await self?.commit(token)
             }
         }
         RunLoop.main.add(timer, forMode: .common)

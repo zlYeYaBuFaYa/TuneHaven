@@ -158,7 +158,7 @@ final class AppDIContainer: ObservableObject {
         let subscriptionService = SubscriptionService(provider: subscriptionProvider)
         self.subscriptionService = subscriptionService
 
-        let libraryService = MusicLibraryService(songRepo: songRepo, imageCache: ImageCacheManager.shared)
+        let libraryService = MusicLibraryService(songRepo: songRepo, imageCache: ImageCacheManager.shared, backgroundTask: BackgroundTaskProvider())
         self.libraryService = libraryService
         self.playlistService = PlaylistService(repo: playlistRepo, songRepo: songRepo, coverProcessor: coverProcessor)
         self.groupService = PlaylistGroupService(repo: groupRepo)

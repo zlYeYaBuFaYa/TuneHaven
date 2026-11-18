@@ -268,11 +268,14 @@ final class MockSongRepository: SongRepository {
         songs.filter { $0.album == album && $0.artist == artist }
     }
     func insert(song: Song) async throws { songs.append(song) }
+    var softDeleteWindow: TimeInterval = 30
+    private(set) var undoneSongIds: [[UUID]] = []
+    private(set) var committedSongIds: [[UUID]] = []
     func softDelete(ids: [UUID]) async throws -> UndoToken {
-        UndoToken(songIds: ids, movedFiles: [], expiresAt: Date().addingTimeInterval(30))
+        UndoToken(songIds: ids, movedFiles: [], expiresAt: Date().addingTimeInterval(softDeleteWindow))
     }
-    func undoDelete(token: UndoToken) async throws {}
-    func commitDelete(token: UndoToken) async throws {}
+    func undoDelete(token: UndoToken) async throws { undoneSongIds.append(token.songIds) }
+    func commitDelete(token: UndoToken) async throws { committedSongIds.append(token.songIds) }
     func toggleFavorite(id: UUID) async throws {}
     func recordPlay(id: UUID) async throws {}
     func updateLyrics(songId: UUID, lyricsPath: String?, lyricsSource: LyricsSource?) async throws {
