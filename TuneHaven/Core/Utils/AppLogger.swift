@@ -11,7 +11,7 @@ final class AppLogger {
 
     private let writer = FileLogWriter(
         queueLabel: "com.tunehaven.applogger",
-        fileURL: { SandboxPathManager.documentsURL.appendingPathComponent("app.log") }
+        fileURL: { SandboxPathManager.logFileURL(named: "app.log") }
     )
 
     private init() {}
@@ -40,6 +40,10 @@ final class AppLogger {
     }
 
     private func writeLog(level: LogLevel, message: String, file: String, function: String) {
+        #if !DEBUG
+        // 发布版不落盘调试日志：其中有歌名、路径、IP 等细节
+        guard level != .debug else { return }
+        #endif
         let shortFile = (file as NSString).lastPathComponent.replacingOccurrences(of: ".swift", with: "")
         let entry = "[\(FileLogWriter.isoDate())] [\(level.rawValue)] [\(shortFile).\(function)] \(message)\n"
         #if DEBUG

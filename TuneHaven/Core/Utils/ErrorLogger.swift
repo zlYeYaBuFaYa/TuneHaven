@@ -5,7 +5,7 @@ final class ErrorLogger {
 
     private let writer = FileLogWriter(
         queueLabel: "com.tunehaven.errorlogger",
-        fileURL: { SandboxPathManager.documentsURL.appendingPathComponent("error.log") }
+        fileURL: { SandboxPathManager.logFileURL(named: "error.log") }
     )
 
     private init() {}

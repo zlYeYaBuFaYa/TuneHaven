@@ -17,6 +17,22 @@ enum SandboxPathManager {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
     }
 
+    /// 日志放在 Caches：不进 iCloud 备份，空间不足时可被系统清理。
+    static func logFileURL(named name: String) -> URL {
+        cachesURL.appendingPathComponent(name)
+    }
+
+    /// 旧版本写在 Documents 的日志（会进 iCloud 备份），启动时删除。
+    static func removeLegacyLogs() {
+        let fm = FileManager.default
+        for name in ["app.log", "app.log.old", "error.log", "error.log.old"] {
+            let url = documentsURL.appendingPathComponent(name)
+            if fm.fileExists(atPath: url.path) {
+                try? fm.removeItem(at: url)
+            }
+        }
+    }
+
     static var applicationSupportURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
     }

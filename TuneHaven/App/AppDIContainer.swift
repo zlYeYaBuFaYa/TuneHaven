@@ -114,6 +114,7 @@ final class AppDIContainer: ObservableObject {
         try await CoreDataStack.shared.load()
         await MigrationManager.shared.runPostLoadMigrations()
         SandboxPathManager.createAllDirectories()
+        SandboxPathManager.removeLegacyLogs()
         let coverMigration = CoverStorageMigration.migrate(
             legacyCovers: SandboxPathManager.legacyCoverImagesURL,
             legacyPlaylistCovers: SandboxPathManager.legacyPlaylistCoversURL,
