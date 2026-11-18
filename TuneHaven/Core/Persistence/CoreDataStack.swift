@@ -18,7 +18,18 @@ final class CoreDataStack: @unchecked Sendable {
     }
 
     private convenience init() {
-        self.init(container: NSPersistentContainer(name: "MusicPlayer"))
+        let container = NSPersistentContainer(name: "MusicPlayer")
+        #if DEBUG
+        // UI 测试用：`TUNEHAVEN_FRESH_STORE=1` 时每次启动用 tmp 里新的 SQLite 文件，曲库为空、互不影响；
+        // 设为其他值时按该名字取 tmp 里的库，同一用例重启后仍是同一个库。
+        // 不用内存库：歌单数量的分组查询只有 SQLite 支持。
+        if let store = ProcessInfo.processInfo.environment["TUNEHAVEN_FRESH_STORE"], !store.isEmpty {
+            let name = store == "1" ? UUID().uuidString : store
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("uitest-\(name).sqlite")
+            container.persistentStoreDescriptions = [NSPersistentStoreDescription(url: url)]
+        }
+        #endif
+        self.init(container: container)
     }
 
     private init(container: NSPersistentContainer) {
