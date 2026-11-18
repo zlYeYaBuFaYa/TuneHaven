@@ -1,49 +1,11 @@
 import CoreData
 import Foundation
 
-/// CoreData 轻量级迁移管理
-/// 当 xcdatamodel 版本变更时负责自动迁移
+/// App 版本升级后的一次性任务，以及 CoreData 加载后的数据修复。
+/// 模型的轻量级迁移由 `NSPersistentContainer` 加载时自动完成（默认开启自动迁移与推断映射）。
 final class MigrationManager {
     static let shared = MigrationManager()
     private init() {}
-
-    /// 检查是否需要迁移，并执行轻量级自动迁移
-    func migrateStoreIfNeeded(at storeURL: URL, model: NSManagedObjectModel) throws {
-        guard FileManager.default.fileExists(atPath: storeURL.path) else { return }
-
-        let metadata: [String: Any]
-        do {
-            metadata = try NSPersistentStoreCoordinator.metadataForPersistentStore(
-                ofType: NSSQLiteStoreType, at: storeURL, options: nil
-            )
-        } catch {
-            ErrorLogger.shared.log(.databaseError(error), context: "MigrationManager.metadataCheck")
-            throw error
-        }
-
-        guard !model.isConfiguration(withName: nil, compatibleWithStoreMetadata: metadata) else {
-            return // 已兼容，无需迁移
-        }
-
-        let options: [String: Any] = [
-            NSMigratePersistentStoresAutomaticallyOption: true,
-            NSInferMappingModelAutomaticallyOption: true
-        ]
-
-        let coordinator = NSPersistentStoreCoordinator(managedObjectModel: model)
-        do {
-            try coordinator.addPersistentStore(
-                ofType: NSSQLiteStoreType,
-                configurationName: nil,
-                at: storeURL,
-                options: options
-            )
-            // migration succeeded
-        } catch {
-            ErrorLogger.shared.log(.databaseError(error), context: "MigrationManager.migrate")
-            throw error
-        }
-    }
 
     // MARK: - App 版本升级处理（非 CoreData 迁移）
 

@@ -9,11 +9,11 @@ final class CoreDataPlaylistRepository: PlaylistRepository, @unchecked Sendable 
     func fetchAll() async -> [Playlist] {
         await withCheckedContinuation { continuation in
             stack.viewContext.perform {
-                self.stack.viewContext.refreshAllObjects()
                 self.stack.viewContext.processPendingChanges()
                 let request = PlaylistEntity.fetchRequest()
                 request.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
                 request.returnsObjectsAsFaults = false
+                request.shouldRefreshRefetchedObjects = true
                 do {
                     let results = try self.stack.viewContext.fetch(request)
                     let songCountMap = try self.batchSongCounts(context: self.stack.viewContext, playlists: results)
@@ -34,7 +34,6 @@ final class CoreDataPlaylistRepository: PlaylistRepository, @unchecked Sendable 
     func fetchPlaylistDetail(id: UUID) async -> PlaylistDetail? {
         await withCheckedContinuation { continuation in
             stack.viewContext.perform {
-                self.stack.viewContext.refreshAllObjects()
                 do {
                     guard let entity = try self.fetchPlaylistEntity(id: id, context: self.stack.viewContext) else {
                         continuation.resume(returning: nil)
@@ -126,8 +125,10 @@ final class CoreDataPlaylistRepository: PlaylistRepository, @unchecked Sendable 
             let maxOrder = (try? ctx.fetch(maxOrderReq))?.first?.sortOrder ?? -1
 
             var addedCount: Int32 = 0
+            var seen = existingIds
             for songId in songIds {
-                guard !existingIds.contains(songId) else { continue }
+                // 已在歌单里的、以及这次传入里重复的 id 都只加一次
+                guard seen.insert(songId).inserted else { continue }
                 addedCount += 1
                 let link = PlaylistSongEntity(context: ctx)
                 link.playlistId = playlistId
@@ -290,6 +291,7 @@ final class CoreDataPlaylistRepository: PlaylistRepository, @unchecked Sendable 
         let request = PlaylistEntity.fetchRequest()
         request.predicate = NSPredicate(format: "id == %@", id as CVarArg)
         request.fetchLimit = 1
+        request.shouldRefreshRefetchedObjects = true
         return try context.fetch(request).first
     }
 
@@ -298,12 +300,14 @@ final class CoreDataPlaylistRepository: PlaylistRepository, @unchecked Sendable 
         psRequest.predicate = NSPredicate(format: "playlistId == %@", playlistId as CVarArg)
         psRequest.sortDescriptors = [NSSortDescriptor(key: "sortOrder", ascending: true)]
         psRequest.fetchBatchSize = 50
+        psRequest.shouldRefreshRefetchedObjects = true
         let links = try context.fetch(psRequest)
         let songIds = links.compactMap { $0.songId }
         guard !songIds.isEmpty else { return [] }
 
         let songRequest = SongEntity.fetchRequest()
         songRequest.predicate = NSPredicate(format: "id IN %@ AND softDeleted == NO", songIds as NSArray)
+        songRequest.shouldRefreshRefetchedObjects = true
         let songEntities = try context.fetch(songRequest)
         let idToSong = Dictionary(uniqueKeysWithValues: songEntities.compactMap { e -> (UUID, Song)? in
             guard let id = e.id, let s = SongMapper.toDomain(e) else { return nil }
