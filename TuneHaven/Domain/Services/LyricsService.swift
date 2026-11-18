@@ -38,6 +38,7 @@ final class LyricsService: ObservableObject {
         // The player may hold a pre-edit value. Read the persisted lyrics choice again.
         let song = await repo.fetchSong(id: original.id) ?? original
         if song.lyricsSource == .instrumental { return LyricsLoadResult(state: .instrumental) }
+        if song.lyricsSource == .removed { return LyricsLoadResult(state: .unavailable) }
         var triedEmbedded = false
         if let source = song.lyricsSource {
             switch source {
@@ -48,7 +49,7 @@ final class LyricsService: ObservableObject {
                 if let path = song.lyricsPath, let data = loadFromFile(relativePath: path) {
                     return LyricsLoadResult(state: .loaded, data: data)
                 }
-            case .instrumental: break
+            case .instrumental, .removed: break
             }
         }
         if !triedEmbedded, let data = await loadEmbedded(song: song) { return LyricsLoadResult(state: .loaded, data: data) }
@@ -219,7 +220,8 @@ final class LyricsService: ObservableObject {
         }
 
         do {
-            try await repo.updateLyrics(songId: song.id, lyricsPath: nil, lyricsSource: nil)
+            // 记为已删除，下次加载不会再读回内嵌歌词或自动匹配
+            try await repo.updateLyrics(songId: song.id, lyricsPath: nil, lyricsSource: .removed)
         } catch {
             throw AppError.lyricsDeleteFailed(error.localizedDescription)
         }

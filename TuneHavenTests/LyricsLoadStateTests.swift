@@ -167,6 +167,43 @@ struct LyricsLoadStateTests {
         #expect(plan.snapshot.songs.first?.song.lyricsPath == nil)
     }
 
+    @Test("删除内嵌歌词后重启不再读回，也不自动联网；重新添加歌词可替换")
+    func deletedEmbeddedLyricsStayDeleted() async throws {
+        let stack = try await CoreDataStack.makeInMemory()
+        let repo = CoreDataSongRepository(stack: stack)
+        var song = makeSong()
+        try await repo.insert(song: song)
+        let embedded = MockEmbeddedLyricsReader()
+        embedded.result = "[00:01.00]内嵌歌词"
+        let api = TestLyricsAPI()
+        let service = await makeService(repo: repo, api: api, embedded: embedded)
+        #expect(await service.loadLyricsResult(for: song).state == .loaded)
+
+        try await service.deleteLyrics(for: song)
+        song = try #require(await repo.fetchSong(id: song.id))
+        #expect(song.lyricsSource == .removed)
+
+        let reloaded = await makeService(repo: repo, api: api, embedded: embedded)
+        #expect(await reloaded.loadLyricsResult(for: song).state == .unavailable)
+        #expect(api.getCalls == 0)
+
+        try await reloaded.saveLyrics("[00:01.00]新歌词", for: song)
+        defer { try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("\(song.id).lrc")) }
+        #expect(await repo.fetchSong(id: song.id)?.lyricsSource == .file)
+    }
+
+    @Test("备份恢复保留已删除歌词标记")
+    func backupRemovedMarker() throws {
+        let id = UUID()
+        var record = BackupTestFiles.record(id: id, title: "删过歌词", audio: nil)
+        record.lyricsSource = Int(LyricsSource.removed.rawValue)
+        let plan = BackupPlanner.plan(local: BackupTestFiles.snapshot(songs: []),
+                                      package: BackupTestFiles.catalog(songs: [record]), mode: .replaceLibrary,
+                                      resolution: BackupTestFiles.resolution(song: .replace))
+        #expect(plan.snapshot.songs.first?.song.lyricsSource == .removed)
+        #expect(plan.snapshot.songs.first?.song.lyricsPath == nil)
+    }
+
     private func instrumentalTrack() -> LRCLibTrack {
         LRCLibTrack(id: 1, trackName: "Test Song", artistName: "Test Artist",
                     albumName: "Test Album", duration: 180, instrumental: true, plainLyrics: nil, syncedLyrics: nil)

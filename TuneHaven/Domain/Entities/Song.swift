@@ -96,6 +96,11 @@ enum LyricsSource: Int16, Codable {
     case manual = 2
     /// Explicit no-lyrics choice, persisted in the existing Int16 column (no schema migration).
     case instrumental = 3
+    /// 用户删除了歌词：不再读取内嵌歌词、不自动在线匹配，重新添加歌词即替换。
+    case removed = 4
+
+    /// 明确的「无歌词」标记，重启和备份恢复后保留。
+    var isNoLyricsMarker: Bool { self == .instrumental || self == .removed }
 }
 
 struct Metadata: Hashable, Sendable {

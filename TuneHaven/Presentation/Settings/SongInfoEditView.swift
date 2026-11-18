@@ -96,7 +96,7 @@ struct SongInfoEditView: View {
     private func lyricsSection(_ song: Song) -> some View {
         Section("歌词") {
             infoRow("状态", lyricsStatusText(song))
-            if song.lyricsSource != nil {
+            if let source = song.lyricsSource, source != .removed {
                 infoRow("来源", lyricsSourceText(song))
             }
 
@@ -116,7 +116,7 @@ struct SongInfoEditView: View {
                     .foregroundColor(palette.accent)
             }
 
-            if song.lyricsSource != nil || song.lyricsPath != nil {
+            if (song.lyricsSource != nil && song.lyricsSource != .removed) || song.lyricsPath != nil {
                 Button(role: .destructive) {
                     showDeleteLyricsConfirm = true
                 } label: {
@@ -177,6 +177,7 @@ struct SongInfoEditView: View {
         case .file: return "已有歌词（LRC 文件）"
         case .manual: return "手动导入歌词"
         case .instrumental: return "器乐曲（无歌词）"
+        case .removed: return "暂无歌词"
         case nil:
             return lyricsService.hasExternalLyrics(for: song.id) ? "已有歌词（LRC 文件）" : "暂无歌词"
         }
@@ -188,7 +189,7 @@ struct SongInfoEditView: View {
         case .file: return "本地文件"
         case .manual: return "手动导入"
         case .instrumental: return "无歌词标记"
-        case nil: return "—"
+        case .removed, nil: return "—"
         }
     }
 
