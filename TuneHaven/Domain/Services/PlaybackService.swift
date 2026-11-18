@@ -144,8 +144,10 @@ final class PlaybackService: ObservableObject {
     }
 
     func togglePlayPause() {
-        if let song = currentSong, !ensureCanPlay(song) { return }
-        if let song = currentSong, case .idle = engine.state {
+        // 没有当前歌曲时引擎没有可播的内容，不能把状态置为播放中
+        guard let song = currentSong else { return }
+        if !ensureCanPlay(song) { return }
+        if case .idle = engine.state {
             startLoadAndPlay(song: song)
             return
         }
@@ -616,22 +618,17 @@ final class PlaybackService: ObservableObject {
         )
     }
 
-    /// 锁屏/控制中心的 Play 不得裸调 `engine.play()`。无当前歌曲时保持原引擎行为。
+    /// 锁屏/控制中心的 Play 不得裸调 `engine.play()`。无当前歌曲时不做任何事。
     private func handleRemotePlay() {
-        if let song = currentSong {
-            guard ensureCanPlay(song) else { return }
-            if case .playing = engine.state { return }
-            if case .paused = engine.state {
-                audioSession.ensureActive()
-                engine.play()
-                isPlaying = true
-                return
-            }
-            startLoadAndPlay(song: song)
+        guard let song = currentSong, ensureCanPlay(song) else { return }
+        if case .playing = engine.state { return }
+        if case .paused = engine.state {
+            audioSession.ensureActive()
+            engine.play()
+            isPlaying = true
             return
         }
-        audioSession.ensureActive()
-        engine.play()
+        startLoadAndPlay(song: song)
     }
 
     /// 停在被拦截的目标歌曲上并保持软付费墙信号，不静默跳过、也不继续出声。
