@@ -5,15 +5,15 @@ actor WebDAVClient: WebDAVClientProtocol {
         let baseURL: URL
         let username: String
         let password: String
-        let trustSelfSignedCert: Bool
+        let trust: WebDAVTrustPolicy
         let timeoutInterval: TimeInterval
 
         init(baseURL: URL, username: String, password: String,
-             trustSelfSignedCert: Bool = false, timeoutInterval: TimeInterval = 30) {
+             trust: WebDAVTrustPolicy = WebDAVTrustPolicy(trustSelfSigned: false), timeoutInterval: TimeInterval = 30) {
             self.baseURL = baseURL
             self.username = username
             self.password = password
-            self.trustSelfSignedCert = trustSelfSignedCert
+            self.trust = trust
             self.timeoutInterval = timeoutInterval
         }
     }
@@ -27,7 +27,7 @@ actor WebDAVClient: WebDAVClientProtocol {
     /// `sessionConfiguration` 仅供测试注入 URLProtocol 桩
     init(configuration: Configuration, sessionConfiguration: URLSessionConfiguration = .default) {
         self.config = configuration
-        let delegate = WebDAVSessionDelegate(trustSelfSignedCert: configuration.trustSelfSignedCert)
+        let delegate = WebDAVSessionDelegate(policy: configuration.trust)
         self.sessionDelegate = delegate
 
         let urlConfig = (sessionConfiguration.copy() as? URLSessionConfiguration) ?? .default
@@ -45,7 +45,7 @@ actor WebDAVClient: WebDAVClientProtocol {
         optionsReq.httpMethod = "OPTIONS"
         addAuth(to: &optionsReq)
 
-        let (_, optionsResp) = try await session.data(for: optionsReq)
+        let (_, optionsResp) = try await data(for: optionsReq)
         guard let http = optionsResp as? HTTPURLResponse else {
             throw AppError.webdavConnectionFailed("无法连接到服务器")
         }
@@ -68,7 +68,7 @@ actor WebDAVClient: WebDAVClientProtocol {
         propReq.httpBody = propfindBody
         addAuth(to: &propReq)
 
-        let (_, propResp) = try await session.data(for: propReq)
+        let (_, propResp) = try await data(for: propReq)
         guard let propHttp = propResp as? HTTPURLResponse else {
             throw AppError.webdavConnectionFailed("PROPFIND 请求失败")
         }
@@ -95,7 +95,7 @@ actor WebDAVClient: WebDAVClientProtocol {
         request.httpBody = propfindXML()
         addAuth(to: &request)
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw AppError.webdavConnectionFailed("请求失败")
         }
@@ -141,7 +141,7 @@ actor WebDAVClient: WebDAVClientProtocol {
         request.httpMethod = "HEAD"
         addAuth(to: &request)
 
-        let (_, response) = try await session.data(for: request)
+        let (_, response) = try await data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw AppError.webdavConnectionFailed("HEAD 请求失败")
         }
@@ -194,7 +194,12 @@ actor WebDAVClient: WebDAVClientProtocol {
 
         // 系统直接把响应写入临时文件，进度由任务的字节计数回报，不在 Swift 里逐字节搬运。
         let progressDelegate = DownloadProgressDelegate(progress: progress)
-        let (tempURL, response) = try await session.download(for: request, delegate: progressDelegate)
+        let (tempURL, response): (URL, URLResponse)
+        do {
+            (tempURL, response) = try await session.download(for: request, delegate: progressDelegate)
+        } catch {
+            throw mapTrustError(error)
+        }
         defer { try? FileManager.default.removeItem(at: tempURL) }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             let code = (response as? HTTPURLResponse)?.statusCode ?? -1
@@ -210,6 +215,23 @@ actor WebDAVClient: WebDAVClientProtocol {
         let receivedBytes = (try? FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? Int64) ?? 0
         progress(receivedBytes, http.expectedContentLength)
         return destination
+    }
+
+    private nonisolated func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch {
+            throw mapTrustError(error)
+        }
+    }
+
+    /// 因证书与记住的指纹不符被拒时，URLSession 只报「已取消」，这里换成明确的错误。
+    private nonisolated func mapTrustError(_ error: Error) -> Error {
+        guard sessionDelegate.rejectedChangedCertificate, let urlError = error as? URLError,
+              [.cancelled, .serverCertificateUntrusted, .secureConnectionFailed].contains(urlError.code) else {
+            return error
+        }
+        return AppError.webdavCertificateChanged
     }
 
     private nonisolated func addAuth(to request: inout URLRequest) {

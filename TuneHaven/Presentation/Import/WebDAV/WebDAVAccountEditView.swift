@@ -166,6 +166,11 @@ struct WebDAVAccountEditView: View {
         } header: {
             Text("高级选项")
                 .foregroundColor(palette.textSecondary)
+        } footer: {
+            if trustSelfSignedCert {
+                Text("首次连接时记住服务器证书，之后证书变化会拒绝连接。确认服务器可信后重新保存账户，即可信任新证书。")
+                    .foregroundColor(palette.textSecondary)
+            }
         }
     }
 

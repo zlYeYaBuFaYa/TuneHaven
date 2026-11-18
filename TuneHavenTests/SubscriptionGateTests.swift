@@ -485,7 +485,7 @@ private final class StubWebDAVFactory: WebDAVClientFactory {
     let client: StubWebDAVClient
     var madeClient = false
     init(client: StubWebDAVClient) { self.client = client }
-    func makeClient(baseURL: URL, username: String, password: String, trustSelfSignedCert: Bool) -> WebDAVClientProtocol {
+    func makeClient(baseURL: URL, username: String, password: String, trust: WebDAVTrustPolicy) -> WebDAVClientProtocol {
         madeClient = true
         return client
     }

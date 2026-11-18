@@ -28,6 +28,7 @@ enum AppError: LocalizedError {
     case webdavServerNotSupported
     case webdavDownloadFailed(String)
     case webdavCertificateError
+    case webdavCertificateChanged
     case lyricsSearchFailed(String)
     case lyricsSaveFailed(String)
     case lyricsImportFailed(String)
@@ -70,6 +71,7 @@ enum AppError: LocalizedError {
         case .webdavServerNotSupported: return "服务器不支持 WebDAV 协议"
         case .webdavDownloadFailed(let msg): return "WebDAV 下载失败：\(msg)"
         case .webdavCertificateError: return "SSL 证书验证失败"
+        case .webdavCertificateChanged: return "服务器证书已变更。确认服务器可信后，在账户编辑页重新保存即可信任新证书"
         case .lyricsSearchFailed: return "歌词搜索失败，请检查网络连接"
         case .lyricsSaveFailed: return "歌词保存失败"
         case .lyricsImportFailed: return "歌词导入失败，请确认文件格式正确"
@@ -114,6 +116,7 @@ enum AppError: LocalizedError {
         case .webdavServerNotSupported: return "DAV003"
         case .webdavDownloadFailed: return "DAV004"
         case .webdavCertificateError: return "DAV005"
+        case .webdavCertificateChanged: return "DAV006"
         case .lyricsSearchFailed: return "LYR001"
         case .lyricsSaveFailed: return "LYR002"
         case .lyricsImportFailed: return "LYR003"
@@ -162,6 +165,7 @@ extension AppError: Equatable {
         case (.webdavServerNotSupported, .webdavServerNotSupported): return true
         case (.webdavDownloadFailed(let a), .webdavDownloadFailed(let b)): return a == b
         case (.webdavCertificateError, .webdavCertificateError): return true
+        case (.webdavCertificateChanged, .webdavCertificateChanged): return true
         case (.lyricsSearchFailed(let a), .lyricsSearchFailed(let b)): return a == b
         case (.lyricsSaveFailed(let a), .lyricsSaveFailed(let b)): return a == b
         case (.lyricsImportFailed(let a), .lyricsImportFailed(let b)): return a == b
@@ -215,6 +219,7 @@ extension AppError: CaseIterable {
             .webdavServerNotSupported,
             .webdavDownloadFailed("test"),
             .webdavCertificateError,
+            .webdavCertificateChanged,
             .lyricsSearchFailed("test"),
             .lyricsSaveFailed("test"),
             .lyricsImportFailed("test"),

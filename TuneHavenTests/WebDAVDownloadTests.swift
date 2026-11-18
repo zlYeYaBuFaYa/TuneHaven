@@ -204,7 +204,7 @@ private final class BlockingWebDAVClient: WebDAVClientProtocol, @unchecked Senda
 private final class FixedFactory: WebDAVClientFactory {
     let client: WebDAVClientProtocol
     init(client: WebDAVClientProtocol) { self.client = client }
-    func makeClient(baseURL: URL, username: String, password: String, trustSelfSignedCert: Bool) -> WebDAVClientProtocol {
+    func makeClient(baseURL: URL, username: String, password: String, trust: WebDAVTrustPolicy) -> WebDAVClientProtocol {
         client
     }
 }

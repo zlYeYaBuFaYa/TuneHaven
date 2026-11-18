@@ -6,6 +6,8 @@ struct WebDAVAccount: Identifiable, Codable, Hashable {
     var serverURL: String
     var username: String
     var trustSelfSignedCert: Bool
+    /// 信任自签证书时，首次连接记住的证书 SHA-256 指纹；重新保存账户时清空
+    var pinnedCertificateSHA256: String?
     var createdAt: Date
     var lastConnectedAt: Date?
 

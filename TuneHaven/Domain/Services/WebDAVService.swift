@@ -42,7 +42,10 @@ final class WebDAVService: ObservableObject {
         loadAccounts()
     }
 
+    /// 重新保存账户即重新信任：清空记住的证书指纹，下次连接记住当前证书。
     func updateAccount(_ account: WebDAVAccount, password: String?) throws {
+        var account = account
+        account.pinnedCertificateSHA256 = nil
         try accountStore.saveAccount(account, password: password)
         loadAccounts()
     }
@@ -60,13 +63,27 @@ final class WebDAVService: ObservableObject {
         guard let baseURL = URL(string: account.serverURL) else {
             throw AppError.webdavConnectionFailed("无效的服务器地址")
         }
+        // 测试连接只验证可达性，不记住证书；保存后第一次连接才记住
         let client = clientFactory.makeClient(
             baseURL: baseURL,
             username: account.username,
             password: password,
-            trustSelfSignedCert: account.trustSelfSignedCert
+            trust: WebDAVTrustPolicy(trustSelfSigned: account.trustSelfSignedCert)
         )
         return try await client.testConnection()
+    }
+
+    private func pinCertificate(_ fingerprint: String, accountId: UUID) {
+        guard var account = accountStore.loadAccounts().first(where: { $0.id == accountId }),
+              account.pinnedCertificateSHA256 == nil else { return }
+        account.pinnedCertificateSHA256 = fingerprint
+        do {
+            try accountStore.saveAccount(account, password: nil)
+            loadAccounts()
+            log.info("[WebDAV] 已记住服务器证书指纹")
+        } catch {
+            log.error(error, context: "[WebDAV] 保存证书指纹失败")
+        }
     }
 
     // MARK: - Browse
@@ -81,11 +98,19 @@ final class WebDAVService: ObservableObject {
         guard let password = accountStore.password(for: account.id) else {
             throw AppError.webdavAuthFailed
         }
+        let stored = accounts.first { $0.id == account.id } ?? account
+        let accountId = account.id
         activeClient = clientFactory.makeClient(
             baseURL: baseURL,
             username: account.username,
             password: password,
-            trustSelfSignedCert: account.trustSelfSignedCert
+            trust: WebDAVTrustPolicy(
+                trustSelfSigned: account.trustSelfSignedCert,
+                pinnedFingerprint: stored.pinnedCertificateSHA256,
+                onPinned: { [weak self] fingerprint in
+                    Task { @MainActor [weak self] in self?.pinCertificate(fingerprint, accountId: accountId) }
+                }
+            )
         )
         try? accountStore.updateLastConnected(accountId: account.id)
         loadAccounts()
