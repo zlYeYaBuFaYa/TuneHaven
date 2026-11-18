@@ -222,6 +222,72 @@ struct LyricsServiceTests {
         let lines = service.parseLRC(lrc)
         #expect(lines.count == 3)
     }
+
+    // MARK: - 多时间戳、无小数、offset
+
+    @Test("一行多个时间戳：每个时间都生成一行并按时间排序")
+    func testParseLRCMultipleTimestampsPerLine() {
+        let lrc = """
+        [00:10.00][01:10.00]副歌
+        [00:30.00]主歌
+        """
+
+        let lines = service.parseLRC(lrc)
+
+        #expect(lines.map(\.text) == ["副歌", "主歌", "副歌"])
+        #expect(abs(lines[0].timestamp - 10) < 0.001)
+        #expect(abs(lines[2].timestamp - 70) < 0.001)
+    }
+
+    @Test("无小数的 [mm:ss]、一位小数与冒号分隔小数都能解析")
+    func testParseLRCFractionVariants() {
+        let lrc = """
+        [00:05]无小数
+        [00:06.5]一位小数
+        [00:07:25]冒号小数
+        """
+
+        let lines = service.parseLRC(lrc)
+
+        #expect(lines.count == 3)
+        #expect(abs(lines[0].timestamp - 5) < 0.001)
+        #expect(abs(lines[1].timestamp - 6.5) < 0.001)
+        #expect(abs(lines[2].timestamp - 7.25) < 0.001)
+    }
+
+    @Test("正 offset 让歌词提前，负 offset 推后，提前不低于 0")
+    func testParseLRCOffset() {
+        let ahead = service.parseLRC("""
+        [offset:+500]
+        [00:00.20]开头
+        [00:10.00]第二句
+        """)
+        #expect(ahead[0].timestamp == 0)
+        #expect(abs(ahead[1].timestamp - 9.5) < 0.001)
+
+        let behind = service.parseLRC("""
+        [offset:-1000]
+        [00:10.00]第二句
+        """)
+        #expect(abs(behind[0].timestamp - 11) < 0.001)
+    }
+
+    @Test("同一时间戳保持原文顺序")
+    func testParseLRCStableOrderForSameTimestamp() {
+        let lrc = """
+        [00:10.00]原文
+        [00:10.00]译文
+        """
+
+        let lines = service.parseLRC(lrc)
+        #expect(lines.map(\.text) == ["原文", "译文"])
+    }
+
+    @Test("CRLF 换行与非时间标签前缀")
+    func testParseLRCCRLFAndNonTimeTags() {
+        let lines = service.parseLRC("[ti:歌名]\r\n[00:01.00]一\r\n[00:02.00]二\r\n")
+        #expect(lines.map(\.text) == ["一", "二"])
+    }
 }
 
 // MARK: - LRCLibTrack Tests

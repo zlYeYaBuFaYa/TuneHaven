@@ -234,35 +234,61 @@ final class LyricsService: ObservableObject {
 
     // MARK: - LRC Parsing
 
-    private nonisolated static let lrcRegex: NSRegularExpression? = {
-        try? NSRegularExpression(pattern: #"\[(\d{1,3}):(\d{2})\.(\d{2,3})\](.*)"#)
+    /// 时间标签：`mm:ss`、`mm:ss.x`～`mm:ss.xxx`，部分歌词用冒号分隔小数（`mm:ss:xx`）。
+    private nonisolated static let timeTagRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: #"^(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?$"#)
     }()
 
+    /// 解析 LRC：一行可带多个行首时间标签（同一句在多个时间出现），
+    /// `[offset:±毫秒]` 为正时歌词整体提前，结果按时间升序、同时间保持原顺序。
     nonisolated func parseLRC(_ content: String) -> [LyricsLine] {
-        guard let regex = Self.lrcRegex else { return [] }
-        var lines: [LyricsLine] = []
-        let rawLines = content.components(separatedBy: "\n")
-        for line in rawLines {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmed.hasPrefix("[") else { continue }
-            guard let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..., in: trimmed)) else { continue }
+        guard let regex = Self.timeTagRegex else { return [] }
+        var entries: [(timestamp: Double, text: String)] = []
+        var offsetMilliseconds: Double = 0
 
-            func group(_ i: Int) -> String {
-                guard let r = Range(match.range(at: i), in: trimmed) else { return "" }
-                return String(trimmed[r])
+        for line in content.components(separatedBy: .newlines) {
+            var rest = Substring(line.trimmingCharacters(in: .whitespaces))
+            var timestamps: [Double] = []
+            while rest.hasPrefix("["), let close = rest.firstIndex(of: "]") {
+                let tag = String(rest[rest.index(after: rest.startIndex)..<close]).trimmingCharacters(in: .whitespaces)
+                rest = rest[rest.index(after: close)...]
+                if let timestamp = Self.parseTimeTag(tag, regex: regex) {
+                    timestamps.append(timestamp)
+                } else if tag.lowercased().hasPrefix("offset:"),
+                          let value = Double(tag.dropFirst("offset:".count).trimmingCharacters(in: .whitespaces)) {
+                    offsetMilliseconds = value
+                }
             }
-
-            let minutes = Double(group(1)) ?? 0
-            let seconds = Double(group(2)) ?? 0
-            let centiseconds = Double(group(3)) ?? 0
-            let divisor: Double = group(3).count == 3 ? 1000 : 100
-            let timestamp = minutes * 60 + seconds + centiseconds / divisor
-            let text = group(4).trimmingCharacters(in: .whitespacesAndNewlines)
-            if !text.isEmpty {
-                lines.append(LyricsLine(timestamp: timestamp, text: text))
+            let text = rest.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { continue }
+            for timestamp in timestamps {
+                entries.append((timestamp, text))
             }
         }
-        return lines.sorted { $0.timestamp < $1.timestamp }
+
+        let shift = offsetMilliseconds / 1000
+        return entries.enumerated()
+            .sorted { lhs, rhs in
+                lhs.element.timestamp == rhs.element.timestamp
+                    ? lhs.offset < rhs.offset
+                    : lhs.element.timestamp < rhs.element.timestamp
+            }
+            .map { LyricsLine(timestamp: max(0, $0.element.timestamp - shift), text: $0.element.text) }
+    }
+
+    private nonisolated static func parseTimeTag(_ tag: String, regex: NSRegularExpression) -> Double? {
+        guard let match = regex.firstMatch(in: tag, range: NSRange(tag.startIndex..., in: tag)) else { return nil }
+        func group(_ i: Int) -> String? {
+            guard let r = Range(match.range(at: i), in: tag) else { return nil }
+            return String(tag[r])
+        }
+        guard let minutes = group(1).flatMap(Double.init),
+              let seconds = group(2).flatMap(Double.init) else { return nil }
+        var fraction: Double = 0
+        if let digits = group(3), let value = Double(digits) {
+            fraction = value / pow(10, Double(digits.count))
+        }
+        return minutes * 60 + seconds + fraction
     }
 
     // MARK: - Private: Load Methods
