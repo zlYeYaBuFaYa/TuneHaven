@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import AVFoundation
+import UIKit
 @testable import TuneHaven
 
 // MARK: - 导出前查重
@@ -79,6 +80,64 @@ struct AppleMusicExporterTests {
         #expect(try await AVURLAsset(url: output.url).load(.isPlayable))
         let expected = try await duration(of: source)
         #expect(abs(try await duration(of: output.url) - expected) < 0.1)
+    }
+
+    @Test("VBR MP3 补写 Xing 帧，系统估算的时长与原文件一致")
+    func vbrMP3KeepsAccurateDuration() async throws {
+        let source = try #require(Bundle(for: TestBundleToken.self).url(forResource: "vbr-32s", withExtension: "mp3"))
+        let dir = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let output = try #require(await AppleMusicExporter.export(assetURL: source, to: dir))
+        let precise = try await AVURLAsset(url: source, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+            .load(.duration).seconds
+        #expect(abs(try await duration(of: output.url) - precise) < 0.1)
+    }
+
+    @Test("MP3 写入资料库标签，元数据解析与内嵌歌词都能读出")
+    func mp3CarriesLibraryTags() async throws {
+        let source = try #require(Bundle(for: TestBundleToken.self).url(forResource: "sine-2s", withExtension: "mp3"))
+        let dir = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let cover = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        }.jpegData(compressionQuality: 0.8)
+        let tags = MP3Tags(title: "夜曲", artist: "周杰伦", album: "十一月的萧邦", year: 2005, genre: "流行",
+                           trackNumber: 2, lyrics: "一群嗜血的蚂蚁\n被腐肉所吸引", coverJPEG: cover)
+
+        let output = try #require(await AppleMusicExporter.export(assetURL: source, to: dir, tags: tags))
+        let parsed = await AudioMetadataParser.shared.parse(url: output.url)
+        #expect(parsed.title == "夜曲")
+        #expect(parsed.artist == "周杰伦")
+        #expect(parsed.album == "十一月的萧邦")
+        #expect(parsed.year == 2005)
+        #expect(parsed.genre == "流行")
+        #expect(parsed.trackNumber == 2)
+        #expect(parsed.coverImageData != nil)
+        #expect(await EmbeddedLyricsReader().readEmbeddedLyrics(from: output.url) == tags.lyrics)
+    }
+
+    @Test("同一来源导出两次字节完全一致，入库时的哈希查重才能拦住重复")
+    func repeatedExportsAreIdentical() async throws {
+        let dir = try makeDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let aac = dir.appendingPathComponent("tone-aac.m4a")
+        try writeTone(to: aac, settings: [AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: 44100, AVNumberOfChannelsKey: 1])
+        let alac = dir.appendingPathComponent("tone-alac.m4a")
+        try writeTone(to: alac, settings: [AVFormatIDKey: kAudioFormatAppleLossless, AVSampleRateKey: 44100,
+                                           AVNumberOfChannelsKey: 1, AVEncoderBitDepthHintKey: 16])
+        let mp3 = try #require(Bundle(for: TestBundleToken.self).url(forResource: "sine-2s", withExtension: "mp3"))
+
+        for source in [aac, alac, mp3] {
+            let first = try #require(await AppleMusicExporter.export(assetURL: source, to: dir))
+            // 时间戳精度是秒，隔开一秒以上才能暴露差异
+            try await Task.sleep(nanoseconds: 1_100_000_000)
+            let second = try #require(await AppleMusicExporter.export(assetURL: source, to: dir))
+            #expect(!first.transcoded)
+            #expect(try Data(contentsOf: first.url) == Data(contentsOf: second.url), "\(source.lastPathComponent)")
+            #expect(try await AVURLAsset(url: second.url).load(.isPlayable))
+        }
     }
 
     @Test("AAC 原样导出为 m4a，不转码")

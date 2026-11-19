@@ -4,6 +4,7 @@ import MediaPlayer
 struct AppleMusicImportView: View {
     @EnvironmentObject private var importService: ImportService
     @EnvironmentObject private var libraryService: MusicLibraryService
+    @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
     @Environment(\.dismiss) private var dismiss
 
@@ -33,7 +34,7 @@ struct AppleMusicImportView: View {
                 if vm.authStatus == .authorized && !vm.selectedIds.isEmpty && !vm.isImporting {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("导入 (\(vm.selectedIds.count))") {
-                            Task { await vm.startImport(importService: importService, libraryService: libraryService) }
+                            Task { await vm.startImport(importService: importService, libraryService: libraryService, snackbar: snackbar) }
                         }
                         .foregroundColor(palette.accent)
                         .disabled(importService.isImporting || vm.isImporting)
@@ -42,6 +43,8 @@ struct AppleMusicImportView: View {
             }
         }
         .task { await vm.checkAuthorization() }
+        .onAppear { vm.isPresented = true }
+        .onDisappear { vm.isPresented = false }
     }
 
     @ViewBuilder
@@ -103,6 +106,12 @@ struct AppleMusicImportView: View {
                     importingBanner.importRowSurface()
                 } footer: {
                     Text("关闭页面后，导入仍会继续。").foregroundColor(palette.textSecondary)
+                }
+            }
+            if importService.isImporting && !vm.isImporting {
+                Section {
+                    Text("上一次导入仍在后台进行，完成后会提示结果，之后可以继续导入。")
+                        .font(.footnote).foregroundColor(palette.textSecondary).plainListRow()
                 }
             }
             if let result = vm.importResult {

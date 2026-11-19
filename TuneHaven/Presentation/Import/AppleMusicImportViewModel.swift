@@ -60,6 +60,8 @@ final class AppleMusicImportViewModel: ObservableObject {
     @Published private(set) var transcodedCount = 0
     @Published var searchText = ""
     @Published private(set) var filteredTracks: [AppleMusicTrack] = []
+    /// 页面是否在显示。导入完成时页面已关闭，就改用 Snackbar 告知结果。
+    var isPresented = false
 
     private var itemsByID: [MPMediaEntityPersistentID: MPMediaItem] = [:]
 
@@ -115,7 +117,7 @@ final class AppleMusicImportViewModel: ObservableObject {
         }
     }
 
-    func startImport(importService: ImportService, libraryService: MusicLibraryService) async {
+    func startImport(importService: ImportService, libraryService: MusicLibraryService, snackbar: SnackbarState) async {
         let selected = tracks.filter { selectedIds.contains($0.id) }
         guard !selected.isEmpty else { return }
 
@@ -156,14 +158,18 @@ final class AppleMusicImportViewModel: ObservableObject {
             for await result in group {
                 details.append(result)
                 importProgress = (details.count, selected.count)
-                if !Task.isCancelled { enqueueNext() }
+                enqueueNext()
             }
         }
 
-        importResult = Self.summarize(details)
+        let result = Self.summarize(details)
+        importResult = result
         isImporting = false
         selectedIds.removeAll()
         await libraryService.loadSongs()
+        if !isPresented {
+            snackbar.show(message: Self.backgroundCompletionMessage(result))
+        }
     }
 
     // MARK: - Private
@@ -197,12 +203,12 @@ final class AppleMusicImportViewModel: ObservableObject {
         guard let item = itemsByID[track.id], let assetURL = item.assetURL else {
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "无法访问音频文件")
         }
-        guard let exported = await AppleMusicExporter.export(assetURL: assetURL, to: exportDirectory) else {
+        let artworkData = item.artwork?.image(at: CGSize(width: 400, height: 400))?.jpegData(compressionQuality: 0.8)
+        guard let exported = await AppleMusicExporter.export(assetURL: assetURL, to: exportDirectory, tags: Self.tags(of: item, coverJPEG: artworkData)) else {
             return SingleImportResult(fileName: fileName, status: .failed, song: nil, errorMessage: "导出音频失败")
         }
         defer { try? FileManager.default.removeItem(at: exported.url) }
 
-        let artworkData = item.artwork?.image(at: CGSize(width: 400, height: 400))?.jpegData(compressionQuality: 0.8)
         let result = await importService.processBatchExportedFile(
             tempURL: exported.url,
             originalFilename: "\(fileName).\(exported.fileExtension)",
@@ -215,6 +221,26 @@ final class AppleMusicImportViewModel: ObservableObject {
             transcodedCount += 1
         }
         return result
+    }
+
+    /// 「音乐」App 里的元数据。MP3 逐帧导出不带 ID3，靠它补写进文件。
+    private static func tags(of item: MPMediaItem, coverJPEG: Data?) -> MP3Tags {
+        let year = item.releaseDate.map { Calendar(identifier: .gregorian).component(.year, from: $0) }
+            ?? (item.value(forProperty: "year") as? Int).flatMap { $0 > 0 ? $0 : nil }
+        return MP3Tags(
+            title: item.title,
+            artist: item.artist,
+            album: item.albumTitle,
+            year: year,
+            genre: item.genre,
+            trackNumber: item.albumTrackNumber > 0 ? item.albumTrackNumber : nil,
+            lyrics: item.lyrics,
+            coverJPEG: coverJPEG
+        )
+    }
+
+    private static func backgroundCompletionMessage(_ result: ImportResult) -> String {
+        "Apple Music \(result.presentationTitle)：成功 \(result.successCount) 首，跳过 \(result.skippedDuplicateCount) 首，失败 \(result.failedCount) 首"
     }
 
     private static func summarize(_ details: [SingleImportResult]) -> ImportResult {
