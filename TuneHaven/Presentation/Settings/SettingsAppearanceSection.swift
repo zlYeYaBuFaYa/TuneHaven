@@ -11,6 +11,7 @@ struct SettingsAppearanceSection: View {
     var body: some View {
         Section {
             DisclosureGroup(isExpanded: $isExpanded) {
+                appearanceModeRow
                 themeStyleRow
             } label: {
                 Label {
@@ -23,6 +24,27 @@ struct SettingsAppearanceSection: View {
             .tint(palette.textSecondary)
             .listRowBackground(listRowBg)
         }
+    }
+
+    // MARK: - Appearance Mode
+
+    private var appearanceModeRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("深浅外观")
+                .font(.footnote)
+                .foregroundColor(palette.textSecondary)
+            Picker("深浅外观", selection: Binding(
+                get: { themeManager.appearanceMode },
+                set: { themeManager.setAppearanceMode($0) }
+            )) {
+                ForEach(AppearanceMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(.vertical, 4)
+        .listRowBackground(listRowBg)
     }
 
     // MARK: - Theme Style
@@ -48,9 +70,6 @@ struct SettingsAppearanceSection: View {
                     .accessibilityAddTraits(themeManager.currentStyle.id == style.id ? .isSelected : [])
                 }
             }
-            Text("日间／黑夜跟随系统外观")
-                .font(.footnote)
-                .foregroundColor(palette.textSecondary)
         }
         .padding(.vertical, 4)
         .listRowBackground(listRowBg)

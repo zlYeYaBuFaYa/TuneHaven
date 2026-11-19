@@ -69,6 +69,7 @@ struct TuneHavenApp: App {
             }
             .onAppear {
                 AppLogger.shared.debug("[App] onAppear — applying window theme")
+                container.themeManager.applyAppearanceToWindows()
                 container.themeManager.scheduleWindowRefresh(delay: 0.1, fullApply: true)
             }
             .onChange(of: scenePhase) { phase in

@@ -13,12 +13,40 @@ extension EnvironmentValues {
     }
 }
 
+// MARK: - AppearanceMode
+
+/// 深浅外观。主题只决定色系，深浅默认跟随系统，也可手动固定（交互设计文档 §9）
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .light: return "浅色"
+        case .dark: return "深色"
+        }
+    }
+
+    var interfaceStyle: UIUserInterfaceStyle {
+        switch self {
+        case .system: return .unspecified
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
 // MARK: - ThemeManager
 
 @MainActor
 final class ThemeManager: ObservableObject {
     @Published private(set) var currentStyle: ThemeStyle
     @AppStorage(AppStorageKey.themeStyle) private var storedThemeStyle: String = ThemeRegistry.shared.defaultTheme.id
+    @Published private(set) var appearanceMode: AppearanceMode
 
     private let registry = ThemeRegistry.shared
 
@@ -34,6 +62,8 @@ final class ThemeManager: ObservableObject {
         registry.bootstrap()
         Self.migrateStoredThemeID(registry: registry)
         currentStyle = registry.resolveCurrentStyle()
+        appearanceMode = UserDefaults.standard.string(forKey: AppStorageKey.appearanceMode)
+            .flatMap(AppearanceMode.init(rawValue:)) ?? .system
     }
 
     /// 把偏好中的旧主题 ID 换成新 ID 并写回；无法识别的落回默认主题
@@ -60,6 +90,20 @@ final class ThemeManager: ObservableObject {
         scheduleWindowRefresh(delay: 0.3, fullApply: false)
     }
 
+    /// 选中即生效并保存。直接改窗口的深浅，弹层与全屏播放器同在一个窗口里，一起切换
+    func setAppearanceMode(_ mode: AppearanceMode) {
+        appearanceMode = mode
+        UserDefaults.standard.set(mode.rawValue, forKey: AppStorageKey.appearanceMode)
+        applyAppearanceToWindows()
+    }
+
+    /// 只同步深浅外观，启动时立即调用，避免先按系统外观闪一下
+    func applyAppearanceToWindows() {
+        Self.foregroundWindowScene?.windows.forEach { window in
+            window.overrideUserInterfaceStyle = appearanceMode.interfaceStyle
+        }
+    }
+
     /// 备份写回 `theme_style` 后刷新界面。旧主题 ID 换算为新 ID，无法识别的落回默认主题。
     func reloadStoredStyle() {
         Self.migrateStoredThemeID(registry: registry)
@@ -82,10 +126,10 @@ final class ThemeManager: ObservableObject {
 
         AppLogger.shared.debug("[ThemeManager] applyToWindows — theme=\(currentStyle.id)")
 
-        // 深浅外观跟随系统：不覆盖 userInterfaceStyle，动态色随系统切换
+        // 色板为动态色，按窗口的深浅外观（跟随系统或手动固定）取值
         windowScene.windows.forEach { window in
             window.backgroundColor = bgColor
-            window.overrideUserInterfaceStyle = .unspecified
+            window.overrideUserInterfaceStyle = appearanceMode.interfaceStyle
             Self.updateNavigationBars(on: window.rootViewController, surfaceColor: surfaceColor)
         }
     }
@@ -102,7 +146,7 @@ final class ThemeManager: ObservableObject {
 
         windowScene.windows.forEach { window in
             window.backgroundColor = bgColor
-            window.overrideUserInterfaceStyle = .unspecified
+            window.overrideUserInterfaceStyle = appearanceMode.interfaceStyle
         }
         AppLogger.shared.debug("[ThemeManager] refreshWindows done — theme=\(currentStyle.id)")
     }

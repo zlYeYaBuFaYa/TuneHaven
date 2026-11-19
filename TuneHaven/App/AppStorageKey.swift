@@ -8,6 +8,8 @@ enum AppStorageKey {
     static let songDislikes = "song_dislikes"
     static let lastPlayedSongId = "last_played_song_id"
     static let themeStyle = "theme_style"
+    /// 深浅外观：system（跟随系统）、light、dark
+    static let appearanceMode = "appearance_mode"
     static let useCustomWallpaper = "use_custom_wallpaper"
     static let recentPlayRange = "recent_play_range"
     static let wifiPasswordEnabled = "wifi_password_enabled"
