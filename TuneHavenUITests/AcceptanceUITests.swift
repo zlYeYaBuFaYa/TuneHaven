@@ -36,10 +36,23 @@ final class AcceptanceUITests: XCTestCase {
         expect(current, timeout: 5)
         app.terminate()
 
+        // 冷启动：上次歌曲由「继续听」卡承接，开播前不显示迷你播放器
         app = launch(store: store)
-        expect(miniPlayer(app, title: "交互测试2"), timeout: 15, "未恢复上次歌曲")
-        XCTAssertTrue(app.buttons["播放"].exists, "冷启动应为暂停态")
+        let resume = app.buttons["继续播放：交互测试2"]
+        expect(resume, timeout: 15, "未恢复上次歌曲")
+        XCTAssertFalse(miniPlayer(app, title: "交互测试2").exists, "开播前不应显示迷你播放器")
         attach(app, name: "I-02-restored")
+
+        // 继续播放：直接开播、留在曲库，卡片收起由迷你播放器接手，暂停后仍保留
+        resume.tap()
+        expect(miniPlayer(app, title: "交互测试2"), timeout: 5, "开播后应显示迷你播放器")
+        XCTAssertFalse(app.buttons["收起播放器"].exists, "继续播放不应展开全屏播放器")
+        expect(app.buttons["暂停"], timeout: 5)
+        XCTAssertFalse(resume.exists, "开播后继续听卡应收起")
+        app.buttons["暂停"].tap()
+        expect(app.buttons["播放"], timeout: 3)
+        XCTAssertTrue(miniPlayer(app, title: "交互测试2").exists, "暂停后迷你播放器应保留")
+        attach(app, name: "I-02-resumed")
     }
 
     // MARK: - I-03 Tab／详情切换

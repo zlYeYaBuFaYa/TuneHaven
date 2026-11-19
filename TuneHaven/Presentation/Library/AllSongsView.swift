@@ -9,6 +9,7 @@ struct AllSongsView: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var snackbar: SnackbarState
     @Environment(\.themePalette) private var palette
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @EnvironmentObject private var playback: PlaybackService
     @State private var displaySongs: [Song] = []
@@ -37,25 +38,21 @@ struct AllSongsView: View {
         displaySongs = formatFilter == .all ? base : base.filter { $0.metadata.format.lowercased() == formatFilter.rawValue }
     }
 
-    /// 「继续听」只取本机上次有效歌曲；没有或音频缺失时不显示（交互设计文档 §4.1）
+    /// 「继续听」只取本机上次有效歌曲；没有或音频缺失时不显示，本次开播后收起交给迷你播放器（交互设计文档 §4.1）
     private var continueSong: Song? {
-        guard let song = playback.currentSong, !song.isAudioMissing else { return nil }
+        guard !playback.hasStartedPlayback,
+              let song = playback.currentSong, !song.isAudioMissing else { return nil }
         return song
     }
 
     private var songList: some View {
         List {
             if let song = continueSong {
-                ContinueListeningCard(
-                    song: song,
-                    isPlaying: playback.isPlaying,
-                    onPlay: {
-                        Task {
-                            await playback.play(song: song, in: .queue)
-                            router.openPlayer()
-                        }
-                    }
-                )
+                // 直接开播并留在曲库，不展开全屏
+                ContinueListeningCard(song: song) {
+                    Task { await playback.play(song: song, in: .queue) }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 12, trailing: 20))
@@ -112,6 +109,7 @@ struct AllSongsView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .animation(reduceMotion ? nil : .snappy, value: continueSong?.id)
     }
 
     /// 「所有歌曲 N」与排序／格式筛选菜单（点当前排序项切换升降序）
@@ -173,54 +171,49 @@ struct AllSongsView: View {
 }
 
 /// 「继续听」卡（docs/UI设计文档.md §6、§7.1：高约 133–142、圆角 25；内容驱动高度）。
-/// 右侧唱片为装饰，不进入可访问树。
+/// 只在本次开播前出现，所以只有「继续播放」一种状态。右侧封面为装饰，不进入可访问树。
 struct ContinueListeningCard: View {
     let song: Song
-    let isPlaying: Bool
     let onPlay: () -> Void
 
     @Environment(\.themePalette) private var palette
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(isPlaying ? "正在听" : "接着，听一会儿。")
-                    .font(.title3.weight(.bold))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("上次播放")
+                    .font(.footnote.weight(.medium))
+                    .foregroundColor(palette.textSecondary)
+                Text(song.title)
+                    .font(.title2.weight(.bold))
                     .foregroundColor(palette.textPrimary)
-                Text("上次听到「\(song.title)」")
+                    .lineLimit(2)
+                Text(song.artist)
                     .font(.subheadline)
                     .foregroundColor(palette.textSecondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
                 Button(action: onPlay) {
-                    HStack(spacing: 6) {
-                        Image(systemName: isPlaying ? "chevron.up" : "play.fill")
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.fill")
                             .font(.caption.weight(.bold))
-                        Text(isPlaying ? "打开播放器" : "继续播放")
+                            .foregroundColor(palette.accent)
+                            .frame(width: 30, height: 30)
+                            .background(Circle().fill(palette.accent.opacity(0.15)))
+                        Text("继续播放")
                             .font(.subheadline.weight(.semibold))
+                            .foregroundColor(palette.accent)
                     }
-                        .foregroundColor(palette.onAction)
-                        .padding(.horizontal, 16)
-                        .frame(minHeight: 40)
-                        .background(Capsule().fill(palette.actionFill))
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("继续播放：\(song.title)")
+                .padding(.top, 4)
             }
             Spacer(minLength: 0)
-            ZStack {
-                Circle()
-                    .fill(
-                        AngularGradient(
-                            colors: [palette.glowA, palette.glowB, palette.glowC, palette.glowA],
-                            center: .center
-                        )
-                    )
-                CoverImageView(path: song.coverImagePath, size: 46, cornerRadius: 23)
-                    .overlay(Circle().stroke(palette.surface, lineWidth: 3))
-            }
-            .frame(width: 104, height: 104)
-            .accessibilityHidden(true)
+            CoverImageView(path: song.coverImagePath, size: 104, cornerRadius: 18)
+                .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+                .accessibilityHidden(true)
         }
         .padding(18)
         .background(

@@ -27,14 +27,19 @@ private struct MiniPlayerProgressBar: View {
 
 /// 精简迷你播放器（docs/UI设计文档.md §6：视觉高 62、圆角 22、封面 42；交互设计文档 §6）。
 /// 主体点击展开全屏；播放／暂停、下一首只切换状态，不展开。收藏在全屏播放器和歌曲更多菜单中可达。
+/// 本次启动开播后才出现，之前由音乐库「继续听」卡承接恢复的歌曲。
 struct MiniPlayerBar: View {
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var playback: PlaybackService
     @Environment(\.themePalette) private var palette
 
     var body: some View {
-        if let song = playback.currentSong {
+        if let song = playback.currentSong, playback.hasStartedPlayback {
             VStack(spacing: 0) {
+                MiniPlayerProgressBar(color: palette.accent, track: palette.progressBackground)
+                    .padding(.horizontal, 18)
+                    .padding(.top, 6)
+
                 HStack(spacing: 4) {
                     Button {
                         router.openPlayer()
@@ -52,6 +57,9 @@ struct MiniPlayerBar: View {
                                     .lineLimit(1)
                             }
                             Spacer(minLength: 0)
+                            Image(systemName: "chevron.up")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(palette.textSecondary)
                         }
                         .contentShape(Rectangle())
                     }
@@ -75,7 +83,7 @@ struct MiniPlayerBar: View {
                     Button {
                         playback.playNext()
                     } label: {
-                        Image(systemName: "forward.fill")
+                        Image(systemName: "forward.end.fill")
                             .font(.title3)
                             .foregroundColor(palette.textPrimary)
                             .frame(width: 44, height: 44)
@@ -87,10 +95,6 @@ struct MiniPlayerBar: View {
                 .padding(.leading, 10)
                 .padding(.trailing, 6)
                 .padding(.vertical, 8)
-
-                MiniPlayerProgressBar(color: palette.accent, track: palette.progressBackground)
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 6)
             }
             .background {
                 LiquidGlassPolicy.floatingBarBackdrop(surfaceTint: palette.surface, cornerRadius: 22)

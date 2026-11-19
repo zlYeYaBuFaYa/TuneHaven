@@ -6,7 +6,12 @@ final class PlaybackService: ObservableObject {
     private let log = AppLogger.shared
 
     @Published private(set) var currentSong: Song?
-    @Published private(set) var isPlaying = false
+    @Published private(set) var isPlaying = false {
+        didSet { if isPlaying && !hasStartedPlayback { hasStartedPlayback = true } }
+    }
+    /// 本次启动是否真正开播过。开播前冷启动恢复的歌曲由音乐库「继续听」卡承接，
+    /// 开播后交给迷你播放器，暂停也不再退回（交互设计文档 §3.1、§6）
+    @Published private(set) var hasStartedPlayback = false
     @Published var playMode: PlayMode
     @Published var playbackSpeed: Float
     let sleepTimer: SleepTimerService

@@ -11,6 +11,7 @@ struct RootTabView: View {
     @EnvironmentObject private var lyricsService: LyricsService
     @EnvironmentObject private var subscriptionService: SubscriptionService
     @EnvironmentObject private var backupService: BackupRestoreService
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.themePalette) private var palette
 
     private var hasCustomBg: Bool {
@@ -38,8 +39,11 @@ struct RootTabView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 8) {
                 MiniPlayerBar()
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 customTabBar
             }
+            // 「继续听」卡收起的同时迷你播放器接手
+            .animation(reduceMotion ? nil : .snappy, value: playback.hasStartedPlayback)
             // 悬浮控制层下方用页面底色渐隐，避免列表文字与玻璃层叠在一起（docs/UI设计文档.md §6.1）
             .background(alignment: .bottom) {
                 LinearGradient(
